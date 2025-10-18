@@ -8,9 +8,9 @@ const _inter = Inter({ subsets: ["latin"] })
 const _jetbrainsMono = JetBrains_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
+  title: "MindID Portal",
+  description: "MindID Portal",
+  generator: "MindID Portal",
 }
 
 export default function RootLayout({

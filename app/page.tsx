@@ -5,9 +5,9 @@ import { Instagram, FileText, Video, ChevronDown, ChevronRight } from "lucide-re
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
+import YorumKazancComponent from "@/components/instagram/yorum-kazanc"
 import BlogPaylasComponent from "@/components/blog/blog-paylas"
 import AvatarSecComponent from "@/components/heygen/avatar-sec"
-import SesSecComponent from "@/components/heygen/ses-sec"
 import VideoOlusturComponent from "@/components/heygen/video-olustur"
 
 type MainMenuType = "instagram" | "blog" | "heygen"
@@ -15,9 +15,9 @@ type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
   | "gonderi-paylas"
+  | "yorum-kazanc"
   | "blog-paylas"
   | "avatar-sec"
-  | "ses-sec"
   | "video-olustur"
 
 export default function AdminPanel() {
@@ -32,8 +32,9 @@ export default function AdminPanel() {
       icon: Instagram,
       subItems: [
         { id: "kaynak-ekle" as SubMenuType, label: "Kaynak Ekle" },
-        { id: "icerik-uret" as SubMenuType, label: "İçerik Üret" },
-        { id: "gonderi-paylas" as SubMenuType, label: "Gönderi Paylaş" },
+        { id: "icerik-uret" as SubMenuType, label: "Icerik Uret" },
+        { id: "gonderi-paylas" as SubMenuType, label: "Gonderi Paylas" },
+        { id: "yorum-kazanc" as SubMenuType, label: "Yorum Kazanclari" },
       ],
     },
     {
@@ -48,7 +49,6 @@ export default function AdminPanel() {
       icon: Video,
       subItems: [
         { id: "avatar-sec" as SubMenuType, label: "Avatar Seç" },
-        { id: "ses-sec" as SubMenuType, label: "Ses Seç" },
         { id: "video-olustur" as SubMenuType, label: "Video Oluştur" },
       ],
     },
@@ -138,13 +138,13 @@ export default function AdminPanel() {
           {activeSubMenu === "kaynak-ekle" && <KaynakEkleComponent />}
           {activeSubMenu === "icerik-uret" && <IcerikUretComponent />}
           {activeSubMenu === "gonderi-paylas" && <GonderiPaylasComponent />}
+          {activeSubMenu === "yorum-kazanc" && <YorumKazancComponent />}
 
           {/* Blog Sub-menus */}
           {activeSubMenu === "blog-paylas" && <BlogPaylasComponent />}
 
           {/* HeyGen Sub-menus */}
           {activeSubMenu === "avatar-sec" && <AvatarSecComponent />}
-          {activeSubMenu === "ses-sec" && <SesSecComponent />}
           {activeSubMenu === "video-olustur" && <VideoOlusturComponent />}
         </div>
       </main>
