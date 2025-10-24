@@ -3,102 +3,151 @@
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText } from "lucide-react"
+
+type BlogIcerik = {
+  id: string
+  name: string
+}
 
 export default function BlogPaylasComponent() {
-  const [isPublishing, setIsPublishing] = useState(false)
-  const [geriBildirim, setGeriBildirim] = useState<{ tur: "basari" | "hata"; mesaj: string } | null>(null)
-  // const [bloglar] = useState([
-  //   { id: 1, baslik: "Yapay Zeka ve Is Dunyasi: 2024 Trendleri" },
-  //   { id: 2, baslik: "Sosyal Medya Pazarlamasinda Basari Icin 10 Ipucu" },
-  //   { id: 3, baslik: "Dijital Donusumun Isletmelere Etkileri" },
-  //   { id: 4, baslik: "Icerik Pazarlamasi Stratejileri ve Uygulamalari" },
-  // ])
+  const [blogIcerikleri, setBlogIcerikleri] = useState<BlogIcerik[]>([])
+  const [iceriklerYukleniyor, setIceriklerYukleniyor] = useState(false)
+  const [iceriklerHata, setIceriklerHata] = useState<string | null>(null)
+  const [paylasimDurumlari, setPaylasimDurumlari] = useState<
+    Record<string, { durum: "yukleniyor" | "basari" | "hata"; mesaj?: string }>
+  >({})
 
-  const handlePublish = async () => {
-    setIsPublishing(true)
-    setGeriBildirim(null)
+  const handleFetchBlogContents = async () => {
+    const hamBaseUrl = process.env.NEXT_PUBLIC_BASE_URL
+
+    if (!hamBaseUrl) {
+      setIceriklerHata("NEXT_PUBLIC_BASE_URL ortami tanimlanmamis.")
+      return
+    }
+
+    const baseUrl = hamBaseUrl.endsWith("/") ? hamBaseUrl.slice(0, -1) : hamBaseUrl
+    const endpoint = `${baseUrl}/get-blog-contents`
+
+    setIceriklerYukleniyor(true)
+    setIceriklerHata(null)
 
     try {
-      const response = await fetch("/api/post-blog", {
-        method: "POST",
+      const response = await fetch(endpoint, {
+        method: "GET",
       })
 
       if (!response.ok) {
-        const rawHata = await response.text()
-        let hataMesaji = rawHata || "Blog yayinlama istegi basarisiz oldu."
+        throw new Error(`Blog icerikleri yuklenemedi (HTTP ${response.status}).`)
+      }
 
-        try {
-          const hataJson = JSON.parse(rawHata)
-          if (typeof hataJson === "object" && hataJson !== null) {
-            const hataObj = hataJson as { error?: unknown; details?: unknown }
-            const temel = typeof hataObj.error === "string" ? hataObj.error : undefined
-            const detay = typeof hataObj.details === "string" ? hataObj.details : undefined
-            if (temel || detay) {
-              hataMesaji = [temel, detay].filter(Boolean).join(": ")
-            }
+      const data: unknown = await response.json()
+
+      if (!Array.isArray(data)) {
+        throw new Error("Beklenmeyen yanit formati alindi.")
+      }
+
+      const dogrulanmisIcerikler = data
+        .map((item) => {
+          if (typeof item !== "object" || item === null) {
+            return null
           }
-        } catch {
-          // JSON parse hatasi onemli degil
-        }
 
-        setGeriBildirim({
-          tur: "hata",
-          mesaj: hataMesaji,
+          const kayit = item as Record<string, unknown>
+          const id = typeof kayit.id === "string" ? kayit.id : null
+          const name = typeof kayit.name === "string" ? kayit.name : null
+
+          if (!id || !name) {
+            return null
+          }
+
+          return { id, name }
         })
-        return
+        .filter((item): item is BlogIcerik => item !== null)
+
+      setBlogIcerikleri(dogrulanmisIcerikler)
+
+      if (dogrulanmisIcerikler.length === 0) {
+        setIceriklerHata("Blog icerigi bulunamadi.")
+      }
+    } catch (error) {
+      setBlogIcerikleri([])
+      setIceriklerHata(
+        error instanceof Error ? error.message : "Blog icerikleri cekilirken beklenmeyen bir hata olustu."
+      )
+    } finally {
+      setIceriklerYukleniyor(false)
+    }
+  }
+
+  const handleShareBlog = async (icerik: BlogIcerik) => {
+    const hamBaseUrl = process.env.NEXT_PUBLIC_BASE_URL
+
+    if (!hamBaseUrl) {
+      setPaylasimDurumlari((prev) => ({
+        ...prev,
+        [icerik.id]: {
+          durum: "hata",
+          mesaj: "NEXT_PUBLIC_BASE_URL ortami tanimlanmamis.",
+        },
+      }))
+      return
+    }
+
+    const baseUrl = hamBaseUrl.endsWith("/") ? hamBaseUrl.slice(0, -1) : hamBaseUrl
+    const endpoint = `${baseUrl}/post-blog`
+
+    setPaylasimDurumlari((prev) => ({
+      ...prev,
+      [icerik.id]: {
+        durum: "yukleniyor",
+      },
+    }))
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: icerik.id,
+          name: icerik.name,
+        }),
+      })
+
+      if (!response.ok) {
+        const rawText = await response.text()
+        const hataMesaji =
+          rawText && rawText.trim().length > 0
+            ? rawText.trim()
+            : `Blog paylasim istegi basarisiz oldu (HTTP ${response.status}).`
+        throw new Error(hataMesaji)
       }
 
       const responseText = await response.text()
-      let parsedResponse: unknown = null
+      const basariMesaji =
+        responseText && responseText.trim().length > 0
+          ? responseText.trim()
+          : "Blog paylasim istegi iletildi."
 
-      try {
-        parsedResponse = JSON.parse(responseText)
-      } catch {
-        // Yanit JSON olmak zorunda degil
-      }
-
-      let webhookMesaji = responseText.trim()
-
-      if (parsedResponse && typeof parsedResponse === "object") {
-        const sonucObj = parsedResponse as { raw?: unknown; data?: unknown }
-        if (typeof sonucObj.raw === "string" && sonucObj.raw.trim().length > 0) {
-          webhookMesaji = sonucObj.raw
-        } else if (typeof sonucObj.data === "string") {
-          webhookMesaji = sonucObj.data
-        } else if (sonucObj.data !== undefined) {
-          try {
-            webhookMesaji = JSON.stringify(sonucObj.data, null, 2)
-          } catch {
-            webhookMesaji = String(sonucObj.data)
-          }
-        } else {
-          try {
-            webhookMesaji = JSON.stringify(parsedResponse, null, 2)
-          } catch {
-            webhookMesaji = responseText
-          }
-        }
-      } else if (typeof parsedResponse === "string" && parsedResponse.trim().length > 0) {
-        webhookMesaji = parsedResponse
-      }
-
-      const gosterilecekMesaj =
-        typeof webhookMesaji === "string" && webhookMesaji.trim().length > 0
-          ? webhookMesaji
-          : "Webhook bos yanit dondurdu."
-
-      setGeriBildirim({
-        tur: "basari",
-        mesaj: gosterilecekMesaj,
-      })
+      setPaylasimDurumlari((prev) => ({
+        ...prev,
+        [icerik.id]: {
+          durum: "basari",
+          mesaj: basariMesaji,
+        },
+      }))
     } catch (error) {
-      setGeriBildirim({
-        tur: "hata",
-        mesaj: error instanceof Error ? error.message : "Blog yayinlanirken baglanti hatasi olustu.",
-      })
-    } finally {
-      setIsPublishing(false)
+      setPaylasimDurumlari((prev) => ({
+        ...prev,
+        [icerik.id]: {
+          durum: "hata",
+          mesaj:
+            error instanceof Error
+              ? error.message
+              : "Blog paylasim istegi gonderilirken beklenmeyen bir hata olustu.",
+        },
+      }))
     }
   }
 
@@ -109,48 +158,64 @@ export default function BlogPaylasComponent() {
         <p className="text-muted-foreground mt-2">Yeni blog yazisini yayinlayin.</p>
       </div>
 
-      {/* <Card>
-        <CardHeader>
-          <CardTitle>Yayinlanabilecek Bloglar</CardTitle>
-          <CardDescription>Hazir blog yazilarinizi yayinlayin (dinamik olarak guncellenecek).</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {bloglar.map((blog) => (
-              <div key={blog.id} className="p-4 border rounded-lg space-y-3">
-                <h3 className="font-semibold text-lg">{blog.baslik}</h3>
-                <Button onClick={() => handlePublishBlog(blog.id)} disabled={isPublishing} className="w-full">
-                  <FileText className="w-4 h-4 mr-2" />
-                  {isPublishing ? "Yayinlaniyor..." : "Blog Yazinizi Yayinla"}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card> */}
-
       <Card>
         <CardHeader>
-          <CardTitle>Blog Yazisini Yayinla</CardTitle>
-          <CardDescription>Hazirlanan blogu tek tikla yayinlayin.</CardDescription>
+          <CardTitle>Blog Icerikleri</CardTitle>
+          <CardDescription>Hazirlanan blog yazilarini buradan gorebilir ve secebilirsiniz.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={handlePublish} disabled={isPublishing} className="w-full" size="lg">
-            <FileText className="w-4 h-4 mr-2" />
-            {isPublishing ? "Blog yayinlaniyor..." : "Blog Yazisi Yayinla"}
-          </Button>
-          {geriBildirim ? (
-            <p
-              className={`text-sm whitespace-pre-wrap break-words ${
-                geriBildirim.tur === "basari" ? "text-green-600" : "text-destructive"
-              }`}
-              aria-live="polite"
-            >
-              {geriBildirim.mesaj}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {blogIcerikleri.length > 0
+                ? `${blogIcerikleri.length} blog icerigi yuklendi.`
+                : "Blog icerikleri henuz yuklenmedi."}
             </p>
+            <Button onClick={handleFetchBlogContents} disabled={iceriklerYukleniyor} variant="outline">
+              {iceriklerYukleniyor ? "Bloglar yukleniyor..." : "Blog yazilarini cek"}
+            </Button>
+          </div>
+          {iceriklerHata ? (
+            <p className="text-sm text-destructive" aria-live="assertive">
+              {iceriklerHata}
+            </p>
+          ) : null}
+          {blogIcerikleri.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {blogIcerikleri.map((icerik) => (
+                <div key={icerik.id} className="flex flex-col gap-3 rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">ID</div>
+                    <div className="break-all text-sm font-mono text-muted-foreground">{icerik.id}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Baslik</div>
+                    <div className="text-base font-semibold break-words">{icerik.name}</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={paylasimDurumlari[icerik.id]?.durum === "yukleniyor"}
+                    onClick={() => handleShareBlog(icerik)}
+                  >
+                    {paylasimDurumlari[icerik.id]?.durum === "yukleniyor" ? "Paylasiliyor..." : "Blogu paylas"}
+                  </Button>
+                  {paylasimDurumlari[icerik.id]?.mesaj ? (
+                    <p
+                      className={`text-sm ${
+                        paylasimDurumlari[icerik.id]?.durum === "basari" ? "text-green-600" : "text-destructive"
+                      }`}
+                      aria-live="polite"
+                    >
+                      {paylasimDurumlari[icerik.id]?.mesaj}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
           ) : null}
         </CardContent>
       </Card>
+
     </div>
   )
 }
