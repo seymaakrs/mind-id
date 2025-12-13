@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Instagram, FileText, Video, ChevronDown, ChevronRight } from "lucide-react"
+import { Instagram, FileText, Video, Bot, ChevronDown, ChevronRight } from "lucide-react"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
@@ -9,8 +9,9 @@ import YorumKazancComponent from "@/components/instagram/yorum-kazanc"
 import BlogPaylasComponent from "@/components/blog/blog-paylas"
 import AvatarSecComponent from "@/components/heygen/avatar-sec"
 import VideoOlusturComponent from "@/components/heygen/video-olustur"
+import AgentGorevComponent from "@/components/agent/agent-gorev"
 
-type MainMenuType = "instagram" | "blog" | "heygen"
+type MainMenuType = "instagram" | "blog" | "heygen" | "agent"
 type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
@@ -52,16 +53,29 @@ export default function AdminPanel() {
         { id: "video-olustur" as SubMenuType, label: "Video Oluştur" },
       ],
     },
+    {
+      id: "agent" as MainMenuType,
+      label: "Agent",
+      icon: Bot,
+      subItems: [],
+    },
   ]
 
   const handleMenuClick = (menuId: MainMenuType) => {
+    const menu = menuItems.find((m) => m.id === menuId)
+
+    if (!menu || menu.subItems.length === 0) {
+      setActiveMenu(menuId)
+      setExpandedMenu(null)
+      return
+    }
+
     if (expandedMenu === menuId) {
       setExpandedMenu(null)
     } else {
       setExpandedMenu(menuId)
       setActiveMenu(menuId)
       // Set first sub-item as active when opening a menu
-      const menu = menuItems.find((m) => m.id === menuId)
       if (menu && menu.subItems.length > 0) {
         setActiveSubMenu(menu.subItems[0].id)
       }
@@ -84,6 +98,7 @@ export default function AdminPanel() {
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon
+              const hasSubItems = item.subItems.length > 0
               const isExpanded = expandedMenu === item.id
               const isActive = activeMenu === item.id
 
@@ -102,11 +117,17 @@ export default function AdminPanel() {
                       <Icon className="w-5 h-5" />
                       <span className="font-medium">{item.label}</span>
                     </div>
-                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    {hasSubItems ? (
+                      isExpanded ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )
+                    ) : null}
                   </button>
 
                   {/* Alt Menü */}
-                  {isExpanded && (
+                  {hasSubItems && isExpanded && (
                     <ul className="mt-1 ml-4 space-y-1">
                       {item.subItems.map((subItem) => (
                         <li key={subItem.id}>
@@ -134,18 +155,24 @@ export default function AdminPanel() {
       {/* Sağ İçerik Alanı - 80% genişlik */}
       <main className="w-4/5 h-full overflow-auto">
         <div className="p-8">
-          {/* Instagram Sub-menus */}
-          {activeSubMenu === "kaynak-ekle" && <KaynakEkleComponent />}
-          {activeSubMenu === "icerik-uret" && <IcerikUretComponent />}
-          {activeSubMenu === "gonderi-paylas" && <GonderiPaylasComponent />}
-          {activeSubMenu === "yorum-kazanc" && <YorumKazancComponent />}
+          {activeMenu === "agent" ? (
+            <AgentGorevComponent />
+          ) : (
+            <>
+              {/* Instagram Sub-menus */}
+              {activeSubMenu === "kaynak-ekle" && <KaynakEkleComponent />}
+              {activeSubMenu === "icerik-uret" && <IcerikUretComponent />}
+              {activeSubMenu === "gonderi-paylas" && <GonderiPaylasComponent />}
+              {activeSubMenu === "yorum-kazanc" && <YorumKazancComponent />}
 
-          {/* Blog Sub-menus */}
-          {activeSubMenu === "blog-paylas" && <BlogPaylasComponent />}
+              {/* Blog Sub-menus */}
+              {activeSubMenu === "blog-paylas" && <BlogPaylasComponent />}
 
-          {/* HeyGen Sub-menus */}
-          {activeSubMenu === "avatar-sec" && <AvatarSecComponent />}
-          {activeSubMenu === "video-olustur" && <VideoOlusturComponent />}
+              {/* HeyGen Sub-menus */}
+              {activeSubMenu === "avatar-sec" && <AvatarSecComponent />}
+              {activeSubMenu === "video-olustur" && <VideoOlusturComponent />}
+            </>
+          )}
         </div>
       </main>
     </div>
