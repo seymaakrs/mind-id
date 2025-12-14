@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-const agentEndpoint = "http://learning-partially-rabbit.ngrok-free.app/task";
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
+const agentEndpoint = "https://learning-partially-rabbit.ngrok-free.app/task";
 
 const base_instruction =
   "instuction: kullanicinin isteklerini uygularken 1WkSzr8a4H36wsse7mh9ZIzbu_JjmGmRpMuribEO3jos id li dokumani toollarini kullanarak cekip oku. sonrasinda kullanicinin gorevlerini yerine getir.";
