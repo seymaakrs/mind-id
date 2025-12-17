@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 26;
 
 const agentEndpoint = "https://learning-partially-rabbit.ngrok-free.app/task";
 
