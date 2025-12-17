@@ -100,11 +100,13 @@ export default function AgentGorevComponent() {
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="agent-gorev">Agenta gondermek istediginiz gorev</Label>
-              <Input
-                id="agent-gorev"
-                placeholder="Orn: Haftalik icerik plani olustur"
-                value={gorev}
-                onChange={(event) => setGorev(event.target.value)}
+              <textarea
+              id="agent-gorev"
+              placeholder="Orn: Haftalik icerik plani olustur"
+              value={gorev}
+              onChange={(event) => setGorev(event.target.value)}
+              rows={5}
+              className="flex min-h-[250px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting || !gorev.trim()}>
