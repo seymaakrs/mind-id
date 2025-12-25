@@ -22,6 +22,11 @@ export interface Business extends BaseDocument {
   name: string; // Zorunlu alan - işletme adı
   logo: string; // Zorunlu alan - logo URL (Storage path)
   colors: string[]; // Zorunlu alan - renk paleti (hex kodları)
+  description: string; // Zorunlu alan - işletme tanımı
+  sector: string; // Zorunlu alan - sektör/kategori
+  target_audience: string; // Zorunlu alan - hedef kitle
+  instagram_account_id: string; // Zorunlu alan - Instagram hesap ID'si
+  instagram_access_token: string; // Zorunlu alan - Instagram erişim token'ı
   profile: BusinessProfile; // İşletme profil bilgileri (dinamik alanlar)
 }
 

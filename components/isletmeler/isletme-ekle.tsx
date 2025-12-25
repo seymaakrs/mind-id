@@ -23,6 +23,11 @@ export default function IsletmeEkleComponent() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [colors, setColors] = useState<string[]>([]);
   const [newColor, setNewColor] = useState("#3b82f6");
+  const [description, setDescription] = useState("");
+  const [sector, setSector] = useState("");
+  const [targetAudience, setTargetAudience] = useState("");
+  const [instagramAccountId, setInstagramAccountId] = useState("");
+  const [instagramAccessToken, setInstagramAccessToken] = useState("");
   const [profileFields, setProfileFields] = useState<ProfileField[]>([]);
   const [status, setStatus] = useState<Status>("bosta");
   const [hata, setHata] = useState<string | null>(null);
@@ -97,6 +102,11 @@ export default function IsletmeEkleComponent() {
     setLogoPreview(null);
     setColors([]);
     setNewColor("#3b82f6");
+    setDescription("");
+    setSector("");
+    setTargetAudience("");
+    setInstagramAccountId("");
+    setInstagramAccessToken("");
     setProfileFields([]);
     setHata(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -119,6 +129,31 @@ export default function IsletmeEkleComponent() {
 
     if (colors.length === 0) {
       setHata("En az bir renk eklemeniz zorunludur.");
+      return;
+    }
+
+    if (!description.trim()) {
+      setHata("İşletme açıklaması zorunludur.");
+      return;
+    }
+
+    if (!sector.trim()) {
+      setHata("Sektör bilgisi zorunludur.");
+      return;
+    }
+
+    if (!targetAudience.trim()) {
+      setHata("Hedef kitle bilgisi zorunludur.");
+      return;
+    }
+
+    if (!instagramAccountId.trim()) {
+      setHata("Instagram Account ID zorunludur.");
+      return;
+    }
+
+    if (!instagramAccessToken.trim()) {
+      setHata("Instagram Access Token zorunludur.");
       return;
     }
 
@@ -145,6 +180,11 @@ export default function IsletmeEkleComponent() {
         name: isletmeAdi.trim(),
         logo: logoUrl,
         colors,
+        description: description.trim(),
+        sector: sector.trim(),
+        target_audience: targetAudience.trim(),
+        instagram_account_id: instagramAccountId.trim(),
+        instagram_access_token: instagramAccessToken.trim(),
         profile,
       });
 
@@ -316,6 +356,81 @@ export default function IsletmeEkleComponent() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* İşletme Açıklaması - Zorunlu */}
+            <div className="space-y-2">
+              <Label htmlFor="description">
+                İşletme Açıklaması <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="description"
+                placeholder="İşletmenizi kısaca tanıtın. Bu bilgi içerik üretiminde AI tarafından kullanılacaktır."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={status === "kaydediliyor"}
+                className="min-h-[100px] resize-y"
+                rows={3}
+              />
+            </div>
+
+            {/* Sektör - Zorunlu */}
+            <div className="space-y-2">
+              <Label htmlFor="sector">
+                Sektör / Kategori <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="sector"
+                placeholder="Örn: Teknoloji, E-ticaret, Sağlık, Eğitim"
+                value={sector}
+                onChange={(e) => setSector(e.target.value)}
+                disabled={status === "kaydediliyor"}
+              />
+            </div>
+
+            {/* Hedef Kitle - Zorunlu */}
+            <div className="space-y-2">
+              <Label htmlFor="target-audience">
+                Hedef Kitle <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="target-audience"
+                placeholder="Örn: 25-45 yaş arası, teknoloji meraklısı, şehirde yaşayan profesyoneller"
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+                disabled={status === "kaydediliyor"}
+                className="min-h-[80px] resize-y"
+                rows={2}
+              />
+            </div>
+
+            {/* Instagram Account ID - Zorunlu */}
+            <div className="space-y-2">
+              <Label htmlFor="instagram-account-id">
+                Instagram Account ID <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="instagram-account-id"
+                placeholder="Örn: 17841400000000000"
+                value={instagramAccountId}
+                onChange={(e) => setInstagramAccountId(e.target.value)}
+                disabled={status === "kaydediliyor"}
+              />
+            </div>
+
+            {/* Instagram Access Token - Zorunlu */}
+            <div className="space-y-2">
+              <Label htmlFor="instagram-access-token">
+                Instagram Access Token <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="instagram-access-token"
+                type="password"
+                placeholder="Access token"
+                value={instagramAccessToken}
+                onChange={(e) => setInstagramAccessToken(e.target.value)}
+                disabled={status === "kaydediliyor"}
+              />
             </div>
 
             {/* Profil Alanları - Opsiyonel */}

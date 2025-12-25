@@ -76,6 +76,11 @@ export async function addBusiness(business: {
   name: string;
   logo: string;
   colors: string[];
+  description: string;
+  sector: string;
+  target_audience: string;
+  instagram_account_id: string;
+  instagram_access_token: string;
   profile: Record<string, string>;
 }) {
   return addDocument('businesses', business);
