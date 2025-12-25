@@ -5,9 +5,6 @@ export const maxDuration = 26;
 
 const agentEndpoint = "https://learning-partially-rabbit.ngrok-free.app/task";
 
-const base_instruction =
-  "instuction: kullanicinin isteklerini uygularken 1WkSzr8a4H36wsse7mh9ZIzbu_JjmGmRpMuribEO3jos id li dokumani toollarini kullanarak cekip oku. sonrasinda kullanicinin gorevlerini yerine getir.";
-
 export async function POST(request: Request) {
   let body: unknown;
 
@@ -21,18 +18,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gecersiz veri formati." }, { status: 400 });
   }
 
-  const { task } = body as { task?: unknown };
+  const { task, business_id } = body as { task?: unknown; business_id?: unknown };
 
   if (typeof task !== "string" || task.trim().length === 0) {
     return NextResponse.json({ error: "`task` alani zorunludur." }, { status: 400 });
   }
 
-  const normalizedTask = task.trim();
-  const taskWithPrefix = normalizedTask.toLowerCase().startsWith("task:")
-    ? normalizedTask
-    : `task: ${normalizedTask}`;
-
-  const combinedTask = `${base_instruction}\n\n${taskWithPrefix}`;
+  if (typeof business_id !== "string" || business_id.trim().length === 0) {
+    return NextResponse.json({ error: "`business_id` alani zorunludur." }, { status: 400 });
+  }
 
   try {
     const externalResponse = await fetch(agentEndpoint, {
@@ -40,7 +34,7 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ task: combinedTask }),
+      body: JSON.stringify({ task: task.trim(), business_id }),
     });
 
     const responseText = await externalResponse.text();

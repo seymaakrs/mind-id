@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Instagram, FileText, Video, Bot, ChevronDown, ChevronRight } from "lucide-react"
+import { Instagram, FileText, Video, Bot, Building2, ChevronDown, ChevronRight } from "lucide-react"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
@@ -10,8 +10,12 @@ import BlogPaylasComponent from "@/components/blog/blog-paylas"
 import AvatarSecComponent from "@/components/heygen/avatar-sec"
 import VideoOlusturComponent from "@/components/heygen/video-olustur"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
+import IsletmeEkleComponent from "@/components/isletmeler/isletme-ekle"
+import IsletmeListeleComponent from "@/components/isletmeler/isletme-listele"
+import ProtectedRoute from "@/components/auth/ProtectedRoute"
+import LogoutButton from "@/components/auth/LogoutButton"
 
-type MainMenuType = "instagram" | "blog" | "heygen" | "agent"
+type MainMenuType = "instagram" | "blog" | "heygen" | "agent" | "isletmeler"
 type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
@@ -20,6 +24,8 @@ type SubMenuType =
   | "blog-paylas"
   | "avatar-sec"
   | "video-olustur"
+  | "isletme-ekle"
+  | "isletme-listele"
 
 export default function AdminPanel() {
   const [activeMenu, setActiveMenu] = useState<MainMenuType>("instagram")
@@ -59,6 +65,15 @@ export default function AdminPanel() {
       icon: Bot,
       subItems: [],
     },
+    {
+      id: "isletmeler" as MainMenuType,
+      label: "İşletmeler",
+      icon: Building2,
+      subItems: [
+        { id: "isletme-listele" as SubMenuType, label: "İşletme Listesi" },
+        { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
+      ],
+    },
   ]
 
   const handleMenuClick = (menuId: MainMenuType) => {
@@ -88,12 +103,13 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sol Menü - 20% genişlik */}
-      <aside className="w-1/5 h-full bg-sidebar border-r border-sidebar-border">
-        <div className="p-6 border-b border-sidebar-border">
-          <h1 className="text-xl font-bold text-sidebar-foreground">MindID</h1>
-        </div>
+    <ProtectedRoute>
+      <div className="flex h-screen bg-background">
+        {/* Sol Menü - 20% genişlik */}
+        <aside className="w-1/5 h-full bg-sidebar border-r border-sidebar-border flex flex-col">
+          <div className="p-6 border-b border-sidebar-border">
+            <h1 className="text-xl font-bold text-sidebar-foreground">MindID</h1>
+          </div>
         <nav className="p-4">
           <ul className="space-y-1">
             {menuItems.map((item) => {
@@ -150,7 +166,11 @@ export default function AdminPanel() {
             })}
           </ul>
         </nav>
-      </aside>
+          {/* Logout Button - Alt kisim */}
+          <div className="mt-auto p-4 border-t border-sidebar-border">
+            <LogoutButton />
+          </div>
+        </aside>
 
       {/* Sağ İçerik Alanı - 80% genişlik */}
       <main className="w-4/5 h-full overflow-auto">
@@ -171,10 +191,15 @@ export default function AdminPanel() {
               {/* HeyGen Sub-menus */}
               {activeSubMenu === "avatar-sec" && <AvatarSecComponent />}
               {activeSubMenu === "video-olustur" && <VideoOlusturComponent />}
+
+              {/* İşletmeler Sub-menus */}
+              {activeSubMenu === "isletme-listele" && <IsletmeListeleComponent />}
+              {activeSubMenu === "isletme-ekle" && <IsletmeEkleComponent />}
             </>
           )}
         </div>
       </main>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }
