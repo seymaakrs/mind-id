@@ -14,20 +14,74 @@ export interface AdminUser extends BaseDocument {
   role: 'super_admin' | 'admin' | 'editor';
 }
 
-// Business profile - key/value object
-export type BusinessProfile = Record<string, string>;
+// Business profile - structured profile data
+export interface BusinessProfile {
+  // Kimlik
+  slogan?: string;
+  industry?: string;
+  sub_category?: string;
+  market_position?: string;
+  location_city?: string;
+
+  // Marka Sesi
+  tone?: string;
+  language?: string;
+  formality?: string;
+  emoji_usage?: string;
+  caption_style?: string;
+
+  // Görsel
+  aesthetic?: string;
+  photography_style?: string;
+  color_mood?: string;
+  visual_mood?: string;
+
+  // Hedef Kitle
+  target_age_range?: string;
+  target_gender?: string;
+  target_description?: string;
+  target_interests?: string[];
+
+  // Değerler
+  brand_values?: string[];
+  unique_points?: string[];
+  brand_story_short?: string;
+
+  // Sosyal Medya
+  hashtags_brand?: string[];
+  hashtags_industry?: string[];
+  hashtags_location?: string[];
+  content_pillars?: string[];
+
+  // Kurallar
+  avoid_topics?: string[];
+  seasonal_content?: boolean;
+  promo_frequency?: string;
+
+  // Kullanıcının eklediği ekstra alanlar
+  extras?: Record<string, string>;
+}
 
 // Business type with profile
 export interface Business extends BaseDocument {
   name: string; // Zorunlu alan - işletme adı
   logo: string; // Zorunlu alan - logo URL (Storage path)
   colors: string[]; // Zorunlu alan - renk paleti (hex kodları)
-  description: string; // Zorunlu alan - işletme tanımı
-  sector: string; // Zorunlu alan - sektör/kategori
-  target_audience: string; // Zorunlu alan - hedef kitle
   instagram_account_id: string; // Zorunlu alan - Instagram hesap ID'si
   instagram_access_token: string; // Zorunlu alan - Instagram erişim token'ı
-  profile: BusinessProfile; // İşletme profil bilgileri (dinamik alanlar)
+  profile: BusinessProfile; // İşletme profil bilgileri
+}
+
+// Business media (subcollection: businesses/{business_id}/media)
+export interface BusinessMedia {
+  id: string;
+  type: 'image' | 'video';
+  storage_path: string;
+  public_url: string;
+  file_name: string;
+  created_at: string;
+  prompt_summary: string;
+  metadata?: Record<string, unknown>;
 }
 
 // Activity log

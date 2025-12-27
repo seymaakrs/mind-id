@@ -12,6 +12,7 @@ import VideoOlusturComponent from "@/components/heygen/video-olustur"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import IsletmeEkleComponent from "@/components/isletmeler/isletme-ekle"
 import IsletmeListeleComponent from "@/components/isletmeler/isletme-listele"
+import IsletmeIcerikleriComponent from "@/components/isletmeler/isletme-icerikleri"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 
@@ -26,6 +27,7 @@ type SubMenuType =
   | "video-olustur"
   | "isletme-ekle"
   | "isletme-listele"
+  | "isletme-icerikleri"
 
 export default function AdminPanel() {
   const [activeMenu, setActiveMenu] = useState<MainMenuType>("instagram")
@@ -72,6 +74,7 @@ export default function AdminPanel() {
       subItems: [
         { id: "isletme-listele" as SubMenuType, label: "İşletme Listesi" },
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
+        { id: "isletme-icerikleri" as SubMenuType, label: "İşletme İçerikleri" },
       ],
     },
   ]
@@ -104,7 +107,7 @@ export default function AdminPanel() {
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background overflow-hidden">
         {/* Sol Menü - 20% genişlik */}
         <aside className="w-1/5 h-full bg-sidebar border-r border-sidebar-border flex flex-col">
           <div className="p-6 border-b border-sidebar-border">
@@ -173,8 +176,8 @@ export default function AdminPanel() {
         </aside>
 
       {/* Sağ İçerik Alanı - 80% genişlik */}
-      <main className="w-4/5 h-full overflow-auto">
-        <div className="p-8">
+      <main className="w-4/5 h-full overflow-y-auto overflow-x-hidden">
+        <div className="p-8 max-w-full">
           {activeMenu === "agent" ? (
             <AgentGorevComponent />
           ) : (
@@ -195,6 +198,7 @@ export default function AdminPanel() {
               {/* İşletmeler Sub-menus */}
               {activeSubMenu === "isletme-listele" && <IsletmeListeleComponent />}
               {activeSubMenu === "isletme-ekle" && <IsletmeEkleComponent />}
+              {activeSubMenu === "isletme-icerikleri" && <IsletmeIcerikleriComponent />}
             </>
           )}
         </div>

@@ -35,3 +35,24 @@ export async function uploadBusinessLogo(
   const path = `businesses/${businessId}/logo.${extension}`;
   return uploadFile(file, path);
 }
+
+// Upload business media (image or video)
+export async function uploadBusinessMedia(
+  file: File,
+  businessId: string,
+  type: 'image' | 'video'
+): Promise<{ url: string; storagePath: string; fileName: string }> {
+  const timestamp = Date.now();
+  const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const fileName = `${timestamp}-${originalName}`;
+  const folder = type === 'image' ? 'images' : 'videos';
+  const storagePath = `${folder}/${businessId}/${fileName}`;
+
+  const url = await uploadFile(file, storagePath);
+
+  return {
+    url,
+    storagePath,
+    fileName: originalName,
+  };
+}

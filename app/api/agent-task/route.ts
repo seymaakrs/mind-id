@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gecersiz veri formati." }, { status: 400 });
   }
 
-  const { task, business_id } = body as { task?: unknown; business_id?: unknown };
+  const { task, business_id, extras } = body as { task?: unknown; business_id?: unknown; extras?: unknown };
 
   if (typeof task !== "string" || task.trim().length === 0) {
     return NextResponse.json({ error: "`task` alani zorunludur." }, { status: 400 });
@@ -28,13 +28,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "`business_id` alani zorunludur." }, { status: 400 });
   }
 
+  // extras opsiyonel, ama varsa obje olmali
+  if (extras !== undefined && (typeof extras !== "object" || extras === null || Array.isArray(extras))) {
+    return NextResponse.json({ error: "`extras` alani bir obje olmalidir." }, { status: 400 });
+  }
+
   try {
+    const requestBody: { task: string; business_id: string; extras?: Record<string, unknown> } = {
+      task: task.trim(),
+      business_id,
+    };
+
+    // extras varsa ekle
+    if (extras) {
+      requestBody.extras = extras as Record<string, unknown>;
+    }
+
     const externalResponse = await fetch(agentEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ task: task.trim(), business_id }),
+      body: JSON.stringify(requestBody),
     });
 
     const responseText = await externalResponse.text();

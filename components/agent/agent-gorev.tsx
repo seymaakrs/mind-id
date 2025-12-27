@@ -63,6 +63,7 @@ export default function AgentGorevComponent() {
         body: JSON.stringify({
           task: trimmedGorev,
           business_id: selectedBusinessId,
+          extras: {}, // Ileride kullanilacak ek veriler icin hazir
         }),
       })
 

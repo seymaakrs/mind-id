@@ -76,12 +76,9 @@ export async function addBusiness(business: {
   name: string;
   logo: string;
   colors: string[];
-  description: string;
-  sector: string;
-  target_audience: string;
   instagram_account_id: string;
   instagram_access_token: string;
-  profile: Record<string, string>;
+  profile: BusinessProfile;
 }) {
   return addDocument('businesses', business);
 }
@@ -94,5 +91,26 @@ export async function deleteBusiness(id: string) {
   return deleteDocument('businesses', id);
 }
 
+// Business media operations (subcollection)
+export async function getBusinessMedia(businessId: string): Promise<BusinessMedia[]> {
+  if (!db) throw new Error('Firestore is not configured');
+  const mediaRef = collection(db, 'businesses', businessId, 'media');
+  const querySnapshot = await getDocs(mediaRef);
+  return querySnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as BusinessMedia[];
+}
+
+export async function addBusinessMedia(
+  businessId: string,
+  media: Omit<BusinessMedia, 'id'>
+): Promise<string> {
+  if (!db) throw new Error('Firestore is not configured');
+  const mediaRef = collection(db, 'businesses', businessId, 'media');
+  const docRef = await addDoc(mediaRef, media);
+  return docRef.id;
+}
+
 // Type imports
-import type { Business } from '@/types/firebase';
+import type { Business, BusinessMedia, BusinessProfile } from '@/types/firebase';
