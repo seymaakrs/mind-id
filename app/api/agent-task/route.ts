@@ -9,6 +9,12 @@ const SETTINGS_DOC_ID = "app_settings";
 const FALLBACK_ENDPOINT = "https://learning-partially-rabbit.ngrok-free.app";
 
 async function getAgentEndpoint(): Promise<string> {
+  // If adminDb is not available, use fallback
+  if (!adminDb) {
+    console.warn("Firebase Admin not initialized, using fallback endpoint");
+    return `${FALLBACK_ENDPOINT}/task`;
+  }
+
   try {
     const docRef = adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOC_ID);
     const docSnap = await docRef.get();
