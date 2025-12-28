@@ -1,0 +1,9 @@
+export { BasicInfoSection } from "./BasicInfoSection";
+export { IdentitySection } from "./IdentitySection";
+export { BrandVoiceSection } from "./BrandVoiceSection";
+export { VisualSection } from "./VisualSection";
+export { TargetAudienceSection } from "./TargetAudienceSection";
+export { BrandValuesSection } from "./BrandValuesSection";
+export { SocialMediaSection } from "./SocialMediaSection";
+export { RulesSection } from "./RulesSection";
+export { ExtraFieldsSection } from "./ExtraFieldsSection";

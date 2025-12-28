@@ -1,9 +1,35 @@
 import { NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
 export const maxDuration = 26;
 
-const agentEndpoint = "https://learning-partially-rabbit.ngrok-free.app/task";
+const SETTINGS_COLLECTION = "settings";
+const SETTINGS_DOC_ID = "app_settings";
+const FALLBACK_ENDPOINT = "https://learning-partially-rabbit.ngrok-free.app";
+
+async function getAgentEndpoint(): Promise<string> {
+  try {
+    const docRef = adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOC_ID);
+    const docSnap = await docRef.get();
+
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      const serverUrl = data?.serverUrl;
+
+      if (serverUrl && typeof serverUrl === "string" && serverUrl.trim().length > 0) {
+        // Remove trailing slash if present and append /task
+        const baseUrl = serverUrl.trim().replace(/\/+$/, "");
+        return `${baseUrl}/task`;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching settings:", error);
+  }
+
+  // Fallback to default endpoint
+  return `${FALLBACK_ENDPOINT}/task`;
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -43,6 +69,9 @@ export async function POST(request: Request) {
     if (extras) {
       requestBody.extras = extras as Record<string, unknown>;
     }
+
+    // Get dynamic endpoint from settings
+    const agentEndpoint = await getAgentEndpoint();
 
     const externalResponse = await fetch(agentEndpoint, {
       method: "POST",

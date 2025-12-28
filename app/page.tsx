@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Instagram, FileText, Video, Bot, Building2, ChevronDown, ChevronRight } from "lucide-react"
+import { Instagram, FileText, Video, Bot, Building2, Settings, ChevronDown, ChevronRight } from "lucide-react"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
@@ -10,13 +10,16 @@ import BlogPaylasComponent from "@/components/blog/blog-paylas"
 import AvatarSecComponent from "@/components/heygen/avatar-sec"
 import VideoOlusturComponent from "@/components/heygen/video-olustur"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
-import IsletmeEkleComponent from "@/components/isletmeler/isletme-ekle"
-import IsletmeListeleComponent from "@/components/isletmeler/isletme-listele"
-import IsletmeIcerikleriComponent from "@/components/isletmeler/isletme-icerikleri"
+import {
+  AddBusinessComponent,
+  BusinessListComponent,
+  BusinessMediaComponent,
+} from "@/components/businesses"
+import { SettingsPanel } from "@/components/settings"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 
-type MainMenuType = "instagram" | "blog" | "heygen" | "agent" | "isletmeler"
+type MainMenuType = "instagram" | "blog" | "heygen" | "agent" | "isletmeler" | "settings"
 type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
@@ -76,6 +79,12 @@ export default function AdminPanel() {
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
         { id: "isletme-icerikleri" as SubMenuType, label: "İşletme İçerikleri" },
       ],
+    },
+    {
+      id: "settings" as MainMenuType,
+      label: "Ayarlar",
+      icon: Settings,
+      subItems: [],
     },
   ]
 
@@ -180,6 +189,8 @@ export default function AdminPanel() {
         <div className="p-8 max-w-full">
           {activeMenu === "agent" ? (
             <AgentGorevComponent />
+          ) : activeMenu === "settings" ? (
+            <SettingsPanel />
           ) : (
             <>
               {/* Instagram Sub-menus */}
@@ -196,9 +207,9 @@ export default function AdminPanel() {
               {activeSubMenu === "video-olustur" && <VideoOlusturComponent />}
 
               {/* İşletmeler Sub-menus */}
-              {activeSubMenu === "isletme-listele" && <IsletmeListeleComponent />}
-              {activeSubMenu === "isletme-ekle" && <IsletmeEkleComponent />}
-              {activeSubMenu === "isletme-icerikleri" && <IsletmeIcerikleriComponent />}
+              {activeSubMenu === "isletme-listele" && <BusinessListComponent />}
+              {activeSubMenu === "isletme-ekle" && <AddBusinessComponent />}
+              {activeSubMenu === "isletme-icerikleri" && <BusinessMediaComponent />}
             </>
           )}
         </div>
