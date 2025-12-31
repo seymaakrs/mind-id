@@ -131,6 +131,12 @@ export default function SettingsPanel() {
               onChange={(v) => updateSetting("vertexAiModel", v)}
               disabled={saving}
             />
+            <SettingField
+              settingKey="marketingModel"
+              value={settings.marketingModel}
+              onChange={(v) => updateSetting("marketingModel", v)}
+              disabled={saving}
+            />
           </div>
         </CardContent>
       </Card>

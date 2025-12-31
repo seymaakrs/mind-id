@@ -14,27 +14,49 @@ const hasRequiredEnvVars =
   process.env.FIREBASE_CLIENT_EMAIL &&
   process.env.FIREBASE_PRIVATE_KEY;
 
-if (hasRequiredEnvVars) {
-  const serviceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  };
+// Check if private key looks valid (not placeholder)
+const isValidPrivateKey =
+  process.env.FIREBASE_PRIVATE_KEY &&
+  process.env.FIREBASE_PRIVATE_KEY.includes('PRIVATE KEY') &&
+  !process.env.FIREBASE_PRIVATE_KEY.includes('YOUR_PRIVATE_KEY') &&
+  !process.env.FIREBASE_PRIVATE_KEY.includes('BURAYA_GERCEK');
 
-  app = getApps().length === 0
-    ? initializeApp({
-        credential: cert(serviceAccount),
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      })
-    : getApps()[0];
+if (hasRequiredEnvVars && isValidPrivateKey) {
+  try {
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    };
 
-  adminAuth = getAuth(app);
-  adminDb = getFirestore(app);
-  adminStorage = getStorage(app);
+    app = getApps().length === 0
+      ? initializeApp({
+          credential: cert(serviceAccount),
+          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        })
+      : getApps()[0];
+
+    adminAuth = getAuth(app);
+    adminDb = getFirestore(app);
+    adminStorage = getStorage(app);
+  } catch (error) {
+    console.error('Firebase Admin SDK initialization failed:', error);
+    console.warn(
+      'Please check your FIREBASE_PRIVATE_KEY format in .env.local. ' +
+      'Make sure it includes the full key from the service account JSON file.'
+    );
+  }
 } else if (typeof window === 'undefined') {
-  console.warn(
-    'Firebase Admin SDK: Missing required environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY)'
-  );
+  if (!hasRequiredEnvVars) {
+    console.warn(
+      'Firebase Admin SDK: Missing required environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY)'
+    );
+  } else if (!isValidPrivateKey) {
+    console.warn(
+      'Firebase Admin SDK: FIREBASE_PRIVATE_KEY appears to be a placeholder. ' +
+      'Please update .env.local with the real private key from Firebase Console.'
+    );
+  }
 }
 
 export { adminAuth, adminDb, adminStorage };

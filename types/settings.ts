@@ -8,6 +8,7 @@ export interface AppSettings {
   videoAgentModel: string;
   orchestratorModel: string;
   vertexAiModel: string;
+  marketingModel: string;
 
   // Server settings
   serverUrl: string;
@@ -20,6 +21,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   videoAgentModel: "",
   orchestratorModel: "",
   vertexAiModel: "",
+  marketingModel: "",
   serverUrl: "",
 };
 
@@ -31,6 +33,7 @@ export const SETTINGS_LABELS: Record<keyof AppSettings, string> = {
   videoAgentModel: "Video Agent Modeli",
   orchestratorModel: "Orchestrator Modeli",
   vertexAiModel: "Vertex AI Modeli",
+  marketingModel: "Marketing Modeli",
   serverUrl: "Server URL",
 };
 
@@ -42,5 +45,6 @@ export const SETTINGS_DESCRIPTIONS: Record<keyof AppSettings, string> = {
   videoAgentModel: "Video agent'ı için kullanılacak LLM modeli (örn: gpt-4-turbo)",
   orchestratorModel: "Orchestrator için kullanılacak LLM modeli (örn: gpt-4)",
   vertexAiModel: "Google Vertex AI modeli (örn: gemini-1.5-pro, gemini-1.5-flash)",
+  marketingModel: "Marketing içerik üretimi için kullanılacak model (örn: gpt-4, claude-3)",
   serverUrl: "API sunucu adresi (örn: https://api.example.com)",
 };
