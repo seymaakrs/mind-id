@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
-export const maxDuration = 26;
+export const maxDuration = 300; // 5 dakika - streaming için artırıldı
 
 const SETTINGS_COLLECTION = "settings";
 const SETTINGS_DOC_ID = "app_settings";
@@ -87,49 +87,35 @@ export async function POST(request: Request) {
       body: JSON.stringify(requestBody),
     });
 
-    const responseText = await externalResponse.text();
-
     if (!externalResponse.ok) {
+      const errorText = await externalResponse.text();
       return NextResponse.json(
         {
           error: "Agent istegi basarisiz oldu.",
-          details: responseText || `Durum kodu: ${externalResponse.status}`,
+          details: errorText || `Durum kodu: ${externalResponse.status}`,
         },
         { status: externalResponse.status || 502 }
       );
     }
 
-    let parsedResponse: unknown = null;
-
-    try {
-      parsedResponse = JSON.parse(responseText);
-    } catch {
-      // JSON parse edilemediyse hataya duselim.
-    }
-
-    if (!parsedResponse || typeof parsedResponse !== "object") {
+    // Stream response'u doğrudan proxy olarak ilet
+    if (!externalResponse.body) {
       return NextResponse.json(
-        {
-          error: "Beklenmeyen yanit formati alindi.",
-          details: responseText,
-        },
+        { error: "Agent'tan yanit alinamadi." },
         { status: 502 }
       );
     }
 
-    const { output } = parsedResponse as { output?: unknown };
-
-    if (typeof output !== "string") {
-      return NextResponse.json(
-        {
-          error: "Beklenmeyen yanit formati alindi.",
-          details: responseText,
-        },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({ output }, { status: 200 });
+    // Stream'i client'a ilet
+    return new Response(externalResponse.body, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/x-ndjson",
+        "Transfer-Encoding": "chunked",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       {

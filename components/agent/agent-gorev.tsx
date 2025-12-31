@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, Activity } from "lucide-react";
 import { useBusinesses, useAgentTask } from "@/hooks";
 import { BusinessSelector } from "@/components/shared/BusinessSelector";
 
@@ -14,7 +14,15 @@ export default function AgentGorevComponent() {
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
 
   const { businesses, loading: loadingBusinesses } = useBusinesses();
-  const { response, loading: isSubmitting, error, sendTask, reset } = useAgentTask();
+  const {
+    response,
+    loading: isSubmitting,
+    error,
+    heartbeatCount,
+    sendTask,
+    cancelTask,
+    reset,
+  } = useAgentTask();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -26,6 +34,10 @@ export default function AgentGorevComponent() {
       task: trimmedGorev,
       businessId: selectedBusinessId,
     });
+  };
+
+  const handleCancel = () => {
+    cancelTask();
   };
 
   return (
@@ -77,21 +89,39 @@ export default function AgentGorevComponent() {
               />
             </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isSubmitting || !gorev.trim() || !selectedBusinessId}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Gonderiliyor...
-                </>
-              ) : (
-                "Gorevi gonder"
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={isSubmitting || !gorev.trim() || !selectedBusinessId}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Calisiyor...
+                  </>
+                ) : (
+                  "Gorevi gonder"
+                )}
+              </Button>
+              {isSubmitting && (
+                <Button type="button" variant="destructive" onClick={handleCancel}>
+                  <X className="w-4 h-4 mr-2" />
+                  Iptal
+                </Button>
               )}
-            </Button>
+            </div>
           </form>
+
+          {/* Heartbeat Göstergesi */}
+          {isSubmitting && heartbeatCount > 0 && (
+            <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
+              <Activity className="w-4 h-4 text-green-500 animate-pulse" />
+              <span className="text-sm text-muted-foreground">
+                Agent calisiyor... (Heartbeat: {heartbeatCount})
+              </span>
+            </div>
+          )}
 
           {error && (
             <p className="text-sm text-destructive whitespace-pre-wrap break-words" aria-live="polite">
