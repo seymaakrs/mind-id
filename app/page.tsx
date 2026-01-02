@@ -14,6 +14,7 @@ import {
   AddBusinessComponent,
   BusinessListComponent,
   BusinessMediaComponent,
+  ContentPlansComponent,
 } from "@/components/businesses"
 import { SettingsPanel } from "@/components/settings"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
@@ -31,6 +32,7 @@ type SubMenuType =
   | "isletme-ekle"
   | "isletme-listele"
   | "isletme-icerikleri"
+  | "icerik-planlari"
 
 export default function AdminPanel() {
   const [activeMenu, setActiveMenu] = useState<MainMenuType>("instagram")
@@ -78,6 +80,7 @@ export default function AdminPanel() {
         { id: "isletme-listele" as SubMenuType, label: "İşletme Listesi" },
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
         { id: "isletme-icerikleri" as SubMenuType, label: "İşletme İçerikleri" },
+        { id: "icerik-planlari" as SubMenuType, label: "İçerik Planları" },
       ],
     },
     {
@@ -210,6 +213,7 @@ export default function AdminPanel() {
               {activeSubMenu === "isletme-listele" && <BusinessListComponent />}
               {activeSubMenu === "isletme-ekle" && <AddBusinessComponent />}
               {activeSubMenu === "isletme-icerikleri" && <BusinessMediaComponent />}
+              {activeSubMenu === "icerik-planlari" && <ContentPlansComponent />}
             </>
           )}
         </div>

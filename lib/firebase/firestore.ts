@@ -112,5 +112,56 @@ export async function addBusinessMedia(
   return docRef.id;
 }
 
+// Content Calendar operations (subcollection)
+export async function getContentPlans(businessId: string): Promise<ContentPlan[]> {
+  if (!db) throw new Error('Firestore is not configured');
+  const plansRef = collection(db, 'businesses', businessId, 'content_calendar');
+  const querySnapshot = await getDocs(plansRef);
+  return querySnapshot.docs.map((docSnap) => ({
+    ...docSnap.data(),
+    plan_id: docSnap.id,
+  })) as ContentPlan[];
+}
+
+export async function getContentPlan(businessId: string, planId: string): Promise<ContentPlan | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'content_calendar', planId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { ...docSnap.data(), plan_id: docSnap.id } as ContentPlan;
+  }
+  return null;
+}
+
+export async function addContentPlan(
+  businessId: string,
+  plan: Omit<ContentPlan, 'plan_id'>
+): Promise<string> {
+  if (!db) throw new Error('Firestore is not configured');
+  const plansRef = collection(db, 'businesses', businessId, 'content_calendar');
+  const docRef = await addDoc(plansRef, plan);
+  return docRef.id;
+}
+
+export async function updateContentPlan(
+  businessId: string,
+  planId: string,
+  data: Partial<ContentPlan>
+): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'content_calendar', planId);
+  await updateDoc(docRef, {
+    ...data,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+export async function deleteContentPlan(businessId: string, planId: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'content_calendar', planId);
+  await deleteDoc(docRef);
+}
+
 // Type imports
 import type { Business, BusinessMedia, BusinessProfile } from '@/types/firebase';
+import type { ContentPlan } from '@/types/content-plan';
