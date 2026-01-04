@@ -5,8 +5,8 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2, X, Activity } from "lucide-react";
-import { useBusinesses, useAgentTask } from "@/hooks";
+import { Loader2, X, Activity, Wifi, WifiOff, RefreshCw } from "lucide-react";
+import { useBusinesses, useAgentTask, useServerHealth } from "@/hooks";
 import { BusinessSelector } from "@/components/shared/BusinessSelector";
 
 export default function AgentGorevComponent() {
@@ -23,6 +23,7 @@ export default function AgentGorevComponent() {
     cancelTask,
     reset,
   } = useAgentTask();
+  const { status: serverStatus, serverUrl, checkHealth } = useServerHealth();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -40,11 +41,72 @@ export default function AgentGorevComponent() {
     cancelTask();
   };
 
+  const getStatusConfig = () => {
+    switch (serverStatus) {
+      case "connected":
+        return {
+          icon: Wifi,
+          color: "text-green-500",
+          bgColor: "bg-green-500/10",
+          borderColor: "border-green-500/30",
+          label: "Bagli",
+        };
+      case "disconnected":
+      case "error":
+        return {
+          icon: WifiOff,
+          color: "text-red-500",
+          bgColor: "bg-red-500/10",
+          borderColor: "border-red-500/30",
+          label: "Baglanti yok",
+        };
+      case "checking":
+      default:
+        return {
+          icon: RefreshCw,
+          color: "text-yellow-500",
+          bgColor: "bg-yellow-500/10",
+          borderColor: "border-yellow-500/30",
+          label: "Kontrol ediliyor...",
+        };
+    }
+  };
+
+  const statusConfig = getStatusConfig();
+  const StatusIcon = statusConfig.icon;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Agent</h2>
-        <p className="text-muted-foreground mt-2">Agenta gondermek istediginiz gorevi yazin.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Agent</h2>
+          <p className="text-muted-foreground mt-2">Agenta gondermek istediginiz gorevi yazin.</p>
+        </div>
+
+        {/* Server Bağlantı Durumu */}
+        <div
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${statusConfig.bgColor} ${statusConfig.borderColor}`}
+        >
+          <StatusIcon
+            className={`w-4 h-4 ${statusConfig.color} ${serverStatus === "checking" ? "animate-spin" : ""}`}
+          />
+          <div className="flex flex-col">
+            <span className={`text-sm font-medium ${statusConfig.color}`}>{statusConfig.label}</span>
+            {serverUrl && serverStatus === "connected" && (
+              <span className="text-xs text-muted-foreground truncate max-w-[200px]">{serverUrl}</span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={checkHealth}
+            disabled={serverStatus === "checking"}
+            className="ml-1 h-6 w-6 p-0"
+            title="Yeniden kontrol et"
+          >
+            <RefreshCw className={`w-3 h-3 ${serverStatus === "checking" ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       <Card>
