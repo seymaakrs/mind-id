@@ -6,3 +6,4 @@ export { useAgentTask } from "./useAgentTask";
 export { useSettings } from "./useSettings";
 export { useContentPlans } from "./useContentPlans";
 export { useServerHealth } from "./useServerHealth";
+export { useAgentMemory } from "./useAgentMemory";

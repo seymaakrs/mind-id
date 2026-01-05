@@ -15,6 +15,7 @@ import {
   BusinessListComponent,
   BusinessMediaComponent,
   ContentPlansComponent,
+  AgentMemoryComponent,
 } from "@/components/businesses"
 import { SettingsPanel } from "@/components/settings"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
@@ -33,6 +34,7 @@ type SubMenuType =
   | "isletme-listele"
   | "isletme-icerikleri"
   | "icerik-planlari"
+  | "agent-hafizasi"
 
 export default function AdminPanel() {
   const [activeMenu, setActiveMenu] = useState<MainMenuType>("instagram")
@@ -81,6 +83,7 @@ export default function AdminPanel() {
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
         { id: "isletme-icerikleri" as SubMenuType, label: "İşletme İçerikleri" },
         { id: "icerik-planlari" as SubMenuType, label: "İçerik Planları" },
+        { id: "agent-hafizasi" as SubMenuType, label: "Agent Hafızası" },
       ],
     },
     {
@@ -119,13 +122,13 @@ export default function AdminPanel() {
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen bg-background overflow-hidden">
+      <div className="fixed inset-0 flex bg-background overflow-hidden">
         {/* Sol Menü - 20% genişlik */}
-        <aside className="w-1/5 h-full bg-sidebar border-r border-sidebar-border flex flex-col">
+        <aside className="w-1/5 h-full bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden">
           <div className="p-6 border-b border-sidebar-border">
             <h1 className="text-xl font-bold text-sidebar-foreground">MindID</h1>
           </div>
-        <nav className="p-4">
+        <nav className="p-4 flex-1 overflow-y-auto">
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon
@@ -214,6 +217,7 @@ export default function AdminPanel() {
               {activeSubMenu === "isletme-ekle" && <AddBusinessComponent />}
               {activeSubMenu === "isletme-icerikleri" && <BusinessMediaComponent />}
               {activeSubMenu === "icerik-planlari" && <ContentPlansComponent />}
+              {activeSubMenu === "agent-hafizasi" && <AgentMemoryComponent />}
             </>
           )}
         </div>

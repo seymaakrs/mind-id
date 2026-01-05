@@ -162,6 +162,30 @@ export async function deleteContentPlan(businessId: string, planId: string): Pro
   await deleteDoc(docRef);
 }
 
+// Agent Memory operations (subcollection)
+export async function getAgentMemory(businessId: string): Promise<AgentMemory | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'agent_memory', 'marketing');
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return docSnap.data() as AgentMemory;
+  }
+  return null;
+}
+
+export async function updateAgentMemory(
+  businessId: string,
+  data: Partial<AgentMemory>
+): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'agent_memory', 'marketing');
+  await updateDoc(docRef, {
+    ...data,
+    last_updated: new Date().toISOString(),
+  });
+}
+
 // Type imports
 import type { Business, BusinessMedia, BusinessProfile } from '@/types/firebase';
 import type { ContentPlan } from '@/types/content-plan';
+import type { AgentMemory } from '@/types/agent-memory';
