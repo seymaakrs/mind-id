@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gecersiz veri formati." }, { status: 400 });
   }
 
-  const { task, business_id, extras } = body as { task?: unknown; business_id?: unknown; extras?: unknown };
+  const { task, business_id, task_id, extras } = body as { task?: unknown; business_id?: unknown; task_id?: unknown; extras?: unknown };
 
   if (typeof task !== "string" || task.trim().length === 0) {
     return NextResponse.json({ error: "`task` alani zorunludur." }, { status: 400 });
@@ -66,10 +66,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const requestBody: { task: string; business_id: string; extras?: Record<string, unknown> } = {
+    const requestBody: { task: string; business_id: string; task_id?: string; extras?: Record<string, unknown> } = {
       task: task.trim(),
       business_id,
     };
+
+    // task_id varsa ekle
+    if (task_id && typeof task_id === "string") {
+      requestBody.task_id = task_id;
+    }
 
     // extras varsa ekle
     if (extras) {

@@ -8,6 +8,8 @@ import {
   deleteDoc,
   Timestamp,
   DocumentData,
+  query,
+  where,
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -235,8 +237,81 @@ export async function deleteBusinessJob(businessId: string, jobId: string): Prom
   await deleteDoc(docRef);
 }
 
+// Tasks operations (subcollection)
+export async function createTask(
+  businessId: string,
+  data: CreateTaskData
+): Promise<string> {
+  if (!db) throw new Error('Firestore is not configured');
+  const tasksRef = collection(db, 'businesses', businessId, 'tasks');
+  const docRef = await addDoc(tasksRef, {
+    ...data,
+    businessId,
+    status: 'pending' as TaskStatus,
+    createdAt: Timestamp.now(),
+  });
+  return docRef.id;
+}
+
+export async function updateTaskStatus(
+  businessId: string,
+  taskId: string,
+  status: TaskStatus,
+  result?: string,
+  error?: string
+): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'tasks', taskId);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updateData: any = { status };
+
+  if (status === 'running') {
+    updateData.startedAt = Timestamp.now();
+  } else if (status === 'completed' || status === 'failed') {
+    updateData.completedAt = Timestamp.now();
+    if (result) updateData.result = result;
+    if (error) updateData.error = error;
+  }
+
+  await updateDoc(docRef, updateData);
+}
+
+export async function getBusinessTasks(businessId: string): Promise<Task[]> {
+  if (!db) throw new Error('Firestore is not configured');
+  const tasksRef = collection(db, 'businesses', businessId, 'tasks');
+  const querySnapshot = await getDocs(tasksRef);
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  })) as Task[];
+}
+
+export async function getTask(businessId: string, taskId: string): Promise<Task | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'tasks', taskId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as Task;
+  }
+  return null;
+}
+
+// Logs operations (subcollection)
+export async function getTaskLogs(businessId: string, taskId: string): Promise<Record<string, unknown>[]> {
+  if (!db) throw new Error('Firestore is not configured');
+  const logsRef = collection(db, 'businesses', businessId, 'logs');
+  const q = query(logsRef, where('task_id', '==', taskId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  }));
+}
+
 // Type imports
 import type { Business, BusinessMedia, BusinessProfile } from '@/types/firebase';
 import type { ContentPlan } from '@/types/content-plan';
 import type { AgentMemory } from '@/types/agent-memory';
 import type { Job } from '@/types/jobs';
+import type { Task, TaskStatus, CreateTaskData } from '@/types/tasks';

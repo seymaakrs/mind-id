@@ -4,3 +4,4 @@ export { AgentMemoryTab } from "./agent-memory-tab";
 export { BusinessDetailsTab } from "./business-details-tab";
 export { StatisticsTab } from "./statistics-tab";
 export { JobsTab } from "./jobs-tab";
+export { TasksTab } from "./tasks-tab";

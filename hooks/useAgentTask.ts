@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { createTask, updateTaskStatus } from "@/lib/firebase/firestore";
 
 type AgentTaskExtras = Record<string, unknown>;
 
@@ -54,6 +55,20 @@ export function useAgentTask(): UseAgentTaskReturn {
       setLogPath(null);
 
       try {
+        // Önce Firestore'da task oluştur
+        const taskData: { businessId: string; type: "immediate"; task: string; extras?: Record<string, unknown> } = {
+          businessId,
+          type: "immediate",
+          task: task.trim(),
+        };
+
+        // extras sadece varsa ekle (Firestore undefined kabul etmez)
+        if (extras && Object.keys(extras).length > 0) {
+          taskData.extras = extras;
+        }
+
+        const taskId = await createTask(businessId, taskData);
+
         const res = await fetch("/api/agent-task", {
           method: "POST",
           headers: {
@@ -62,6 +77,7 @@ export function useAgentTask(): UseAgentTaskReturn {
           body: JSON.stringify({
             task: task.trim(),
             business_id: businessId,
+            task_id: taskId,
             ...(extras && Object.keys(extras).length > 0 ? { extras } : {}),
           }),
           signal: abortController.signal,
@@ -81,12 +97,17 @@ export function useAgentTask(): UseAgentTaskReturn {
             parsedError?.details ||
             errorText ||
             "İstek başarısız oldu.";
+
+          // Task durumunu failed olarak güncelle
+          await updateTaskStatus(businessId, taskId, "failed", undefined, errorMsg);
+
           setError(errorMsg);
           return null;
         }
 
         // Streaming NDJSON response
         if (!res.body) {
+          await updateTaskStatus(businessId, taskId, "failed", undefined, "Yanıt stream'i okunamadı.");
           setError("Yanıt stream'i okunamadı.");
           return null;
         }
@@ -95,6 +116,7 @@ export function useAgentTask(): UseAgentTaskReturn {
         const decoder = new TextDecoder();
         let buffer = "";
         let finalOutput: string | null = null;
+        let finalError: string | null = null;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -125,7 +147,8 @@ export function useAgentTask(): UseAgentTaskReturn {
                     setLogPath(data.log_path);
                   }
                 } else {
-                  setError(data.error || "Bilinmeyen hata.");
+                  finalError = data.error || "Bilinmeyen hata.";
+                  setError(finalError);
                 }
               }
             } catch {
@@ -146,12 +169,20 @@ export function useAgentTask(): UseAgentTaskReturn {
                   setLogPath(data.log_path);
                 }
               } else {
-                setError(data.error || "Bilinmeyen hata.");
+                finalError = data.error || "Bilinmeyen hata.";
+                setError(finalError);
               }
             }
           } catch {
             console.warn("Son buffer parse hatası:", buffer);
           }
+        }
+
+        // Task durumunu güncelle
+        if (finalOutput) {
+          await updateTaskStatus(businessId, taskId, "completed", finalOutput);
+        } else if (finalError) {
+          await updateTaskStatus(businessId, taskId, "failed", undefined, finalError);
         }
 
         return finalOutput;

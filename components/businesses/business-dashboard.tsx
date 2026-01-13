@@ -12,6 +12,7 @@ import {
   Brain,
   BarChart3,
   Clock,
+  ListChecks,
 } from "lucide-react";
 import { useBusinesses } from "@/hooks";
 import { BusinessSelector } from "@/components/shared/BusinessSelector";
@@ -22,6 +23,7 @@ import {
   AgentMemoryTab,
   StatisticsTab,
   JobsTab,
+  TasksTab,
 } from "./tabs";
 import type { Business } from "@/types/firebase";
 
@@ -30,7 +32,7 @@ interface BusinessDashboardProps {
   onBusinessChange?: (business: Business | null) => void;
 }
 
-type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "stats";
+type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "tasks" | "stats";
 
 export default function BusinessDashboard({
   initialBusinessId,
@@ -107,7 +109,7 @@ export default function BusinessDashboard({
       {/* Dashboard Content */}
       {selectedBusinessId && selectedBusiness ? (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="details" className="gap-2">
               <Info className="w-4 h-4" />
               <span className="hidden sm:inline">Detaylar</span>
@@ -127,6 +129,10 @@ export default function BusinessDashboard({
             <TabsTrigger value="jobs" className="gap-2">
               <Clock className="w-4 h-4" />
               <span className="hidden sm:inline">Gorevler</span>
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-2">
+              <ListChecks className="w-4 h-4" />
+              <span className="hidden sm:inline">Gecmis</span>
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-2">
               <BarChart3 className="w-4 h-4" />
@@ -156,6 +162,10 @@ export default function BusinessDashboard({
 
             <TabsContent value="jobs" className="m-0">
               <JobsTab businessId={selectedBusinessId} />
+            </TabsContent>
+
+            <TabsContent value="tasks" className="m-0">
+              <TasksTab businessId={selectedBusinessId} />
             </TabsContent>
 
             <TabsContent value="stats" className="m-0">
