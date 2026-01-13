@@ -185,7 +185,58 @@ export async function updateAgentMemory(
   });
 }
 
+// Jobs operations (subcollection)
+export async function getBusinessJobs(businessId: string): Promise<Job[]> {
+  if (!db) throw new Error('Firestore is not configured');
+  const jobsRef = collection(db, 'businesses', businessId, 'jobs');
+  const querySnapshot = await getDocs(jobsRef);
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  })) as Job[];
+}
+
+export async function getBusinessJob(businessId: string, jobId: string): Promise<Job | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'jobs', jobId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as Job;
+  }
+  return null;
+}
+
+export async function addBusinessJob(
+  businessId: string,
+  job: Omit<Job, 'id'>
+): Promise<string> {
+  if (!db) throw new Error('Firestore is not configured');
+  const jobsRef = collection(db, 'businesses', businessId, 'jobs');
+  const docRef = await addDoc(jobsRef, {
+    ...job,
+    createdAt: Timestamp.now(),
+  });
+  return docRef.id;
+}
+
+export async function updateBusinessJob(
+  businessId: string,
+  jobId: string,
+  data: Partial<Job>
+): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'jobs', jobId);
+  await updateDoc(docRef, data);
+}
+
+export async function deleteBusinessJob(businessId: string, jobId: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'jobs', jobId);
+  await deleteDoc(docRef);
+}
+
 // Type imports
 import type { Business, BusinessMedia, BusinessProfile } from '@/types/firebase';
 import type { ContentPlan } from '@/types/content-plan';
 import type { AgentMemory } from '@/types/agent-memory';
+import type { Job } from '@/types/jobs';

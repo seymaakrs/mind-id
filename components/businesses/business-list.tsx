@@ -4,33 +4,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building2, Loader2, RefreshCw } from "lucide-react";
 import { useBusinesses } from "@/hooks";
-import BusinessDetail from "./business-detail";
+import type { Business } from "@/types/firebase";
 
-export default function BusinessListComponent() {
+interface BusinessListComponentProps {
+  onBusinessSelect?: (business: Business) => void;
+}
+
+export default function BusinessListComponent({ onBusinessSelect }: BusinessListComponentProps) {
   const {
     businesses,
     loading,
     error,
-    selectedBusiness,
     loadBusinesses,
-    removeBusiness,
-    selectBusiness,
   } = useBusinesses();
 
-  const handleDeleted = async (id: string) => {
-    await removeBusiness(id);
+  const handleBusinessClick = (business: Business) => {
+    if (onBusinessSelect) {
+      onBusinessSelect(business);
+    }
   };
-
-  // Detay görünümü
-  if (selectedBusiness) {
-    return (
-      <BusinessDetail
-        business={selectedBusiness}
-        onBack={() => selectBusiness(null)}
-        onDeleted={handleDeleted}
-      />
-    );
-  }
 
   // Liste görünümü
   return (
@@ -69,7 +61,7 @@ export default function BusinessListComponent() {
             <Card
               key={business.id}
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => selectBusiness(business)}
+              onClick={() => handleBusinessClick(business)}
             >
               <CardContent className="p-4 space-y-3">
                 <div className="w-full h-24 bg-muted rounded-lg flex items-center justify-center overflow-hidden">

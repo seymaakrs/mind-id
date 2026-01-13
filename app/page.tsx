@@ -13,9 +13,7 @@ import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
   AddBusinessComponent,
   BusinessListComponent,
-  BusinessMediaComponent,
-  ContentPlansComponent,
-  AgentMemoryComponent,
+  BusinessDashboard,
 } from "@/components/businesses"
 import { SettingsPanel } from "@/components/settings"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
@@ -32,14 +30,13 @@ type SubMenuType =
   | "video-olustur"
   | "isletme-ekle"
   | "isletme-listele"
-  | "isletme-icerikleri"
-  | "icerik-planlari"
-  | "agent-hafizasi"
+  | "isletme-dashboard"
 
 export default function AdminPanel() {
   const [activeMenu, setActiveMenu] = useState<MainMenuType>("instagram")
   const [activeSubMenu, setActiveSubMenu] = useState<SubMenuType>("kaynak-ekle")
   const [expandedMenu, setExpandedMenu] = useState<MainMenuType | null>("instagram")
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
 
   const menuItems = [
     {
@@ -81,9 +78,7 @@ export default function AdminPanel() {
       subItems: [
         { id: "isletme-listele" as SubMenuType, label: "İşletme Listesi" },
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
-        { id: "isletme-icerikleri" as SubMenuType, label: "İşletme İçerikleri" },
-        { id: "icerik-planlari" as SubMenuType, label: "İçerik Planları" },
-        { id: "agent-hafizasi" as SubMenuType, label: "Agent Hafızası" },
+        { id: "isletme-dashboard" as SubMenuType, label: "İşletme Dashboard" },
       ],
     },
     {
@@ -118,6 +113,12 @@ export default function AdminPanel() {
   const handleSubMenuClick = (menuId: MainMenuType, subMenuId: SubMenuType) => {
     setActiveMenu(menuId)
     setActiveSubMenu(subMenuId)
+  }
+
+  // Handler for navigating to dashboard from business list
+  const handleBusinessSelectFromList = (business: { id: string }) => {
+    setSelectedBusinessId(business.id)
+    setActiveSubMenu("isletme-dashboard")
   }
 
   return (
@@ -213,11 +214,16 @@ export default function AdminPanel() {
               {activeSubMenu === "video-olustur" && <VideoOlusturComponent />}
 
               {/* İşletmeler Sub-menus */}
-              {activeSubMenu === "isletme-listele" && <BusinessListComponent />}
+              {activeSubMenu === "isletme-listele" && (
+                <BusinessListComponent onBusinessSelect={handleBusinessSelectFromList} />
+              )}
               {activeSubMenu === "isletme-ekle" && <AddBusinessComponent />}
-              {activeSubMenu === "isletme-icerikleri" && <BusinessMediaComponent />}
-              {activeSubMenu === "icerik-planlari" && <ContentPlansComponent />}
-              {activeSubMenu === "agent-hafizasi" && <AgentMemoryComponent />}
+              {activeSubMenu === "isletme-dashboard" && (
+                <BusinessDashboard
+                  initialBusinessId={selectedBusinessId}
+                  onBusinessChange={(b) => b && setSelectedBusinessId(b.id)}
+                />
+              )}
             </>
           )}
         </div>
