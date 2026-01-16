@@ -51,13 +51,33 @@ type TaskStatus = "pending" | "running" | "completed" | "failed";
 type TaskType = "immediate" | "planned" | "routine";
 
 /**
+ * Check if running in test/emulator mode
+ */
+function isTestEnvironment(): boolean {
+  // Firebase emulator detection
+  if (process.env.FUNCTIONS_EMULATOR === "true") return true;
+  // Custom environment variable for test mode
+  if (process.env.USE_TEST_SERVER === "true") return true;
+  return false;
+}
+
+/**
  * Get server URL from Firestore settings
+ * Uses testServerUrl for development, serverUrl for production
  */
 async function getServerUrl(): Promise<string | null> {
   try {
     const settingsDoc = await db.collection("settings").doc("app_settings").get();
     if (settingsDoc.exists) {
       const data = settingsDoc.data();
+      const isTest = isTestEnvironment();
+
+      if (isTest && data?.testServerUrl) {
+        logger.info("Using TEST server URL");
+        return data.testServerUrl;
+      }
+
+      logger.info("Using PRODUCTION server URL");
       return data?.serverUrl || null;
     }
     return null;

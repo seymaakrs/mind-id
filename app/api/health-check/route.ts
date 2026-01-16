@@ -13,15 +13,28 @@ async function getServerBaseUrl(): Promise<string> {
     return FALLBACK_ENDPOINT;
   }
 
+  const isDevelopment = process.env.NODE_ENV === "development";
+
   try {
     const docRef = adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOC_ID);
     const docSnap = await docRef.get();
 
     if (docSnap.exists) {
       const data = docSnap.data();
-      const serverUrl = data?.serverUrl;
 
+      // Development modda testServerUrl kullan
+      if (isDevelopment && data?.testServerUrl) {
+        const testUrl = data.testServerUrl;
+        if (typeof testUrl === "string" && testUrl.trim().length > 0) {
+          console.log("Using TEST server URL (development mode)");
+          return testUrl.trim().replace(/\/+$/, "");
+        }
+      }
+
+      // Production modda veya testServerUrl yoksa serverUrl kullan
+      const serverUrl = data?.serverUrl;
       if (serverUrl && typeof serverUrl === "string" && serverUrl.trim().length > 0) {
+        console.log("Using PRODUCTION server URL");
         return serverUrl.trim().replace(/\/+$/, "");
       }
     }

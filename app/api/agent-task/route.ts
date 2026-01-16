@@ -15,16 +15,29 @@ async function getAgentEndpoint(): Promise<string> {
     return `${FALLBACK_ENDPOINT}/task`;
   }
 
+  const isDevelopment = process.env.NODE_ENV === "development";
+
   try {
     const docRef = adminDb.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOC_ID);
     const docSnap = await docRef.get();
 
     if (docSnap.exists) {
       const data = docSnap.data();
-      const serverUrl = data?.serverUrl;
 
+      // Development modda testServerUrl kullan
+      if (isDevelopment && data?.testServerUrl) {
+        const testUrl = data.testServerUrl;
+        if (typeof testUrl === "string" && testUrl.trim().length > 0) {
+          console.log("Using TEST server URL (development mode)");
+          const baseUrl = testUrl.trim().replace(/\/+$/, "");
+          return `${baseUrl}/task`;
+        }
+      }
+
+      // Production modda veya testServerUrl yoksa serverUrl kullan
+      const serverUrl = data?.serverUrl;
       if (serverUrl && typeof serverUrl === "string" && serverUrl.trim().length > 0) {
-        // Remove trailing slash if present and append /task
+        console.log("Using PRODUCTION server URL");
         const baseUrl = serverUrl.trim().replace(/\/+$/, "");
         return `${baseUrl}/task`;
       }
