@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Instagram, FileText, Video, Bot, Building2, Settings, ChevronDown, ChevronRight } from "lucide-react"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
@@ -18,6 +18,7 @@ import {
 import { SettingsPanel } from "@/components/settings"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
+import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 
 type MainMenuType = "instagram" | "blog" | "heygen" | "agent" | "isletmeler" | "settings"
 type SubMenuType =
@@ -37,6 +38,19 @@ export default function AdminPanel() {
   const [activeSubMenu, setActiveSubMenu] = useState<SubMenuType>("kaynak-ekle")
   const [expandedMenu, setExpandedMenu] = useState<MainMenuType | null>("instagram")
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  // Body scroll lock when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.classList.add("menu-open")
+    } else {
+      document.body.classList.remove("menu-open")
+    }
+    return () => {
+      document.body.classList.remove("menu-open")
+    }
+  }, [isMobileMenuOpen])
 
   const menuItems = [
     {
@@ -124,8 +138,26 @@ export default function AdminPanel() {
   return (
     <ProtectedRoute>
       <div className="fixed inset-0 flex bg-background overflow-hidden">
-        {/* Sol Menü - 20% genişlik */}
-        <aside className="w-1/5 h-full bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden">
+        {/* Mobile Menu Button */}
+        <MobileMenuButton
+          isOpen={isMobileMenuOpen}
+          onToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        />
+
+        {/* Mobile Sidebar */}
+        <MobileSidebar
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          menuItems={menuItems}
+          activeMenu={activeMenu}
+          activeSubMenu={activeSubMenu}
+          expandedMenu={expandedMenu}
+          onMenuClick={handleMenuClick}
+          onSubMenuClick={handleSubMenuClick}
+        />
+
+        {/* Desktop Sidebar - Hidden on mobile */}
+        <aside className="hidden md:flex md:w-64 lg:w-72 h-full bg-sidebar border-r border-sidebar-border flex-col overflow-hidden">
           <div className="p-6 border-b border-sidebar-border">
             <h1 className="text-xl font-bold text-sidebar-foreground">MindID</h1>
           </div>
@@ -191,9 +223,9 @@ export default function AdminPanel() {
           </div>
         </aside>
 
-      {/* Sağ İçerik Alanı - 80% genişlik */}
-      <main className="w-4/5 h-full overflow-y-auto overflow-x-hidden">
-        <div className="p-8 max-w-full">
+      {/* Main Content Area - Responsive */}
+      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden">
+        <div className="p-4 pt-16 md:pt-4 md:p-8 max-w-full">
           {activeMenu === "agent" ? (
             <AgentGorevComponent />
           ) : activeMenu === "settings" ? (

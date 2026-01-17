@@ -237,15 +237,15 @@ export default function AgentGorevComponent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Agent</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Agent</h2>
           <p className="text-muted-foreground mt-2">Agenta gondermek istediginiz gorevi yazin.</p>
         </div>
 
         {/* Server Baglanti Durumu */}
         <div
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${statusConfig.bgColor} ${statusConfig.borderColor}`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg border shrink-0 ${statusConfig.bgColor} ${statusConfig.borderColor}`}
         >
           <StatusIcon
             className={`w-4 h-4 ${statusConfig.color} ${serverStatus === "checking" ? "animate-spin" : ""}`}
@@ -295,7 +295,7 @@ export default function AgentGorevComponent() {
             {/* Gorev Tipi Secimi */}
             <div className="space-y-2">
               <Label>Gorev Tipi</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   type="button"
                   variant={jobType === "immediate" ? "default" : "outline"}
@@ -331,8 +331,8 @@ export default function AgentGorevComponent() {
 
             {/* Planned Job Options */}
             {jobType === "planned" && (
-              <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="space-y-2 col-span-2 sm:col-span-1">
                   <Label>Tarih</Label>
                   <Input
                     type="date"
@@ -427,9 +427,9 @@ export default function AgentGorevComponent() {
                 )}
 
                 {(intervalType === "daily" || intervalType === "weekly") && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {intervalType === "weekly" && (
-                      <div className="space-y-2 col-span-2">
+                      <div className="space-y-2 sm:col-span-2">
                         <Label>Gun</Label>
                         <Select
                           value={String(weeklyDay)}

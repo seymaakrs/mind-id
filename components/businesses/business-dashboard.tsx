@@ -109,36 +109,64 @@ export default function BusinessDashboard({
       {/* Dashboard Content */}
       {selectedBusinessId && selectedBusiness ? (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-          <TabsList className="grid w-full grid-cols-7">
+          {/* Desktop: Grid layout */}
+          <TabsList className="hidden md:grid w-full grid-cols-7">
             <TabsTrigger value="details" className="gap-2">
               <Info className="w-4 h-4" />
-              <span className="hidden sm:inline">Detaylar</span>
+              <span>Detaylar</span>
             </TabsTrigger>
             <TabsTrigger value="media" className="gap-2">
               <FolderOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">Icerikler</span>
+              <span>Icerikler</span>
             </TabsTrigger>
             <TabsTrigger value="plans" className="gap-2">
               <Calendar className="w-4 h-4" />
-              <span className="hidden sm:inline">Planlar</span>
+              <span>Planlar</span>
             </TabsTrigger>
             <TabsTrigger value="memory" className="gap-2">
               <Brain className="w-4 h-4" />
-              <span className="hidden sm:inline">Hafiza</span>
+              <span>Hafiza</span>
             </TabsTrigger>
             <TabsTrigger value="jobs" className="gap-2">
               <Clock className="w-4 h-4" />
-              <span className="hidden sm:inline">Gorevler</span>
+              <span>Gorevler</span>
             </TabsTrigger>
             <TabsTrigger value="tasks" className="gap-2">
               <ListChecks className="w-4 h-4" />
-              <span className="hidden sm:inline">Gecmis</span>
+              <span>Gecmis</span>
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-2">
               <BarChart3 className="w-4 h-4" />
-              <span className="hidden sm:inline">Istatistikler</span>
+              <span>Istatistikler</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* Mobile: Horizontal scroll */}
+          <div className="md:hidden overflow-x-auto -mx-4 px-4 pb-2 scrollbar-thin">
+            <TabsList className="inline-flex w-max gap-1">
+              <TabsTrigger value="details" className="min-w-[44px] px-3">
+                <Info className="w-4 h-4" />
+              </TabsTrigger>
+              <TabsTrigger value="media" className="min-w-[44px] px-3">
+                <FolderOpen className="w-4 h-4" />
+              </TabsTrigger>
+              <TabsTrigger value="plans" className="min-w-[44px] px-3">
+                <Calendar className="w-4 h-4" />
+              </TabsTrigger>
+              <TabsTrigger value="memory" className="min-w-[44px] px-3">
+                <Brain className="w-4 h-4" />
+              </TabsTrigger>
+              <TabsTrigger value="jobs" className="min-w-[44px] px-3">
+                <Clock className="w-4 h-4" />
+              </TabsTrigger>
+              <TabsTrigger value="tasks" className="min-w-[44px] px-3">
+                <ListChecks className="w-4 h-4" />
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="min-w-[44px] px-3">
+                <BarChart3 className="w-4 h-4" />
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <div className="mt-6">
             <TabsContent value="details" className="m-0">
