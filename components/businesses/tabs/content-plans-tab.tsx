@@ -197,7 +197,7 @@ function PlanCard({
               {plan.plan_id}
             </CardTitle>
             <CardDescription className="mt-1">
-              {postCounts.total} post • {postCounts.posted} paylasildi • {postCounts.planned} bekliyor
+              {postCounts.total} post • {postCounts.created + postCounts.posted} paylasildi • {postCounts.planned} bekliyor
             </CardDescription>
           </div>
           <div className="flex items-center gap-1">
