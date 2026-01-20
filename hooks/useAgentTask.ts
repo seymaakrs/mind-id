@@ -117,43 +117,56 @@ export function useAgentTask(): UseAgentTaskReturn {
         let buffer = "";
         let finalOutput: string | null = null;
         let finalError: string | null = null;
+        let receivedAnyData = false;
 
-        while (true) {
-          const { done, value } = await reader.read();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
 
-          if (done) {
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Her satırı ayrı JSON olarak parse et
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || ""; // Son satır tamamlanmamış olabilir
-
-          for (const line of lines) {
-            if (!line.trim()) continue;
-
-            try {
-              const data = JSON.parse(line) as StreamMessage;
-
-              if (data.type === "heartbeat") {
-                setHeartbeatCount(data.count);
-              } else if (data.type === "result") {
-                if (data.success) {
-                  finalOutput = data.output;
-                  setResponse(data.output);
-                  if (data.log_path) {
-                    setLogPath(data.log_path);
-                  }
-                } else {
-                  finalError = data.error || "Bilinmeyen hata.";
-                  setError(finalError);
-                }
-              }
-            } catch {
-              console.warn("NDJSON parse hatası:", line);
+            if (done) {
+              break;
             }
+
+            receivedAnyData = true;
+            buffer += decoder.decode(value, { stream: true });
+
+            // Her satırı ayrı JSON olarak parse et
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // Son satır tamamlanmamış olabilir
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+
+              try {
+                const data = JSON.parse(line) as StreamMessage;
+
+                if (data.type === "heartbeat") {
+                  setHeartbeatCount(data.count);
+                } else if (data.type === "result") {
+                  if (data.success) {
+                    finalOutput = data.output;
+                    setResponse(data.output);
+                    if (data.log_path) {
+                      setLogPath(data.log_path);
+                    }
+                  } else {
+                    finalError = data.error || "Bilinmeyen hata.";
+                    setError(finalError);
+                  }
+                }
+              } catch {
+                console.warn("NDJSON parse hatası:", line);
+              }
+            }
+          }
+        } catch (streamError) {
+          // Stream okuma hatası - bağlantı kesilmiş olabilir
+          console.error("Stream read error:", streamError);
+          if (!finalOutput && !finalError) {
+            finalError = receivedAnyData
+              ? "Bağlantı kesildi. Görev arka planda devam ediyor olabilir."
+              : "Sunucu bağlantısı kurulamadı.";
+            setError(finalError);
           }
         }
 

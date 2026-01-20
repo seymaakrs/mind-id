@@ -97,13 +97,23 @@ export async function POST(request: Request) {
     // Get dynamic endpoint from settings
     const agentEndpoint = await getAgentEndpoint();
 
+    // AbortController ile timeout yönetimi (5 dakika)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
+
     const externalResponse = await fetch(agentEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Accept": "application/x-ndjson",
       },
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
+      // @ts-expect-error - Next.js fetch extension
+      next: { revalidate: 0 },
     });
+
+    clearTimeout(timeoutId);
 
     if (!externalResponse.ok) {
       const errorText = await externalResponse.text();
@@ -124,14 +134,40 @@ export async function POST(request: Request) {
       );
     }
 
+    // Production'da streaming için TransformStream kullan
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const reader = externalResponse.body.getReader();
+
+    // Stream'i arka planda oku ve yaz
+    (async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            await writer.close();
+            break;
+          }
+          await writer.write(value);
+        }
+      } catch (error) {
+        console.error("Stream error:", error);
+        try {
+          await writer.abort(error);
+        } catch {
+          // Writer zaten kapatılmış olabilir
+        }
+      }
+    })();
+
     // Stream'i client'a ilet
-    return new Response(externalResponse.body, {
+    return new Response(readable, {
       status: 200,
       headers: {
         "Content-Type": "application/x-ndjson",
-        "Transfer-Encoding": "chunked",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
         "Connection": "keep-alive",
+        "X-Accel-Buffering": "no", // Nginx proxy buffering'i devre dışı bırak
       },
     });
   } catch (error) {
