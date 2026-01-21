@@ -1,12 +1,52 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase/admin";
+import { adminDb, getSignedUrl } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // 5 dakika - streaming için artırıldı
 
+// Source media type from frontend
+interface SourceMediaItem {
+  id: string;
+  type: string;
+  public_url: string;
+  storage_path: string;
+  file_name: string;
+  prompt_summary?: string;
+  signed_url?: string;
+}
+
 const SETTINGS_COLLECTION = "settings";
 const SETTINGS_DOC_ID = "app_settings";
 const FALLBACK_ENDPOINT = "https://learning-partially-rabbit.ngrok-free.app";
+
+/**
+ * Process source_media items and generate signed URLs for storage_path
+ * Signed URLs expire in 60 minutes
+ */
+async function processSourceMedia(
+  sourceMedia: SourceMediaItem | SourceMediaItem[]
+): Promise<SourceMediaItem[]> {
+  // Normalize to array
+  const items = Array.isArray(sourceMedia) ? sourceMedia : [sourceMedia];
+
+  // Generate signed URLs in parallel
+  const processedItems = await Promise.all(
+    items.map(async (item) => {
+      if (item.storage_path) {
+        const signedUrl = await getSignedUrl(item.storage_path, 60);
+        if (signedUrl) {
+          return {
+            ...item,
+            signed_url: signedUrl,
+          };
+        }
+      }
+      return item;
+    })
+  );
+
+  return processedItems;
+}
 
 async function getAgentEndpoint(): Promise<string> {
   // If adminDb is not available, use fallback
@@ -89,9 +129,24 @@ export async function POST(request: Request) {
       requestBody.task_id = task_id;
     }
 
-    // extras varsa ekle
+    // extras varsa işle
     if (extras) {
-      requestBody.extras = extras as Record<string, unknown>;
+      const processedExtras = { ...(extras as Record<string, unknown>) };
+
+      // source_media varsa signed URL'leri oluştur
+      if (processedExtras.source_media) {
+        try {
+          const processedMedia = await processSourceMedia(
+            processedExtras.source_media as SourceMediaItem | SourceMediaItem[]
+          );
+          processedExtras.source_media = processedMedia;
+        } catch (error) {
+          console.error("Error processing source_media:", error);
+          // Hata olsa bile devam et, orijinal verileri kullan
+        }
+      }
+
+      requestBody.extras = processedExtras;
     }
 
     // Get dynamic endpoint from settings

@@ -59,5 +59,68 @@ if (hasRequiredEnvVars && isValidPrivateKey) {
   }
 }
 
+/**
+ * Generate a signed URL for a file in Firebase Storage
+ * @param storagePath - The path to the file in storage (e.g., "businesses/abc/media/image.jpg")
+ * @param expiresInMinutes - How long the URL should be valid (default: 60 minutes)
+ * @returns The signed URL or null if generation fails
+ */
+export async function getSignedUrl(
+  storagePath: string,
+  expiresInMinutes: number = 60
+): Promise<string | null> {
+  if (!adminStorage) {
+    console.error('Firebase Admin Storage not initialized');
+    return null;
+  }
+
+  try {
+    const bucket = adminStorage.bucket();
+    const file = bucket.file(storagePath);
+
+    // Check if file exists
+    const [exists] = await file.exists();
+    if (!exists) {
+      console.warn(`File not found: ${storagePath}`);
+      return null;
+    }
+
+    // Generate signed URL
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + expiresInMinutes * 60 * 1000,
+    });
+
+    return signedUrl;
+  } catch (error) {
+    console.error(`Error generating signed URL for ${storagePath}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Generate signed URLs for multiple files
+ * @param storagePaths - Array of storage paths
+ * @param expiresInMinutes - How long the URLs should be valid
+ * @returns Map of storage_path to signed URL
+ */
+export async function getSignedUrls(
+  storagePaths: string[],
+  expiresInMinutes: number = 60
+): Promise<Map<string, string>> {
+  const results = new Map<string, string>();
+
+  await Promise.all(
+    storagePaths.map(async (path) => {
+      const signedUrl = await getSignedUrl(path, expiresInMinutes);
+      if (signedUrl) {
+        results.set(path, signedUrl);
+      }
+    })
+  );
+
+  return results;
+}
+
 export { adminAuth, adminDb, adminStorage };
 export default app;
