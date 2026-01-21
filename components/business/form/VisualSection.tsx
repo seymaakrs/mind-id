@@ -1,11 +1,14 @@
 "use client";
 
 import { FormSection, SelectField } from "@/components/shared";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AESTHETIC_OPTIONS,
   PHOTOGRAPHY_STYLE_OPTIONS,
   COLOR_MOOD_OPTIONS,
   VISUAL_MOOD_OPTIONS,
+  FONT_OPTIONS,
 } from "@/lib/constants";
 
 type Props = {
@@ -13,11 +16,15 @@ type Props = {
   photographyStyle: string;
   colorMood: string;
   visualMood: string;
+  font: string;
+  customFont: string;
   disabled?: boolean;
   onAestheticChange: (value: string) => void;
   onPhotographyStyleChange: (value: string) => void;
   onColorMoodChange: (value: string) => void;
   onVisualMoodChange: (value: string) => void;
+  onFontChange: (value: string) => void;
+  onCustomFontChange: (value: string) => void;
 };
 
 export function VisualSection({
@@ -25,11 +32,15 @@ export function VisualSection({
   photographyStyle,
   colorMood,
   visualMood,
+  font,
+  customFont,
   disabled = false,
   onAestheticChange,
   onPhotographyStyleChange,
   onColorMoodChange,
   onVisualMoodChange,
+  onFontChange,
+  onCustomFontChange,
 }: Props) {
   return (
     <FormSection title="Görsel Tercihler">
@@ -62,6 +73,25 @@ export function VisualSection({
           options={VISUAL_MOOD_OPTIONS}
           disabled={disabled}
         />
+        <SelectField
+          label="Yazı Fontu"
+          value={font}
+          onChange={onFontChange}
+          options={FONT_OPTIONS}
+          disabled={disabled}
+        />
+        {font === "custom" && (
+          <div className="space-y-2">
+            <Label htmlFor="custom-font">Özel Font Adı</Label>
+            <Input
+              id="custom-font"
+              placeholder="Örn: Bebas Neue, Futura, etc."
+              value={customFont}
+              onChange={(e) => onCustomFontChange(e.target.value)}
+              disabled={disabled}
+            />
+          </div>
+        )}
       </div>
     </FormSection>
   );

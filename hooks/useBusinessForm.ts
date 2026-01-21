@@ -11,6 +11,8 @@ const initialState: BusinessFormState = {
   newColor: DEFAULT_COLOR,
   instagramId: "",
   instagramToken: "",
+  facebookAppId: "",
+  facebookAppSecret: "",
   slogan: "",
   industry: "",
   subCategory: "",
@@ -25,6 +27,8 @@ const initialState: BusinessFormState = {
   photographyStyle: "",
   colorMood: "",
   visualMood: "",
+  font: "",
+  customFont: "",
   targetAgeRange: "",
   targetGender: "",
   targetDescription: "",
@@ -66,6 +70,8 @@ type UseBusinessFormReturn = {
     colors: string[];
     instagram_account_id: string;
     instagram_access_token: string;
+    client_id: string;
+    client_secret: string;
     profile: BusinessProfile;
   };
   validate: () => string | null;
@@ -151,6 +157,8 @@ export function useBusinessForm(): UseBusinessFormReturn {
       newColor: DEFAULT_COLOR,
       instagramId: business.instagram_account_id || "",
       instagramToken: business.instagram_access_token || "",
+      facebookAppId: business.client_id || "",
+      facebookAppSecret: business.client_secret || "",
       slogan: p.slogan || "",
       industry: p.industry || "",
       subCategory: p.sub_category || "",
@@ -165,6 +173,8 @@ export function useBusinessForm(): UseBusinessFormReturn {
       photographyStyle: p.photography_style || "",
       colorMood: p.color_mood || "",
       visualMood: p.visual_mood || "",
+      font: p.font || "",
+      customFont: p.custom_font || "",
       targetAgeRange: p.target_age_range || "",
       targetGender: p.target_gender || "",
       targetDescription: p.target_description || "",
@@ -209,6 +219,8 @@ export function useBusinessForm(): UseBusinessFormReturn {
       ...(form.photographyStyle && { photography_style: form.photographyStyle }),
       ...(form.colorMood && { color_mood: form.colorMood }),
       ...(form.visualMood && { visual_mood: form.visualMood }),
+      ...(form.font && { font: form.font }),
+      ...(form.customFont && { custom_font: form.customFont }),
       ...(form.targetAgeRange && { target_age_range: form.targetAgeRange }),
       ...(form.targetGender && { target_gender: form.targetGender }),
       ...(form.targetDescription && { target_description: form.targetDescription }),
@@ -231,6 +243,8 @@ export function useBusinessForm(): UseBusinessFormReturn {
       colors: form.colors,
       instagram_account_id: form.instagramId.trim(),
       instagram_access_token: form.instagramToken.trim(),
+      client_id: form.facebookAppId.trim(),
+      client_secret: form.facebookAppSecret.trim(),
       profile,
     };
   }, [form]);

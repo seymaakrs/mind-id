@@ -47,11 +47,25 @@ export const EMOJI_USAGE_OPTIONS: readonly SelectOption[] = [
 
 // Brand Voice - Caption Style
 export const CAPTION_STYLE_OPTIONS: readonly SelectOption[] = [
-  { value: "storytelling", label: "Hikaye Anlatımı" },
-  { value: "informative", label: "Bilgilendirici" },
-  { value: "question", label: "Soru Soran" },
-  { value: "call-to-action", label: "Aksiyon Çağrısı" },
-  { value: "minimal", label: "Minimal" },
+  { value: "theme-niche", label: "Tema / Niş Odaklı" },
+  { value: "product-sales", label: "Satış / Ürün Tanıtım" },
+  { value: "cta", label: "CTA – Satış ve trafik odaklı" },
+  { value: "storytelling-long", label: "Hikâye anlatan uzun metinler" },
+];
+
+// Visual - Font (for image generation)
+export const FONT_OPTIONS: readonly SelectOption[] = [
+  { value: "inter", label: "Inter" },
+  { value: "roboto", label: "Roboto" },
+  { value: "open-sans", label: "Open Sans" },
+  { value: "montserrat", label: "Montserrat" },
+  { value: "poppins", label: "Poppins" },
+  { value: "playfair-display", label: "Playfair Display" },
+  { value: "lora", label: "Lora" },
+  { value: "raleway", label: "Raleway" },
+  { value: "oswald", label: "Oswald" },
+  { value: "bebas-neue", label: "Bebas Neue" },
+  { value: "custom", label: "Özel Font (Aşağıya yazın)" },
 ];
 
 // Visual - Aesthetic
@@ -118,6 +132,8 @@ export const PROFILE_LABELS: Record<string, string> = {
   formality: "Resmiyet Düzeyi",
   emoji_usage: "Emoji Kullanımı",
   caption_style: "Caption Stili",
+  font: "Yazı Fontu",
+  custom_font: "Özel Font",
   aesthetic: "Estetik",
   photography_style: "Fotoğraf Stili",
   color_mood: "Renk Havası",

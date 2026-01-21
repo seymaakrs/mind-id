@@ -15,6 +15,8 @@ type Props = {
   newColor: string;
   instagramId: string;
   instagramToken: string;
+  facebookAppId: string;
+  facebookAppSecret: string;
   disabled?: boolean;
   onNameChange: (value: string) => void;
   onLogoSelect: (file: File) => void;
@@ -23,6 +25,8 @@ type Props = {
   onNewColorChange: (value: string) => void;
   onInstagramIdChange: (value: string) => void;
   onInstagramTokenChange: (value: string) => void;
+  onFacebookAppIdChange: (value: string) => void;
+  onFacebookAppSecretChange: (value: string) => void;
   logoFileName?: string;
   showLogoRequiredMark?: boolean;
 };
@@ -35,6 +39,8 @@ export function BasicInfoSection({
   newColor,
   instagramId,
   instagramToken,
+  facebookAppId,
+  facebookAppSecret,
   disabled = false,
   onNameChange,
   onLogoSelect,
@@ -43,6 +49,8 @@ export function BasicInfoSection({
   onNewColorChange,
   onInstagramIdChange,
   onInstagramTokenChange,
+  onFacebookAppIdChange,
+  onFacebookAppSecretChange,
   logoFileName,
   showLogoRequiredMark = true,
 }: Props) {
@@ -174,6 +182,30 @@ export function BasicInfoSection({
               placeholder="Instagram erişim token'ı"
               value={instagramToken}
               onChange={(e) => onInstagramTokenChange(e.target.value)}
+              disabled={disabled}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="facebook-app-id">Facebook App ID</Label>
+            <Input
+              id="facebook-app-id"
+              placeholder="Facebook uygulama ID'si"
+              value={facebookAppId}
+              onChange={(e) => onFacebookAppIdChange(e.target.value)}
+              disabled={disabled}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="facebook-app-secret">Facebook App Secret</Label>
+            <Input
+              id="facebook-app-secret"
+              type="password"
+              placeholder="Facebook uygulama secret'ı"
+              value={facebookAppSecret}
+              onChange={(e) => onFacebookAppSecretChange(e.target.value)}
               disabled={disabled}
             />
           </div>

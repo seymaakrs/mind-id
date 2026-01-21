@@ -114,6 +114,8 @@ export default function AddBusinessComponent() {
           newColor={form.newColor}
           instagramId={form.instagramId}
           instagramToken={form.instagramToken}
+          facebookAppId={form.facebookAppId}
+          facebookAppSecret={form.facebookAppSecret}
           disabled={isDisabled}
           onNameChange={(v) => setField("name", v)}
           onLogoSelect={handleLogoSelect}
@@ -122,6 +124,8 @@ export default function AddBusinessComponent() {
           onNewColorChange={(v) => setField("newColor", v)}
           onInstagramIdChange={(v) => setField("instagramId", v)}
           onInstagramTokenChange={(v) => setField("instagramToken", v)}
+          onFacebookAppIdChange={(v) => setField("facebookAppId", v)}
+          onFacebookAppSecretChange={(v) => setField("facebookAppSecret", v)}
           logoFileName={form.logoFile?.name}
           showLogoRequiredMark={true}
         />
@@ -159,11 +163,15 @@ export default function AddBusinessComponent() {
           photographyStyle={form.photographyStyle}
           colorMood={form.colorMood}
           visualMood={form.visualMood}
+          font={form.font}
+          customFont={form.customFont}
           disabled={isDisabled}
           onAestheticChange={(v) => setField("aesthetic", v)}
           onPhotographyStyleChange={(v) => setField("photographyStyle", v)}
           onColorMoodChange={(v) => setField("colorMood", v)}
           onVisualMoodChange={(v) => setField("visualMood", v)}
+          onFontChange={(v) => setField("font", v)}
+          onCustomFontChange={(v) => setField("customFont", v)}
         />
 
         <TargetAudienceSection

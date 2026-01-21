@@ -69,6 +69,8 @@ export interface Business extends BaseDocument {
   colors: string[]; // Zorunlu alan - renk paleti (hex kodları)
   instagram_account_id: string; // Zorunlu alan - Instagram hesap ID'si
   instagram_access_token: string; // Zorunlu alan - Instagram erişim token'ı
+  client_id?: string; // Facebook App ID
+  client_secret?: string; // Facebook App Secret
   profile: BusinessProfile; // İşletme profil bilgileri
 }
 

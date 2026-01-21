@@ -39,6 +39,7 @@ const profileLabels: Record<string, string> = {
   location_city: "Şehir / Konum", tone: "Ses Tonu", language: "Dil", formality: "Resmiyet Düzeyi",
   emoji_usage: "Emoji Kullanımı", caption_style: "Caption Stili", aesthetic: "Estetik",
   photography_style: "Fotoğraf Stili", color_mood: "Renk Havası", visual_mood: "Görsel Hava",
+  font: "Yazı Fontu", custom_font: "Özel Font",
   target_age_range: "Yaş Aralığı", target_gender: "Cinsiyet", target_description: "Hedef Kitle Açıklaması",
   target_interests: "İlgi Alanları", brand_values: "Marka Değerleri", unique_points: "Benzersiz Noktalar",
   brand_story_short: "Kısa Marka Hikayesi", hashtags_brand: "Marka Hashtagleri",
@@ -200,6 +201,9 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
                 {currentBusiness.instagram_account_id && (
                   <p className="text-sm text-muted-foreground">Instagram ID: {currentBusiness.instagram_account_id}</p>
                 )}
+                {currentBusiness.client_id && (
+                  <p className="text-sm text-muted-foreground">Facebook App ID: {currentBusiness.client_id}</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -262,6 +266,8 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
         newColor={form.newColor}
         instagramId={form.instagramId}
         instagramToken={form.instagramToken}
+        facebookAppId={form.facebookAppId}
+        facebookAppSecret={form.facebookAppSecret}
         disabled={isDisabled}
         onNameChange={(v) => setField("name", v)}
         onLogoSelect={handleLogoSelect}
@@ -270,6 +276,8 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
         onNewColorChange={(v) => setField("newColor", v)}
         onInstagramIdChange={(v) => setField("instagramId", v)}
         onInstagramTokenChange={(v) => setField("instagramToken", v)}
+        onFacebookAppIdChange={(v) => setField("facebookAppId", v)}
+        onFacebookAppSecretChange={(v) => setField("facebookAppSecret", v)}
         showLogoRequiredMark={false}
       />
 
@@ -306,11 +314,15 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
         photographyStyle={form.photographyStyle}
         colorMood={form.colorMood}
         visualMood={form.visualMood}
+        font={form.font}
+        customFont={form.customFont}
         disabled={isDisabled}
         onAestheticChange={(v) => setField("aesthetic", v)}
         onPhotographyStyleChange={(v) => setField("photographyStyle", v)}
         onColorMoodChange={(v) => setField("colorMood", v)}
         onVisualMoodChange={(v) => setField("visualMood", v)}
+        onFontChange={(v) => setField("font", v)}
+        onCustomFontChange={(v) => setField("customFont", v)}
       />
 
       <TargetAudienceSection

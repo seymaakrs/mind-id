@@ -14,6 +14,8 @@ export type BusinessFormState = {
   newColor: string;
   instagramId: string;
   instagramToken: string;
+  facebookAppId: string;
+  facebookAppSecret: string;
 
   // Profile - Identity
   slogan: string;
@@ -34,6 +36,8 @@ export type BusinessFormState = {
   photographyStyle: string;
   colorMood: string;
   visualMood: string;
+  font: string;
+  customFont: string;
 
   // Profile - Target Audience
   targetAgeRange: string;
