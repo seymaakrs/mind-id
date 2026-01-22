@@ -2,8 +2,19 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Building2, Loader2 } from "lucide-react";
-import { useBusinesses, useBusinessForm } from "@/hooks";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { Building2, Loader2, Globe, Sparkles } from "lucide-react";
+import { useBusinesses, useBusinessForm, useAgentTask } from "@/hooks";
 import {
   BasicInfoSection,
   IdentitySection,
@@ -17,10 +28,15 @@ import {
 } from "@/components/business/form";
 
 type Status = "bosta" | "kaydediliyor" | "basarili" | "hata";
-
 export default function AddBusinessComponent() {
   const [status, setStatus] = useState<Status>("bosta");
   const [hata, setHata] = useState<string | null>(null);
+
+  // Analiz dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [tempName, setTempName] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(null);
 
   const { createBusiness, uploadLogo } = useBusinesses();
   const {
@@ -37,6 +53,14 @@ export default function AddBusinessComponent() {
     validate,
   } = useBusinessForm();
 
+  const {
+    loading: analyzing,
+    error: analysisError,
+    progressMessages,
+    sendTask,
+    reset: resetAgent,
+  } = useAgentTask();
+
   const handleLogoSelect = (file: File) => {
     if (!file.type.startsWith("image/")) {
       setHata("Lütfen geçerli bir resim dosyası seçin.");
@@ -50,6 +74,69 @@ export default function AddBusinessComponent() {
     setHata(null);
   };
 
+  const handleOpenAnalyzeDialog = () => {
+    setTempName("");
+    setWebsiteUrl("");
+    resetAgent();
+    setDialogOpen(true);
+  };
+
+  const handleAnalyze = async () => {
+    if (!tempName.trim()) {
+      setHata("İşletme adı zorunludur.");
+      return;
+    }
+    if (!websiteUrl.trim()) {
+      setHata("Web sitesi URL'si zorunludur.");
+      return;
+    }
+
+    setHata(null);
+
+    try {
+      // 1. Minimal işletme oluştur
+      const minimalBusiness = {
+        name: tempName.trim(),
+        logo: "", // Kullanıcı sonra ekleyecek
+        colors: ["#000000"], // Varsayılan renk
+        instagram_account_id: "",
+        instagram_access_token: "",
+        client_id: "",
+        client_secret: "",
+        profile: {},
+      };
+
+      const businessId = await createBusiness(minimalBusiness);
+      if (!businessId) {
+        setHata("İşletme oluşturulamadı.");
+        return;
+      }
+
+      setCreatedBusinessId(businessId);
+      setField("name", tempName.trim());
+      setField("colors", ["#000000"]);
+
+      // 2. Agent'a analiz task'ı gönder (backend profili doğrudan güncelleyecek)
+      const taskPrompt = `Bu işletmenin web sitesini analiz et ve profil bilgilerini güncelle: ${websiteUrl}`;
+
+      const result = await sendTask({
+        task: taskPrompt,
+        businessId,
+        extras: { website_url: websiteUrl },
+      });
+
+      if (result) {
+        // Agent başarılı oldu, dialog'u kapat
+        setDialogOpen(false);
+        // Kullanıcıya bilgi ver - işletme listesine yönlendirilebilir
+        setStatus("basarili");
+      }
+    } catch (error) {
+      console.error("Analiz hatası:", error);
+      setHata("Analiz sırasında bir hata oluştu.");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -59,7 +146,8 @@ export default function AddBusinessComponent() {
       return;
     }
 
-    if (!form.logoFile) {
+    // Eğer analiz ile oluşturulduysa logo zorunlu değil
+    if (!form.logoFile && !createdBusinessId) {
       setHata("Logo yüklemek zorunludur.");
       return;
     }
@@ -69,13 +157,23 @@ export default function AddBusinessComponent() {
 
     try {
       const businessData = buildBusinessData();
-      const tempId = `temp_${Date.now()}`;
 
-      const logoUrl = await uploadLogo(form.logoFile, tempId);
-      if (!logoUrl) {
-        setHata("Logo yüklenirken bir hata oluştu.");
-        setStatus("hata");
-        return;
+      // Eğer analiz ile zaten oluşturulduysa, güncelle
+      if (createdBusinessId) {
+        // TODO: editBusiness fonksiyonu eklenebilir
+        // Şimdilik yeni işletme olarak devam
+      }
+
+      let logoUrl = "";
+      if (form.logoFile) {
+        const tempId = createdBusinessId || `temp_${Date.now()}`;
+        const uploadedUrl = await uploadLogo(form.logoFile, tempId);
+        if (!uploadedUrl) {
+          setHata("Logo yüklenirken bir hata oluştu.");
+          setStatus("hata");
+          return;
+        }
+        logoUrl = uploadedUrl;
       }
 
       const businessId = await createBusiness({ ...businessData, logo: logoUrl });
@@ -83,6 +181,7 @@ export default function AddBusinessComponent() {
       if (businessId) {
         setStatus("basarili");
         resetForm();
+        setCreatedBusinessId(null);
       } else {
         setStatus("hata");
         setHata("İşletme kaydedilirken bir hata oluştu.");
@@ -94,17 +193,111 @@ export default function AddBusinessComponent() {
     }
   };
 
-  const isDisabled = status === "kaydediliyor";
+  const isDisabled = status === "kaydediliyor" || analyzing;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Building2 className="w-8 h-8" />
-        <div>
-          <h2 className="text-2xl font-bold">Yeni İşletme Ekle</h2>
-          <p className="text-muted-foreground">İşletme bilgilerini girin</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Building2 className="w-8 h-8" />
+          <div>
+            <h2 className="text-2xl font-bold">Yeni İşletme Ekle</h2>
+            <p className="text-muted-foreground">İşletme bilgilerini girin</p>
+          </div>
         </div>
+
+        <Button
+          variant="outline"
+          onClick={handleOpenAnalyzeDialog}
+          disabled={isDisabled}
+          className="gap-2"
+        >
+          <Sparkles className="w-4 h-4" />
+          İşletmeyi Analiz Et
+        </Button>
       </div>
+
+      {/* Analiz Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5" />
+              Web Sitesi Analizi
+            </DialogTitle>
+            <DialogDescription>
+              İşletmenin web sitesini girin, AI otomatik olarak profil bilgilerini dolduracak.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="tempName">İşletme Adı *</Label>
+              <Input
+                id="tempName"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                placeholder="Örn: Acme Teknoloji"
+                disabled={analyzing}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="websiteUrl">Web Sitesi URL'si *</Label>
+              <Input
+                id="websiteUrl"
+                type="url"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://example.com"
+                disabled={analyzing}
+              />
+            </div>
+
+            {analyzing && (
+              <Card className="bg-muted/50 font-mono text-xs overflow-hidden">
+                <CardContent className="p-3 max-h-[200px] overflow-y-auto space-y-1">
+                  <p className="font-bold text-primary mb-2">Agent çalışıyor...</p>
+                  {progressMessages.map((msg, i) => (
+                    <div key={i} className="flex gap-2">
+                      <span className="text-muted-foreground">[{new Date(msg.timestamp).toLocaleTimeString()}]</span>
+                      <span>{msg.message}</span>
+                    </div>
+                  ))}
+                  <div ref={(el) => el?.scrollIntoView({ behavior: "smooth" })} />
+                </CardContent>
+              </Card>
+            )}
+
+            {analysisError && (
+              <p className="text-sm text-destructive">{analysisError}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={analyzing}
+            >
+              İptal
+            </Button>
+            <Button onClick={handleAnalyze} disabled={analyzing}>
+              {analyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Analiz Ediliyor...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Analiz Et
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <BasicInfoSection
@@ -127,7 +320,7 @@ export default function AddBusinessComponent() {
           onFacebookAppIdChange={(v) => setField("facebookAppId", v)}
           onFacebookAppSecretChange={(v) => setField("facebookAppSecret", v)}
           logoFileName={form.logoFile?.name}
-          showLogoRequiredMark={true}
+          showLogoRequiredMark={!createdBusinessId}
         />
 
         <IdentitySection

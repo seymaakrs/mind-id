@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb, getSignedUrl } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic"; // Streaming için zorunlu
 export const maxDuration = 300; // 5 dakika - streaming için artırıldı
 
 // Source media type from frontend
@@ -189,40 +190,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Production'da streaming için TransformStream kullan
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const reader = externalResponse.body.getReader();
-
-    // Stream'i arka planda oku ve yaz
-    (async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            await writer.close();
-            break;
-          }
-          await writer.write(value);
-        }
-      } catch (error) {
-        console.error("Stream error:", error);
-        try {
-          await writer.abort(error);
-        } catch {
-          // Writer zaten kapatılmış olabilir
-        }
-      }
-    })();
-
     // Stream'i client'a ilet
-    return new Response(readable, {
+    // Not: TransformStream kullanmadan direkt body'yi pass etmek daha performanslıdır
+    // ancak Next.js/Node ortamında uyumluluk için direkt response body kullanımı önerilir.
+    // Next.js App Router streaming hack: Iterator kullan
+    async function* makeIterator() {
+      // @ts-expect-error - externalResponse.body is a stream in Node environment
+      for await (const chunk of externalResponse.body) {
+        yield chunk;
+      }
+    }
+
+    // @ts-expect-error - Next.js supports iterator as body
+    return new NextResponse(makeIterator(), {
       status: 200,
       headers: {
         "Content-Type": "application/x-ndjson",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Connection": "keep-alive",
-        "X-Accel-Buffering": "no", // Nginx proxy buffering'i devre dışı bırak
+        "Transfer-Encoding": "chunked",
+        "X-Accel-Buffering": "no",
       },
     });
   } catch (error) {

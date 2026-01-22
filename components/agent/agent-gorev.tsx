@@ -59,7 +59,7 @@ export default function AgentGorevComponent() {
     response,
     loading: isSubmitting,
     error,
-    heartbeatCount,
+    progressMessages,
     sendTask,
     cancelTask,
     reset,
@@ -200,10 +200,28 @@ export default function AgentGorevComponent() {
     }
   };
 
+  // Helper to convert various date formats to Date object
+  const toDateSafe = (value: unknown): Date | null => {
+    if (!value) return null;
+    // Firestore Timestamp object
+    if (typeof value === "object" && "toDate" in value && typeof (value as { toDate: () => Date }).toDate === "function") {
+      return (value as { toDate: () => Date }).toDate();
+    }
+    // Plain object with seconds (Firestore REST format)
+    if (typeof value === "object" && "seconds" in value) {
+      return new Date((value as { seconds: number }).seconds * 1000);
+    }
+    // ISO string or Date
+    if (typeof value === "string" || value instanceof Date) {
+      return new Date(value as string | Date);
+    }
+    return null;
+  };
+
   const formatJobSchedule = (job: Job) => {
     if (job.type === "planned") {
       const pJob = job as PlannedJob;
-      const date = pJob.scheduledAt?.toDate();
+      const date = toDateSafe(pJob.scheduledAt);
       if (date) {
         return date.toLocaleString("tr-TR", {
           day: "2-digit",
@@ -537,13 +555,15 @@ export default function AgentGorevComponent() {
             </div>
           </form>
 
-          {/* Heartbeat Gostergesi */}
-          {isSubmitting && heartbeatCount > 0 && (
-            <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
-              <Activity className="w-4 h-4 text-green-500 animate-pulse" />
-              <span className="text-sm text-muted-foreground">
-                Agent calisiyor... (Heartbeat: {heartbeatCount})
-              </span>
+          {/* Progress Gostergesi */}
+          {isSubmitting && progressMessages.length > 0 && (
+            <div className="p-3 rounded-md bg-muted font-mono text-xs max-h-[150px] overflow-y-auto space-y-1">
+              {progressMessages.map((msg, i) => (
+                <div key={i} className="flex gap-2">
+                  <span className="text-muted-foreground">[{new Date(msg.timestamp).toLocaleTimeString()}]</span>
+                  <span>{msg.message}</span>
+                </div>
+              ))}
             </div>
           )}
 
@@ -605,11 +625,10 @@ export default function AgentGorevComponent() {
                   .map((job) => (
                     <div
                       key={job.id}
-                      className={`p-4 rounded-lg border ${
-                        job.type === "routine" && !(job as RoutineJob).isActive
+                      className={`p-4 rounded-lg border ${job.type === "routine" && !(job as RoutineJob).isActive
                           ? "opacity-50"
                           : ""
-                      }`}
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">

@@ -9,8 +9,19 @@ type AgentTaskRequest = {
   extras?: AgentTaskExtras;
 };
 
+// Progress event types
+type ProgressEvent = "agent_start" | "tool_start" | "tool_end" | "tool_error" | "handoff" | "agent_end";
+
+type ProgressMessage = {
+  event: ProgressEvent;
+  message: string;
+  timestamp: string;
+  data?: Record<string, unknown>;
+};
+
 type StreamMessage =
-  | { type: "heartbeat"; count: number }
+  | { type: "heartbeat" }
+  | { type: "progress"; event: ProgressEvent; message: string; timestamp?: string; data?: Record<string, unknown> }
   | { type: "result"; success: true; output: string; log_path?: string }
   | { type: "result"; success: false; error: string };
 
@@ -18,7 +29,8 @@ type UseAgentTaskReturn = {
   response: string | null;
   loading: boolean;
   error: string | null;
-  heartbeatCount: number;
+  progressMessages: ProgressMessage[];
+  currentProgress: string | null;
   logPath: string | null;
   sendTask: (request: AgentTaskRequest) => Promise<string | null>;
   cancelTask: () => void;
@@ -29,7 +41,8 @@ export function useAgentTask(): UseAgentTaskReturn {
   const [response, setResponse] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [heartbeatCount, setHeartbeatCount] = useState(0);
+  const [progressMessages, setProgressMessages] = useState<ProgressMessage[]>([]);
+  const [currentProgress, setCurrentProgress] = useState<string | null>(null);
   const [logPath, setLogPath] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -51,7 +64,8 @@ export function useAgentTask(): UseAgentTaskReturn {
       setLoading(true);
       setError(null);
       setResponse(null);
-      setHeartbeatCount(0);
+      setProgressMessages([]);
+      setCurrentProgress(null);
       setLogPath(null);
 
       try {
@@ -73,6 +87,8 @@ export function useAgentTask(): UseAgentTaskReturn {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Accept": "application/x-ndjson",
+            "Connection": "keep-alive",
           },
           body: JSON.stringify({
             task: task.trim(),
@@ -81,6 +97,7 @@ export function useAgentTask(): UseAgentTaskReturn {
             ...(extras && Object.keys(extras).length > 0 ? { extras } : {}),
           }),
           signal: abortController.signal,
+          keepalive: false, // false for streaming (true breaks streams)
         });
 
         // Hata durumunda JSON response olarak döner
@@ -140,19 +157,38 @@ export function useAgentTask(): UseAgentTaskReturn {
               try {
                 const data = JSON.parse(line) as StreamMessage;
 
-                if (data.type === "heartbeat") {
-                  setHeartbeatCount(data.count);
-                } else if (data.type === "result") {
-                  if (data.success) {
-                    finalOutput = data.output;
-                    setResponse(data.output);
-                    if (data.log_path) {
-                      setLogPath(data.log_path);
-                    }
-                  } else {
-                    finalError = data.error || "Bilinmeyen hata.";
-                    setError(finalError);
+                switch (data.type) {
+                  case "heartbeat":
+                    // Bağlantı canlı, UI'da bir şey göstermeye gerek yok
+                    break;
+
+                  case "progress": {
+                    // Progress mesajını kaydet ve göster
+                    const progressMsg: ProgressMessage = {
+                      event: data.event,
+                      message: data.message,
+                      timestamp: data.timestamp || new Date().toISOString(),
+                      data: data.data,
+                    };
+                    setProgressMessages((prev) => [...prev, progressMsg]);
+                    setCurrentProgress(data.message);
+                    break;
                   }
+
+                  case "result":
+                    // Final sonuç
+                    setCurrentProgress(null);
+                    if (data.success) {
+                      finalOutput = data.output;
+                      setResponse(data.output);
+                      if (data.log_path) {
+                        setLogPath(data.log_path);
+                      }
+                    } else {
+                      finalError = data.error || "Bilinmeyen hata.";
+                      setError(finalError);
+                    }
+                    break;
                 }
               } catch {
                 console.warn("NDJSON parse hatası:", line);
@@ -226,7 +262,8 @@ export function useAgentTask(): UseAgentTaskReturn {
     setResponse(null);
     setError(null);
     setLoading(false);
-    setHeartbeatCount(0);
+    setProgressMessages([]);
+    setCurrentProgress(null);
     setLogPath(null);
   }, []);
 
@@ -234,7 +271,8 @@ export function useAgentTask(): UseAgentTaskReturn {
     response,
     loading,
     error,
-    heartbeatCount,
+    progressMessages,
+    currentProgress,
     logPath,
     sendTask,
     cancelTask,

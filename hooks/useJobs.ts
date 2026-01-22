@@ -41,10 +41,26 @@ export function useJobs(): UseJobsReturn {
       const fetchedJobs = await getBusinessJobs(businessId);
       console.log("Fetched jobs:", fetchedJobs);
 
-      // Sort by createdAt descending
+      // Sort by createdAt descending (handle multiple date formats)
+      const getTimeValue = (createdAt: unknown): number => {
+        if (!createdAt) return 0;
+        // Firestore Timestamp object
+        if (typeof createdAt === "object" && "toMillis" in createdAt && typeof (createdAt as { toMillis: () => number }).toMillis === "function") {
+          return (createdAt as { toMillis: () => number }).toMillis();
+        }
+        // Plain object with seconds (Firestore REST format)
+        if (typeof createdAt === "object" && "seconds" in createdAt) {
+          return (createdAt as { seconds: number }).seconds * 1000;
+        }
+        // ISO string or Date
+        if (typeof createdAt === "string" || createdAt instanceof Date) {
+          return new Date(createdAt as string | Date).getTime();
+        }
+        return 0;
+      };
       fetchedJobs.sort((a, b) => {
-        const aTime = a.createdAt?.toMillis() || 0;
-        const bTime = b.createdAt?.toMillis() || 0;
+        const aTime = getTimeValue(a.createdAt);
+        const bTime = getTimeValue(b.createdAt);
         return bTime - aTime;
       });
       setJobs(fetchedJobs);
