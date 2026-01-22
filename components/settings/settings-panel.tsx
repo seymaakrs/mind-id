@@ -137,6 +137,12 @@ export default function SettingsPanel() {
               onChange={(v) => updateSetting("marketingModel", v)}
               disabled={saving}
             />
+            <SettingField
+              settingKey="webAgentModel"
+              value={settings.webAgentModel}
+              onChange={(v) => updateSetting("webAgentModel", v)}
+              disabled={saving}
+            />
           </div>
         </CardContent>
       </Card>

@@ -95,3 +95,16 @@ export interface ActivityLog extends BaseDocument {
   documentId?: string;
   details?: Record<string, unknown>;
 }
+
+// Instagram post (subcollection: businesses/{business_id}/instagram_posts)
+export interface InstagramPost {
+  id: string; // Document ID = Instagram post ID
+  permalink?: string; // Instagram post permalink (cached)
+  owner_username?: string; // Instagram username
+  owner_id?: string; // Instagram user ID
+  fetched_at?: string; // When permalink was fetched
+  // Additional fields that might exist
+  caption?: string;
+  media_type?: string;
+  timestamp?: string;
+}

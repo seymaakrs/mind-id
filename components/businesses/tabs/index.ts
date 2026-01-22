@@ -5,3 +5,4 @@ export { BusinessDetailsTab } from "./business-details-tab";
 export { StatisticsTab } from "./statistics-tab";
 export { JobsTab } from "./jobs-tab";
 export { TasksTab } from "./tasks-tab";
+export { InstagramPostsTab } from "./instagram-posts-tab";

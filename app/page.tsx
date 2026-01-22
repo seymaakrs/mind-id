@@ -1,14 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Instagram, FileText, Video, Bot, Building2, Settings, ChevronDown, ChevronRight } from "lucide-react"
+import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight } from "lucide-react"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
 import YorumKazancComponent from "@/components/instagram/yorum-kazanc"
 import BlogPaylasComponent from "@/components/blog/blog-paylas"
-import AvatarSecComponent from "@/components/heygen/avatar-sec"
-import VideoOlusturComponent from "@/components/heygen/video-olustur"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
   AddBusinessComponent,
@@ -20,15 +18,13 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 
-type MainMenuType = "instagram" | "blog" | "heygen" | "agent" | "isletmeler" | "settings"
+type MainMenuType = "instagram" | "blog" | "agent" | "isletmeler" | "settings"
 type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
   | "gonderi-paylas"
   | "yorum-kazanc"
   | "blog-paylas"
-  | "avatar-sec"
-  | "video-olustur"
   | "isletme-ekle"
   | "isletme-listele"
   | "isletme-dashboard"
@@ -69,15 +65,6 @@ export default function AdminPanel() {
       label: "Blog",
       icon: FileText,
       subItems: [{ id: "blog-paylas" as SubMenuType, label: "Blog Paylaş" }],
-    },
-    {
-      id: "heygen" as MainMenuType,
-      label: "HeyGen",
-      icon: Video,
-      subItems: [
-        { id: "avatar-sec" as SubMenuType, label: "Avatar Seç" },
-        { id: "video-olustur" as SubMenuType, label: "Video Oluştur" },
-      ],
     },
     {
       id: "agent" as MainMenuType,
@@ -240,10 +227,6 @@ export default function AdminPanel() {
 
               {/* Blog Sub-menus */}
               {activeSubMenu === "blog-paylas" && <BlogPaylasComponent />}
-
-              {/* HeyGen Sub-menus */}
-              {activeSubMenu === "avatar-sec" && <AvatarSecComponent />}
-              {activeSubMenu === "video-olustur" && <VideoOlusturComponent />}
 
               {/* İşletmeler Sub-menus */}
               {activeSubMenu === "isletme-listele" && (

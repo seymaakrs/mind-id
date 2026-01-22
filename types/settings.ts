@@ -9,6 +9,7 @@ export interface AppSettings {
   orchestratorModel: string;
   vertexAiModel: string;
   marketingModel: string;
+  webAgentModel: string;
 
   // Server settings
   serverUrl: string;
@@ -22,6 +23,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   orchestratorModel: "",
   vertexAiModel: "",
   marketingModel: "",
+  webAgentModel: "",
   serverUrl: "",
 };
 
@@ -34,6 +36,7 @@ export const SETTINGS_LABELS: Record<keyof AppSettings, string> = {
   orchestratorModel: "Orchestrator Modeli",
   vertexAiModel: "Vertex AI Modeli",
   marketingModel: "Marketing Modeli",
+  webAgentModel: "Web Agent Modeli",
   serverUrl: "Server URL",
 };
 
@@ -46,5 +49,6 @@ export const SETTINGS_DESCRIPTIONS: Record<keyof AppSettings, string> = {
   orchestratorModel: "Orchestrator için kullanılacak LLM modeli (örn: gpt-4)",
   vertexAiModel: "Google Vertex AI modeli (örn: gemini-1.5-pro, gemini-1.5-flash)",
   marketingModel: "Marketing içerik üretimi için kullanılacak model (örn: gpt-4, claude-3)",
+  webAgentModel: "Web agent için kullanılacak LLM modeli (örn: gpt-4o, claude-3-sonnet)",
   serverUrl: "API sunucu adresi (örn: https://api.example.com)",
 };
