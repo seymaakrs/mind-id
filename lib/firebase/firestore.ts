@@ -309,9 +309,64 @@ export async function getTaskLogs(businessId: string, taskId: string): Promise<R
   }));
 }
 
+// Reports operations (subcollection: businesses/{businessId}/reports)
+export async function getBusinessReports(businessId: string): Promise<Report[]> {
+  if (!db) throw new Error('Firestore is not configured');
+  const reportsRef = collection(db, 'businesses', businessId, 'reports');
+  const querySnapshot = await getDocs(reportsRef);
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  })) as Report[];
+}
+
+export async function getBusinessReport(businessId: string, reportId: string): Promise<Report | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'reports', reportId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as Report;
+  }
+  return null;
+}
+
+export async function addBusinessReport(
+  businessId: string,
+  report: CreateReportData
+): Promise<string> {
+  if (!db) throw new Error('Firestore is not configured');
+  const reportsRef = collection(db, 'businesses', businessId, 'reports');
+  const docRef = await addDoc(reportsRef, {
+    ...report,
+    businessId,
+    createdAt: Timestamp.now(),
+  });
+  return docRef.id;
+}
+
+export async function updateBusinessReport(
+  businessId: string,
+  reportId: string,
+  data: Partial<Report>
+): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'reports', reportId);
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function deleteBusinessReport(businessId: string, reportId: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'reports', reportId);
+  await deleteDoc(docRef);
+}
+
 // Type imports
 import type { Business, BusinessMedia, BusinessProfile } from '@/types/firebase';
 import type { ContentPlan } from '@/types/content-plan';
 import type { AgentMemory } from '@/types/agent-memory';
 import type { Job } from '@/types/jobs';
 import type { Task, TaskStatus, CreateTaskData } from '@/types/tasks';
+import type { Report, CreateReportData } from '@/types/reports';

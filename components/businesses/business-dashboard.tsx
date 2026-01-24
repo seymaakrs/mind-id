@@ -14,6 +14,7 @@ import {
   Clock,
   ListChecks,
   Instagram,
+  FileBarChart,
 } from "lucide-react";
 import { useBusinesses } from "@/hooks";
 import { BusinessSelector } from "@/components/shared/BusinessSelector";
@@ -26,6 +27,7 @@ import {
   JobsTab,
   TasksTab,
   InstagramPostsTab,
+  ReportsTab,
 } from "./tabs";
 import type { Business } from "@/types/firebase";
 
@@ -34,7 +36,7 @@ interface BusinessDashboardProps {
   onBusinessChange?: (business: Business | null) => void;
 }
 
-type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "tasks" | "stats" | "instagram";
+type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "tasks" | "stats" | "instagram" | "reports";
 
 export default function BusinessDashboard({
   initialBusinessId,
@@ -112,7 +114,7 @@ export default function BusinessDashboard({
       {selectedBusinessId && selectedBusiness ? (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
           {/* Desktop: Grid layout */}
-          <TabsList className="hidden md:grid w-full grid-cols-8">
+          <TabsList className="hidden md:grid w-full grid-cols-9">
             <TabsTrigger value="details" className="gap-2">
               <Info className="w-4 h-4" />
               <span>Detaylar</span>
@@ -145,6 +147,10 @@ export default function BusinessDashboard({
               <Instagram className="w-4 h-4" />
               <span>Instagram</span>
             </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-2">
+              <FileBarChart className="w-4 h-4" />
+              <span>Raporlar</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Mobile: Horizontal scroll */}
@@ -173,6 +179,9 @@ export default function BusinessDashboard({
               </TabsTrigger>
               <TabsTrigger value="instagram" className="min-w-[44px] px-3">
                 <Instagram className="w-4 h-4" />
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="min-w-[44px] px-3">
+                <FileBarChart className="w-4 h-4" />
               </TabsTrigger>
             </TabsList>
           </div>
@@ -211,6 +220,10 @@ export default function BusinessDashboard({
 
             <TabsContent value="instagram" className="m-0">
               <InstagramPostsTab businessId={selectedBusinessId} />
+            </TabsContent>
+
+            <TabsContent value="reports" className="m-0">
+              <ReportsTab businessId={selectedBusinessId} />
             </TabsContent>
           </div>
         </Tabs>

@@ -8,3 +8,4 @@ export { useContentPlans } from "./useContentPlans";
 export { useServerHealth } from "./useServerHealth";
 export { useAgentMemory } from "./useAgentMemory";
 export { useJobs } from "./useJobs";
+export { useReports } from "./useReports";
