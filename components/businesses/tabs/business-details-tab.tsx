@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,12 +16,8 @@ import {
   X,
   Save,
   Loader2,
-  Globe,
-  Sparkles,
 } from "lucide-react";
-import { useBusinesses, useBusinessForm, useAgentTask } from "@/hooks";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useBusinesses, useBusinessForm } from "@/hooks";
 import {
   BasicInfoSection,
   IdentitySection,
@@ -85,8 +79,6 @@ const stringifyProfileValue = (value: unknown): string => {
 
 export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [analyzeDialogOpen, setAnalyzeDialogOpen] = useState(false);
-  const [websiteUrl, setWebsiteUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
   const [currentBusiness, setCurrentBusiness] = useState(business);
@@ -106,14 +98,6 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
     validate,
   } = useBusinessForm();
 
-  const {
-    loading: analyzing,
-    error: analysisError,
-    progressMessages,
-    sendTask,
-    reset: resetAgent,
-  } = useAgentTask();
-
   // Update currentBusiness when prop changes
   useEffect(() => {
     setCurrentBusiness(business);
@@ -123,36 +107,6 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
     loadFromBusiness(currentBusiness);
     setHata(null);
     setEditModalOpen(true);
-  };
-
-  const handleOpenAnalyze = () => {
-    setWebsiteUrl("");
-    resetAgent();
-    setHata(null);
-    setAnalyzeDialogOpen(true);
-  };
-
-  const handleAnalyze = async () => {
-    if (!websiteUrl.trim()) {
-      setHata("Web sitesi URL'si zorunludur.");
-      return;
-    }
-
-    setHata(null);
-
-    const taskPrompt = `Bu isletmenin web sitesini analiz et ve profil bilgilerini guncelle: ${websiteUrl}`;
-
-    const result = await sendTask({
-      task: taskPrompt,
-      businessId: currentBusiness.id,
-      extras: { website_url: websiteUrl },
-    });
-
-    if (result) {
-      setAnalyzeDialogOpen(false);
-      // Sayfayi yenilemek icin parent'a bildir
-      // Ideali: business'i tekrar fetch etmek
-    }
   };
 
   const handleLogoSelect = (file: File) => {
@@ -211,85 +165,11 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
     <div className="space-y-6">
       {/* Header with Action Buttons */}
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={handleOpenAnalyze} disabled={analyzing}>
-          <Sparkles className="w-4 h-4 mr-2" />
-          Analiz Et
-        </Button>
         <Button onClick={handleOpenEdit}>
           <Pencil className="w-4 h-4 mr-2" />
           Duzenle
         </Button>
       </div>
-
-      {/* Analyze Dialog */}
-      <Dialog open={analyzeDialogOpen} onOpenChange={setAnalyzeDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Globe className="w-5 h-5" />
-              Web Sitesi Analizi
-            </DialogTitle>
-            <DialogDescription>
-              Web sitesini analiz ederek profil bilgilerini otomatik doldurun.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="websiteUrl">Web Sitesi URL'si *</Label>
-              <Input
-                id="websiteUrl"
-                type="url"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://example.com"
-                disabled={analyzing}
-              />
-            </div>
-
-            {analyzing && progressMessages.length > 0 && (
-              <div className="p-3 rounded-md bg-muted font-mono text-xs max-h-[150px] overflow-y-auto space-y-1">
-                {progressMessages.map((msg, i) => (
-                  <div key={i} className="flex gap-2">
-                    <span className="text-muted-foreground">
-                      [{new Date(msg.timestamp).toLocaleTimeString()}]
-                    </span>
-                    <span>{msg.message}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {analysisError && (
-              <p className="text-sm text-destructive">{analysisError}</p>
-            )}
-            {hata && <p className="text-sm text-destructive">{hata}</p>}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAnalyzeDialogOpen(false)}
-              disabled={analyzing}
-            >
-              Iptal
-            </Button>
-            <Button onClick={handleAnalyze} disabled={analyzing}>
-              {analyzing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Analiz Ediliyor...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Analiz Et
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Business Info Card */}
       <Card>

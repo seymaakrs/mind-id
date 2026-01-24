@@ -1,13 +1,14 @@
 import { Timestamp } from "firebase/firestore";
 
 // Report types
-export type ReportType = "swot" | "competitor" | "market" | "general";
+export type ReportType = "swot" | "competitor" | "market" | "general" | "instagram_weekly";
 
 export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
     swot: "SWOT Analizi",
     competitor: "Rakip Analizi",
     market: "Pazar Analizi",
     general: "Genel Rapor",
+    instagram_weekly: "Instagram Haftalık Rapor",
 };
 
 // Base report interface
@@ -16,27 +17,78 @@ export interface Report {
     businessId: string;
     type: ReportType;
     title: string;
-    content: string; // Markdown or plain text
+    content?: string; // Markdown or plain text (optional for structured reports)
     createdAt: Timestamp;
     updatedAt?: Timestamp;
     metadata?: Record<string, unknown>;
 }
 
+// SWOT specific types
+interface SwotItem {
+    title: string;
+    description: string;
+}
+
 // SWOT specific report
 export interface SwotReport extends Report {
     type: "swot";
-    metadata: {
-        strengths?: string[];
-        weaknesses?: string[];
-        opportunities?: string[];
-        threats?: string[];
+    strengths: SwotItem[];
+    weaknesses: SwotItem[];
+    opportunities: SwotItem[];
+    threats: SwotItem[];
+    summary: string;
+    recommendations: string[];
+    data_sources?: {
+        profile: boolean;
+        website: boolean;
+        web_search: boolean;
     };
+}
+
+// Instagram stats helper
+interface InstagramTypeStats {
+    count: number;
+    reach: number;
+    views: number;
+    interactions: number;
+    notes?: string;
+}
+
+// Instagram Weekly Report
+export interface InstagramReport extends Report {
+    type: "instagram_weekly";
+    date_range: string;
+    total_posts: number;
+    totals: {
+        reach: number;
+        views: number;
+        interactions: number;
+        shares: number;
+        saved: number;
+    };
+    by_type: {
+        reels: InstagramTypeStats;
+        image: InstagramTypeStats;
+        carousel: InstagramTypeStats;
+    };
+    top_posts: Array<{
+        id: string;
+        type: string;
+        reach: number;
+        views: number;
+        permalink: string;
+    }>;
+    insights: string[];
+    recommendations: string[];
+    best_posting_time?: string;
 }
 
 // Create report data (without id and timestamps)
 export type CreateReportData = {
     type: ReportType;
     title: string;
-    content: string;
+    content?: string;
     metadata?: Record<string, unknown>;
+    // Allow extra fields for structured reports
+    [key: string]: unknown;
 };

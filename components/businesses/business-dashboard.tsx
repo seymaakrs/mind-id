@@ -3,6 +3,17 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Loader2,
   Building2,
@@ -15,8 +26,14 @@ import {
   ListChecks,
   Instagram,
   FileBarChart,
+  MapPin,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  Target,
+  Globe,
 } from "lucide-react";
-import { useBusinesses } from "@/hooks";
+import { useBusinesses, useAgentTask } from "@/hooks";
 import { BusinessSelector } from "@/components/shared/BusinessSelector";
 import {
   BusinessDetailsTab,
@@ -46,6 +63,70 @@ export default function BusinessDashboard({
   const [activeTab, setActiveTab] = useState<TabValue>("details");
 
   const { businesses, loading: loadingBusinesses } = useBusinesses();
+
+  const [analyzeDialogOpen, setAnalyzeDialogOpen] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [hata, setHata] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const {
+    loading: analyzing,
+    error: analysisError,
+    progressMessages,
+    sendTask,
+    reset: resetAgent,
+  } = useAgentTask();
+
+  // Functions
+  const handleOpenAnalyze = () => {
+    setWebsiteUrl("");
+    resetAgent();
+    setHata(null);
+    setAnalyzeDialogOpen(true);
+  };
+
+
+
+  const handleAnalyze = async () => {
+    if (!websiteUrl.trim()) {
+      setHata("Web sitesi URL'si zorunludur.");
+      return;
+    }
+    setHata(null);
+    const taskPrompt = `Bu isletmenin web sitesini analiz et ve profil bilgilerini guncelle: ${websiteUrl}`;
+    const result = await sendTask({
+      task: taskPrompt,
+      businessId: selectedBusinessId,
+      extras: { website_url: websiteUrl },
+    });
+    if (result) {
+      setAnalyzeDialogOpen(false);
+      setRefreshKey((prev) => prev + 1);
+    }
+  };
+
+  const handleSwotAnalysis = async () => {
+    if (analyzing) return;
+
+    resetAgent();
+    setHata(null);
+
+    // Switch to reports tab immediately to show loading state or results
+    setActiveTab("reports");
+
+    const taskPrompt = `Bu isletme icin SWOT analizi yap.`;
+
+    // Note: We don't wait for result here because sendTask handles the async process
+    // and we want to show the reports tab where the user can see new reports appearing
+    await sendTask({
+      task: taskPrompt,
+      businessId: selectedBusinessId,
+      extras: { analysis_type: "swot" },
+    });
+
+    // Refresh reports list
+    setRefreshKey((prev) => prev + 1);
+  };
 
   // Sync with initialBusinessId when it changes
   useEffect(() => {
@@ -87,24 +168,127 @@ export default function BusinessDashboard({
       </div>
 
       {/* Business Selector */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium whitespace-nowrap">Isletme Secin:</label>
-            {loadingBusinesses ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Yukleniyor...</span>
+      {/* Business Selector & Quick Stats */}
+      <Card className="border-muted bg-muted/10">
+        <CardContent className="p-6">
+          <div className="flex flex-col xl:flex-row gap-6 xl:items-center justify-between">
+            {/* Left: Selector */}
+            <div className="flex flex-col gap-3 w-full max-w-md">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Building2 className="w-3 h-3" />
+                Aktif Isletme
+              </label>
+              {loadingBusinesses ? (
+                <div className="flex items-center gap-2 text-muted-foreground h-10 px-3 border rounded-md">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Yukleniyor...</span>
+                </div>
+              ) : (
+                <BusinessSelector
+                  businesses={businesses}
+                  loading={loadingBusinesses}
+                  selectedId={selectedBusinessId}
+                  onSelect={handleBusinessSelect}
+                  showPreview
+                  className="w-full"
+                />
+              )}
+            </div>
+
+            {/* Right: Quick Stats */}
+            {selectedBusiness && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full xl:w-auto mt-4 xl:mt-0">
+                {/* Industry Stat */}
+                <div className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px]">
+                  <div className="p-2 bg-primary/10 rounded-full">
+                    <BarChart3 className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Sektor</p>
+                    <p className="text-sm font-medium truncate max-w-[100px]">
+                      {selectedBusiness.profile?.industry || "-"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Location Stat */}
+                <div className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px]">
+                  <div className="p-2 bg-orange-500/10 rounded-full">
+                    <MapPin className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Konum</p>
+                    <p className="text-sm font-medium truncate max-w-[100px]">
+                      {selectedBusiness.profile?.location_city || "-"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Instagram Stat */}
+                <div className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px]">
+                  <div
+                    className={`p-2 rounded-full ${selectedBusiness.instagram_access_token ? "bg-green-500/10" : "bg-red-500/10"
+                      }`}
+                  >
+                    <Instagram
+                      className={`w-4 h-4 ${selectedBusiness.instagram_access_token ? "text-green-500" : "text-red-500"
+                        }`}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Instagram</p>
+                    <div className="flex items-center gap-1">
+                      {selectedBusiness.instagram_access_token ? (
+                        <>
+                          <CheckCircle2 className="w-3 h-3 text-green-500" />
+                          <span className="text-sm font-medium text-green-600">Bagli</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-3 h-3 text-red-500" />
+                          <span className="text-sm font-medium text-red-600">Bagli Degil</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Website Analysis Action */}
+                <div
+                  className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px] cursor-pointer hover:bg-accent transition-colors group"
+                  onClick={handleOpenAnalyze}
+                >
+                  <div className="p-2 bg-blue-500/10 rounded-full group-hover:bg-blue-500/20 transition-colors">
+                    <Globe className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Site Analizi</p>
+                    <p className="text-sm font-medium text-primary flex items-center gap-1">
+                      Analiz Et <Sparkles className="w-3 h-3" />
+                    </p>
+                  </div>
+                </div>
+
+                {/* SWOT Analysis Action */}
+                <div
+                  className={`bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px] cursor-pointer hover:bg-accent transition-colors group ${analyzing ? 'opacity-50 pointer-events-none' : ''}`}
+                  onClick={handleSwotAnalysis}
+                >
+                  <div className="p-2 bg-purple-500/10 rounded-full group-hover:bg-purple-500/20 transition-colors">
+                    {analyzing ? (
+                      <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
+                    ) : (
+                      <Target className="w-4 h-4 text-purple-500" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">SWOT</p>
+                    <p className="text-sm font-medium text-primary flex items-center gap-1">
+                      {analyzing ? "Analiz Ediliyor..." : "Rapor Olustur"}
+                    </p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <BusinessSelector
-                businesses={businesses}
-                loading={loadingBusinesses}
-                selectedId={selectedBusinessId}
-                onSelect={handleBusinessSelect}
-                showPreview
-                className="w-full max-w-md"
-              />
             )}
           </div>
         </CardContent>
@@ -189,6 +373,7 @@ export default function BusinessDashboard({
           <div className="mt-6">
             <TabsContent value="details" className="m-0">
               <BusinessDetailsTab
+                key={`details-${refreshKey}`}
                 business={selectedBusiness}
                 onUpdated={handleBusinessUpdated}
               />
@@ -223,7 +408,7 @@ export default function BusinessDashboard({
             </TabsContent>
 
             <TabsContent value="reports" className="m-0">
-              <ReportsTab businessId={selectedBusinessId} />
+              <ReportsTab key={`reports-${refreshKey}`} businessId={selectedBusinessId} />
             </TabsContent>
           </div>
         </Tabs>
@@ -239,6 +424,77 @@ export default function BusinessDashboard({
           </CardContent>
         </Card>
       )}
+
+      {/* Analysis Dialog */}
+      <Dialog open={analyzeDialogOpen} onOpenChange={setAnalyzeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5" />
+              Web Sitesi Analizi
+            </DialogTitle>
+            <DialogDescription>
+              Web sitesini analiz ederek profil bilgilerini otomatik doldurun.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="websiteUrl">Web Sitesi URL'si *</Label>
+              <Input
+                id="websiteUrl"
+                type="url"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://example.com"
+                disabled={analyzing}
+              />
+            </div>
+
+            {analyzing && progressMessages.length > 0 && (
+              <div className="p-3 rounded-md bg-muted font-mono text-xs max-h-[150px] overflow-y-auto space-y-1">
+                {progressMessages.map((msg, i) => (
+                  <div key={i} className="flex gap-2">
+                    <span className="text-muted-foreground">
+                      [{new Date(msg.timestamp).toLocaleTimeString()}]
+                    </span>
+                    <span>{msg.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(analysisError || hata) && (
+              <p className="text-sm text-destructive">{analysisError || hata}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAnalyzeDialogOpen(false)}
+              disabled={analyzing}
+            >
+              Iptal
+            </Button>
+            <Button onClick={handleAnalyze} disabled={analyzing}>
+              {analyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Analiz Ediliyor...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Analiz Et
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
     </div>
   );
 }
