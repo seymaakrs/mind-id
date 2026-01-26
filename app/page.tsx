@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight } from "lucide-react"
+import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3 } from "lucide-react"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
@@ -14,11 +14,12 @@ import {
   BusinessDashboard,
 } from "@/components/businesses"
 import { SettingsPanel } from "@/components/settings"
+import { ApiStatisticsPanel } from "@/components/statistics"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 
-type MainMenuType = "instagram" | "blog" | "agent" | "isletmeler" | "settings"
+type MainMenuType = "instagram" | "blog" | "agent" | "isletmeler" | "istatistikler" | "settings"
 type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
@@ -81,6 +82,12 @@ export default function AdminPanel() {
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
         { id: "isletme-dashboard" as SubMenuType, label: "İşletme Dashboard" },
       ],
+    },
+    {
+      id: "istatistikler" as MainMenuType,
+      label: "İstatistikler",
+      icon: BarChart3,
+      subItems: [],
     },
     {
       id: "settings" as MainMenuType,
@@ -217,6 +224,8 @@ export default function AdminPanel() {
             <AgentGorevComponent />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />
+          ) : activeMenu === "istatistikler" ? (
+            <ApiStatisticsPanel />
           ) : (
             <>
               {/* Instagram Sub-menus */}

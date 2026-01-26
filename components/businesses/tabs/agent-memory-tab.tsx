@@ -14,6 +14,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Loader2,
   Brain,
   Lightbulb,
@@ -29,6 +38,7 @@ import {
   MessageSquare,
   Target,
   Volume2,
+  Pencil,
 } from "lucide-react";
 import { useAgentMemory } from "@/hooks";
 import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/types/agent-memory";
@@ -43,6 +53,11 @@ export function AgentMemoryTab({ businessId }: AgentMemoryTabProps) {
   const [newNotePriority, setNewNotePriority] = useState<AdminNote["priority"]>("medium");
   const [addingNote, setAddingNote] = useState(false);
 
+  // Agent note editing state
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
   const {
     memory,
     loading,
@@ -51,6 +66,8 @@ export function AgentMemoryTab({ businessId }: AgentMemoryTabProps) {
     addAdminNote,
     toggleAdminNoteActive,
     deleteAdminNote,
+    updateNote,
+    deleteNote,
     reset,
   } = useAgentMemory();
 
@@ -74,6 +91,35 @@ export function AgentMemoryTab({ businessId }: AgentMemoryTabProps) {
       // Error handled in hook
     } finally {
       setAddingNote(false);
+    }
+  };
+
+  const handleEditNote = (index: number, noteText: string) => {
+    setEditingNoteIndex(index);
+    setEditingNoteText(noteText);
+  };
+
+  const handleSaveNote = async () => {
+    if (editingNoteIndex === null || !editingNoteText.trim() || !businessId) return;
+
+    setSavingNote(true);
+    try {
+      await updateNote(businessId, editingNoteIndex, editingNoteText.trim());
+      setEditingNoteIndex(null);
+      setEditingNoteText("");
+    } catch {
+      // Error handled in hook
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (index: number) => {
+    if (!businessId) return;
+    try {
+      await deleteNote(businessId, index);
+    } catch {
+      // Error handled in hook
     }
   };
 
@@ -299,12 +345,35 @@ export function AgentMemoryTab({ businessId }: AgentMemoryTabProps) {
               {memory.notes.map((note, i) => (
                 <li
                   key={i}
-                  className="text-sm p-2 rounded-md bg-muted/50 border border-border/50"
+                  className="text-sm p-3 rounded-md bg-muted/50 border border-border/50"
                 >
-                  <p>{note.note}</p>
-                  <span className="text-xs text-muted-foreground mt-1 block">
-                    {formatDate(note.added_at)}
-                  </span>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p>{note.note}</p>
+                      <span className="text-xs text-muted-foreground mt-1 block">
+                        {formatDate(note.added_at)}
+                      </span>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditNote(i, note.note)}
+                        title="Duzenle"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteNote(i)}
+                        className="text-destructive hover:text-destructive"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -444,6 +513,63 @@ export function AgentMemoryTab({ businessId }: AgentMemoryTabProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Agent Not Duzenleme Dialog */}
+      <Dialog
+        open={editingNoteIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingNoteIndex(null);
+            setEditingNoteText("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5" />
+              Agent Notunu Duzenle
+            </DialogTitle>
+            <DialogDescription>
+              Agent tarafindan eklenen notu duzenleyin.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={editingNoteText}
+              onChange={(e) => setEditingNoteText(e.target.value)}
+              placeholder="Not icerigi..."
+              rows={4}
+              disabled={savingNote}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingNoteIndex(null);
+                setEditingNoteText("");
+              }}
+              disabled={savingNote}
+            >
+              Iptal
+            </Button>
+            <Button
+              onClick={handleSaveNote}
+              disabled={!editingNoteText.trim() || savingNote}
+            >
+              {savingNote ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Kaydediliyor...
+                </>
+              ) : (
+                "Kaydet"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

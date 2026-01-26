@@ -170,6 +170,40 @@ async function sendTaskToBackend(
 }
 
 /**
+ * Get current time in Istanbul timezone
+ */
+function getIstanbulTime(date: Date): { hour: number; minute: number; day: number; dateStr: string } {
+  const istanbulStr = date.toLocaleString("en-US", {
+    timeZone: "Europe/Istanbul",
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    weekday: "short",
+  });
+
+  // Parse the Istanbul time string
+  const parts = istanbulStr.split(", ");
+  const dayOfWeek = parts[0]; // "Mon", "Tue", etc.
+  const datePart = parts[1]; // "01/25/2024"
+  const timePart = parts[2]; // "19:00"
+
+  const [hourStr, minuteStr] = timePart.split(":");
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+
+  // Convert day name to number (0 = Sunday, 1 = Monday, etc.)
+  const dayMap: Record<string, number> = {
+    "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6
+  };
+  const day = dayMap[dayOfWeek] ?? 0;
+
+  return { hour, minute, day, dateStr: datePart };
+}
+
+/**
  * Check if a routine job should be executed based on its interval
  */
 function shouldExecuteRoutineJob(job: RoutineJob, now: Date): boolean {
@@ -177,6 +211,9 @@ function shouldExecuteRoutineJob(job: RoutineJob, now: Date): boolean {
 
   const lastExecuted = job.lastExecutedAt?.toDate();
   const config = job.intervalConfig;
+
+  // Get Istanbul time for comparison
+  const istanbulNow = getIstanbulTime(now);
 
   switch (job.intervalType) {
     case "hourly": {
@@ -190,37 +227,34 @@ function shouldExecuteRoutineJob(job: RoutineJob, now: Date): boolean {
     }
 
     case "daily": {
-      // Execute at specific hour:minute every day
+      // Execute at specific hour:minute every day (Istanbul time)
       const targetHour = config.hour ?? 9;
       const targetMinute = config.minute ?? 0;
 
       // Check if we're within the execution window (current hour matches target)
-      if (now.getHours() !== targetHour) return false;
-      if (Math.abs(now.getMinutes() - targetMinute) > 30) return false;
+      if (istanbulNow.hour !== targetHour) return false;
+      if (Math.abs(istanbulNow.minute - targetMinute) > 30) return false;
 
-      // Check if already executed today
+      // Check if already executed today (Istanbul time)
       if (lastExecuted) {
-        const sameDay =
-          lastExecuted.getFullYear() === now.getFullYear() &&
-          lastExecuted.getMonth() === now.getMonth() &&
-          lastExecuted.getDate() === now.getDate();
-        if (sameDay) return false;
+        const lastExecutedIstanbul = getIstanbulTime(lastExecuted);
+        if (lastExecutedIstanbul.dateStr === istanbulNow.dateStr) return false;
       }
       return true;
     }
 
     case "weekly": {
-      // Execute on specific day at specific hour:minute
+      // Execute on specific day at specific hour:minute (Istanbul time)
       const targetDay = config.dayOfWeek ?? 1; // Monday default
       const targetHour = config.hour ?? 9;
       const targetMinute = config.minute ?? 0;
 
-      // Check if it's the correct day
-      if (now.getDay() !== targetDay) return false;
+      // Check if it's the correct day (Istanbul time)
+      if (istanbulNow.day !== targetDay) return false;
 
-      // Check if we're within the execution window
-      if (now.getHours() !== targetHour) return false;
-      if (Math.abs(now.getMinutes() - targetMinute) > 30) return false;
+      // Check if we're within the execution window (Istanbul time)
+      if (istanbulNow.hour !== targetHour) return false;
+      if (Math.abs(istanbulNow.minute - targetMinute) > 30) return false;
 
       // Check if already executed this week
       if (lastExecuted) {

@@ -90,6 +90,42 @@ export function useAgentMemory() {
     [memory]
   );
 
+  const updateNote = useCallback(
+    async (businessId: string, noteIndex: number, newNoteText: string) => {
+      if (!memory || !memory.notes) return;
+
+      const updatedNotes = memory.notes.map((note, index) =>
+        index === noteIndex ? { ...note, note: newNoteText } : note
+      );
+
+      try {
+        await updateAgentMemory(businessId, { notes: updatedNotes });
+        setMemory((prev) => (prev ? { ...prev, notes: updatedNotes } : null));
+      } catch (err) {
+        console.error("Note update error:", err);
+        throw err;
+      }
+    },
+    [memory]
+  );
+
+  const deleteNote = useCallback(
+    async (businessId: string, noteIndex: number) => {
+      if (!memory || !memory.notes) return;
+
+      const updatedNotes = memory.notes.filter((_, index) => index !== noteIndex);
+
+      try {
+        await updateAgentMemory(businessId, { notes: updatedNotes });
+        setMemory((prev) => (prev ? { ...prev, notes: updatedNotes } : null));
+      } catch (err) {
+        console.error("Note delete error:", err);
+        throw err;
+      }
+    },
+    [memory]
+  );
+
   const reset = useCallback(() => {
     setMemory(null);
     setError(null);
@@ -103,6 +139,8 @@ export function useAgentMemory() {
     addAdminNote,
     toggleAdminNoteActive,
     deleteAdminNote,
+    updateNote,
+    deleteNote,
     reset,
   };
 }
