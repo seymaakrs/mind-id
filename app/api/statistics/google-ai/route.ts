@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { GoogleAuth } from "google-auth-library";
-import * as fs from "fs";
-import * as path from "path";
+import { adminDb } from "@/lib/firebase/admin";
 
 // Cache duration: 15 minutes
 const CACHE_DURATION = 60 * 15;
@@ -20,17 +19,36 @@ interface ProjectConfig {
   billingAccountId: string;
 }
 
-// Load service account from JSON file
-function loadServiceAccountFromFile(filePath: string): { client_email: string; private_key: string; project_id: string } | null {
+// Cache for Firestore secrets (in-memory, refreshed every 15 minutes)
+let secretsCache: { data: Record<string, unknown> | null; fetchedAt: number } = {
+  data: null,
+  fetchedAt: 0,
+};
+
+// Fetch secrets from Firestore
+async function getSecretsFromFirestore(): Promise<Record<string, unknown> | null> {
+  // Return cached data if fresh (less than 15 minutes old)
+  if (secretsCache.data && Date.now() - secretsCache.fetchedAt < CACHE_DURATION * 1000) {
+    return secretsCache.data;
+  }
+
+  if (!adminDb) {
+    console.log("[Secrets] Firebase Admin not initialized");
+    return null;
+  }
+
   try {
-    const absolutePath = path.resolve(process.cwd(), filePath);
-    if (fs.existsSync(absolutePath)) {
-      const content = fs.readFileSync(absolutePath, "utf-8");
-      return JSON.parse(content);
+    const doc = await adminDb.collection("secrets").doc("gcp-ai").get();
+    if (doc.exists) {
+      const data = doc.data() as Record<string, unknown>;
+      secretsCache = { data, fetchedAt: Date.now() };
+      console.log("[Secrets] Loaded GCP AI credentials from Firestore");
+      return data;
     }
   } catch (error) {
-    console.error(`Error loading service account from ${filePath}:`, error);
+    console.error("[Secrets] Error fetching from Firestore:", error);
   }
+
   return null;
 }
 
@@ -54,26 +72,32 @@ function parsePrivateKey(key: string | undefined): string | null {
 }
 
 // Get project config based on service type
-function getProjectConfig(service: string): ProjectConfig | null {
+async function getProjectConfig(service: string): Promise<ProjectConfig | null> {
   // AI Services (Gemini, Veo) - uses GCP AI project
   if (service === "gemini" || service === "veo") {
-    const billingAccountId = process.env.GCP_AI_BILLING_ACCOUNT_ID;
+    // Try to load from Firestore first
+    const secrets = await getSecretsFromFirestore();
 
-    // Try to load from JSON file first
-    const serviceAccount = loadServiceAccountFromFile("gcp-service-account.json");
+    if (secrets) {
+      const projectId = secrets.projectId as string;
+      const clientEmail = secrets.clientEmail as string;
+      const privateKey = parsePrivateKey(secrets.privateKey as string);
+      const billingAccountId = secrets.billingAccountId as string;
 
-    if (serviceAccount && billingAccountId) {
-      return {
-        projectId: serviceAccount.project_id,
-        credentials: {
-          client_email: serviceAccount.client_email,
-          private_key: serviceAccount.private_key,
-        },
-        billingAccountId,
-      };
+      if (projectId && clientEmail && privateKey && billingAccountId) {
+        return {
+          projectId,
+          credentials: {
+            client_email: clientEmail,
+            private_key: privateKey,
+          },
+          billingAccountId,
+        };
+      }
     }
 
-    // Fallback to env variables
+    // Fallback to env variables (for local development)
+    const billingAccountId = process.env.GCP_AI_BILLING_ACCOUNT_ID;
     const projectId = process.env.GCP_AI_PROJECT_ID;
     const clientEmail = process.env.GCP_AI_CLIENT_EMAIL;
     const privateKey = parsePrivateKey(process.env.GCP_AI_PRIVATE_KEY);
@@ -83,7 +107,8 @@ function getProjectConfig(service: string): ProjectConfig | null {
         hasProjectId: !!projectId,
         hasClientEmail: !!clientEmail,
         hasPrivateKey: !!privateKey,
-        hasBillingAccountId: !!billingAccountId
+        hasBillingAccountId: !!billingAccountId,
+        hasFirestoreSecrets: !!secrets
       });
       return null;
     }
@@ -98,25 +123,9 @@ function getProjectConfig(service: string): ProjectConfig | null {
     };
   }
 
-  // Firebase - uses Firebase project
+  // Firebase - uses Firebase project (always from env vars)
   if (service === "firebase") {
     const billingAccountId = process.env.FIREBASE_BILLING_ACCOUNT_ID;
-
-    // Try to load from JSON file first
-    const serviceAccount = loadServiceAccountFromFile("serviceAccount.json");
-
-    if (serviceAccount && billingAccountId) {
-      return {
-        projectId: serviceAccount.project_id,
-        credentials: {
-          client_email: serviceAccount.client_email,
-          private_key: serviceAccount.private_key,
-        },
-        billingAccountId,
-      };
-    }
-
-    // Fallback to env variables
     const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     const privateKey = parsePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
@@ -224,7 +233,7 @@ function getServiceLabel(service: string): string {
 // Cached fetch function for a specific service
 const fetchServiceStats = unstable_cache(
   async (service: string) => {
-    const config = getProjectConfig(service);
+    const config = await getProjectConfig(service);
 
     if (!config) {
       return {

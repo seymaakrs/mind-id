@@ -25,8 +25,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-.claude
-
-# Generated service account files (created by prebuild script)
-serviceAccount.json
-gcp-service-account.json
+.claude 
