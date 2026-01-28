@@ -197,57 +197,51 @@ export default function BusinessDashboard({
 
             {/* Right: Quick Stats */}
             {selectedBusiness && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full xl:w-auto mt-4 xl:mt-0">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 w-full xl:max-w-[55%] 2xl:max-w-none mt-4 xl:mt-0">
                 {/* Industry Stat */}
-                <div className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px]">
-                  <div className="p-2 bg-primary/10 rounded-full">
-                    <BarChart3 className="w-4 h-4 text-primary" />
+                <div className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm">
+                  <div className="p-1.5 sm:p-2 bg-primary/10 rounded-full shrink-0">
+                    <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Sektor</p>
-                    <p className="text-sm font-medium truncate max-w-[100px]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">Sektor</p>
+                    <p className="text-xs sm:text-sm font-medium truncate">
                       {selectedBusiness.profile?.industry || "-"}
                     </p>
                   </div>
                 </div>
 
                 {/* Location Stat */}
-                <div className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px]">
-                  <div className="p-2 bg-orange-500/10 rounded-full">
-                    <MapPin className="w-4 h-4 text-orange-500" />
+                <div className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm">
+                  <div className="p-1.5 sm:p-2 bg-orange-500/10 rounded-full shrink-0">
+                    <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Konum</p>
-                    <p className="text-sm font-medium truncate max-w-[100px]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">Konum</p>
+                    <p className="text-xs sm:text-sm font-medium truncate">
                       {selectedBusiness.profile?.location_city || "-"}
                     </p>
                   </div>
                 </div>
 
                 {/* Late Profile Stat */}
-                <div className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px]">
+                <div className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm">
                   <div
-                    className={`p-2 rounded-full ${selectedBusiness.late_profile_id ? "bg-green-500/10" : "bg-red-500/10"
+                    className={`p-1.5 sm:p-2 rounded-full shrink-0 ${selectedBusiness.late_profile_id ? "bg-green-500/10" : "bg-red-500/10"
                       }`}
                   >
                     <CheckCircle2
-                      className={`w-4 h-4 ${selectedBusiness.late_profile_id ? "text-green-500" : "text-red-500"
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${selectedBusiness.late_profile_id ? "text-green-500" : "text-red-500"
                         }`}
                     />
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Late Profile</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold whitespace-nowrap">Late Profile</p>
                     <div className="flex items-center gap-1">
                       {selectedBusiness.late_profile_id ? (
-                        <>
-                          <CheckCircle2 className="w-3 h-3 text-green-500" />
-                          <span className="text-sm font-medium text-green-600">Tanimli</span>
-                        </>
+                        <span className="text-xs sm:text-sm font-medium text-green-600 truncate">Tanimli</span>
                       ) : (
-                        <>
-                          <AlertCircle className="w-3 h-3 text-red-500" />
-                          <span className="text-sm font-medium text-red-600">Tanimli Degil</span>
-                        </>
+                        <span className="text-xs sm:text-sm font-medium text-red-600 truncate">Tanimli Degil</span>
                       )}
                     </div>
                   </div>
@@ -255,36 +249,36 @@ export default function BusinessDashboard({
 
                 {/* Website Analysis Action */}
                 <div
-                  className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px] cursor-pointer hover:bg-accent transition-colors group"
+                  className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm cursor-pointer hover:bg-accent transition-colors group"
                   onClick={handleOpenAnalyze}
                 >
-                  <div className="p-2 bg-blue-500/10 rounded-full group-hover:bg-blue-500/20 transition-colors">
-                    <Globe className="w-4 h-4 text-blue-500" />
+                  <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-full group-hover:bg-blue-500/20 transition-colors shrink-0">
+                    <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Site Analizi</p>
-                    <p className="text-sm font-medium text-primary flex items-center gap-1">
-                      Analiz Et <Sparkles className="w-3 h-3" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold whitespace-nowrap">Site Analizi</p>
+                    <p className="text-xs sm:text-sm font-medium text-primary flex items-center gap-1">
+                      Analiz Et <Sparkles className="w-3 h-3 shrink-0 hidden sm:inline" />
                     </p>
                   </div>
                 </div>
 
                 {/* SWOT Analysis Action */}
                 <div
-                  className={`bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px] cursor-pointer hover:bg-accent transition-colors group ${analyzing ? 'opacity-50 pointer-events-none' : ''}`}
+                  className={`bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm cursor-pointer hover:bg-accent transition-colors group ${analyzing ? 'opacity-50 pointer-events-none' : ''}`}
                   onClick={handleSwotAnalysis}
                 >
-                  <div className="p-2 bg-purple-500/10 rounded-full group-hover:bg-purple-500/20 transition-colors">
+                  <div className="p-1.5 sm:p-2 bg-purple-500/10 rounded-full group-hover:bg-purple-500/20 transition-colors shrink-0">
                     {analyzing ? (
-                      <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 animate-spin" />
                     ) : (
-                      <Target className="w-4 h-4 text-purple-500" />
+                      <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
                     )}
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">SWOT</p>
-                    <p className="text-sm font-medium text-primary flex items-center gap-1">
-                      {analyzing ? "Analiz Ediliyor..." : "Rapor Olustur"}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">SWOT</p>
+                    <p className="text-xs sm:text-sm font-medium text-primary truncate">
+                      {analyzing ? "Analiz..." : "Rapor Olustur"}
                     </p>
                   </div>
                 </div>
