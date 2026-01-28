@@ -198,11 +198,8 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
                     ))}
                   </div>
                 )}
-                {currentBusiness.instagram_account_id && (
-                  <p className="text-sm text-muted-foreground">Instagram ID: {currentBusiness.instagram_account_id}</p>
-                )}
-                {currentBusiness.client_id && (
-                  <p className="text-sm text-muted-foreground">Facebook App ID: {currentBusiness.client_id}</p>
+                {currentBusiness.late_profile_id && (
+                  <p className="text-sm text-muted-foreground">Late Profile ID: {currentBusiness.late_profile_id}</p>
                 )}
               </div>
             </div>
@@ -264,20 +261,14 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
         existingLogo={currentBusiness.logo}
         colors={form.colors}
         newColor={form.newColor}
-        instagramId={form.instagramId}
-        instagramToken={form.instagramToken}
-        facebookAppId={form.facebookAppId}
-        facebookAppSecret={form.facebookAppSecret}
+        lateProfileId={form.lateProfileId}
         disabled={isDisabled}
         onNameChange={(v) => setField("name", v)}
         onLogoSelect={handleLogoSelect}
         onColorAdd={addColor}
         onColorRemove={removeColor}
         onNewColorChange={(v) => setField("newColor", v)}
-        onInstagramIdChange={(v) => setField("instagramId", v)}
-        onInstagramTokenChange={(v) => setField("instagramToken", v)}
-        onFacebookAppIdChange={(v) => setField("facebookAppId", v)}
-        onFacebookAppSecretChange={(v) => setField("facebookAppSecret", v)}
+        onLateProfileIdChange={(v) => setField("lateProfileId", v)}
         showLogoRequiredMark={false}
       />
 

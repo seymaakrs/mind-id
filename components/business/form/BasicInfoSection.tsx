@@ -13,20 +13,14 @@ type Props = {
   existingLogo?: string;
   colors: string[];
   newColor: string;
-  instagramId: string;
-  instagramToken: string;
-  facebookAppId: string;
-  facebookAppSecret: string;
+  lateProfileId: string;
   disabled?: boolean;
   onNameChange: (value: string) => void;
   onLogoSelect: (file: File) => void;
   onColorAdd: () => void;
   onColorRemove: (index: number) => void;
   onNewColorChange: (value: string) => void;
-  onInstagramIdChange: (value: string) => void;
-  onInstagramTokenChange: (value: string) => void;
-  onFacebookAppIdChange: (value: string) => void;
-  onFacebookAppSecretChange: (value: string) => void;
+  onLateProfileIdChange: (value: string) => void;
   logoFileName?: string;
   showLogoRequiredMark?: boolean;
 };
@@ -37,20 +31,14 @@ export function BasicInfoSection({
   existingLogo,
   colors,
   newColor,
-  instagramId,
-  instagramToken,
-  facebookAppId,
-  facebookAppSecret,
+  lateProfileId,
   disabled = false,
   onNameChange,
   onLogoSelect,
   onColorAdd,
   onColorRemove,
   onNewColorChange,
-  onInstagramIdChange,
-  onInstagramTokenChange,
-  onFacebookAppIdChange,
-  onFacebookAppSecretChange,
+  onLateProfileIdChange,
   logoFileName,
   showLogoRequiredMark = true,
 }: Props) {
@@ -163,52 +151,15 @@ export function BasicInfoSection({
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="instagram-id">Instagram Account ID</Label>
-            <Input
-              id="instagram-id"
-              placeholder="Instagram hesap ID'si"
-              value={instagramId}
-              onChange={(e) => onInstagramIdChange(e.target.value)}
-              disabled={disabled}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="instagram-token">Instagram Access Token</Label>
-            <Input
-              id="instagram-token"
-              type="password"
-              placeholder="Instagram erişim token'ı"
-              value={instagramToken}
-              onChange={(e) => onInstagramTokenChange(e.target.value)}
-              disabled={disabled}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="facebook-app-id">Facebook App ID</Label>
-            <Input
-              id="facebook-app-id"
-              placeholder="Facebook uygulama ID'si"
-              value={facebookAppId}
-              onChange={(e) => onFacebookAppIdChange(e.target.value)}
-              disabled={disabled}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="facebook-app-secret">Facebook App Secret</Label>
-            <Input
-              id="facebook-app-secret"
-              type="password"
-              placeholder="Facebook uygulama secret'ı"
-              value={facebookAppSecret}
-              onChange={(e) => onFacebookAppSecretChange(e.target.value)}
-              disabled={disabled}
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="late-profile-id">Late Profile ID</Label>
+          <Input
+            id="late-profile-id"
+            placeholder="Late profil ID'si"
+            value={lateProfileId}
+            onChange={(e) => onLateProfileIdChange(e.target.value)}
+            disabled={disabled}
+          />
         </div>
       </div>
     </FormSection>

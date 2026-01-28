@@ -1,7 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 
 // Report types
-export type ReportType = "swot" | "competitor" | "market" | "general" | "instagram_weekly";
+export type ReportType = "swot" | "competitor" | "market" | "general" | "instagram_weekly" | "custom";
 
 export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
     swot: "SWOT Analizi",
@@ -9,6 +9,7 @@ export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
     market: "Pazar Analizi",
     general: "Genel Rapor",
     instagram_weekly: "Instagram Haftalık Rapor",
+    custom: "Özel Rapor",
 };
 
 // Base report interface
@@ -81,6 +82,27 @@ export interface InstagramReport extends Report {
     insights: string[];
     recommendations: string[];
     best_posting_time?: string;
+}
+
+// Block types for custom reports
+export type Block =
+    | { type: "text"; content: string }
+    | { type: "heading"; content: string; level: 1 | 2 | 3 }
+    | { type: "list"; items: string[]; ordered?: boolean }
+    | { type: "table"; headers: string[]; rows: string[][] }
+    | { type: "quote"; content: string }
+    | { type: "code"; content: string; language?: string }
+    | { type: "divider" };
+
+// Custom Report with block-based content
+export interface CustomReport extends Report {
+    type: "custom";
+    summary: string;
+    created_at: string; // ISO timestamp (primary date field for custom reports)
+    created_by: "agent" | "user";
+    blocks: Block[];
+    tags?: string[];
+    sources?: string[];
 }
 
 // Create report data (without id and timestamps)

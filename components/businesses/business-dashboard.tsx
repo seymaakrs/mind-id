@@ -224,29 +224,29 @@ export default function BusinessDashboard({
                   </div>
                 </div>
 
-                {/* Instagram Stat */}
+                {/* Late Profile Stat */}
                 <div className="bg-background border rounded-lg p-3 flex items-center gap-3 shadow-sm min-w-[140px]">
                   <div
-                    className={`p-2 rounded-full ${selectedBusiness.instagram_access_token ? "bg-green-500/10" : "bg-red-500/10"
+                    className={`p-2 rounded-full ${selectedBusiness.late_profile_id ? "bg-green-500/10" : "bg-red-500/10"
                       }`}
                   >
-                    <Instagram
-                      className={`w-4 h-4 ${selectedBusiness.instagram_access_token ? "text-green-500" : "text-red-500"
+                    <CheckCircle2
+                      className={`w-4 h-4 ${selectedBusiness.late_profile_id ? "text-green-500" : "text-red-500"
                         }`}
                     />
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Instagram</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Late Profile</p>
                     <div className="flex items-center gap-1">
-                      {selectedBusiness.instagram_access_token ? (
+                      {selectedBusiness.late_profile_id ? (
                         <>
                           <CheckCircle2 className="w-3 h-3 text-green-500" />
-                          <span className="text-sm font-medium text-green-600">Bagli</span>
+                          <span className="text-sm font-medium text-green-600">Tanimli</span>
                         </>
                       ) : (
                         <>
                           <AlertCircle className="w-3 h-3 text-red-500" />
-                          <span className="text-sm font-medium text-red-600">Bagli Degil</span>
+                          <span className="text-sm font-medium text-red-600">Tanimli Degil</span>
                         </>
                       )}
                     </div>

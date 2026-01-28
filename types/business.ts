@@ -12,10 +12,7 @@ export type BusinessFormState = {
   logoPreview: string | null;
   colors: string[];
   newColor: string;
-  instagramId: string;
-  instagramToken: string;
-  facebookAppId: string;
-  facebookAppSecret: string;
+  lateProfileId: string;
 
   // Profile - Identity
   slogan: string;

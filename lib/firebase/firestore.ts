@@ -78,8 +78,7 @@ export async function addBusiness(business: {
   name: string;
   logo: string;
   colors: string[];
-  instagram_account_id: string;
-  instagram_access_token: string;
+  late_profile_id?: string;
   profile: BusinessProfile;
 }) {
   return addDocument('businesses', business);

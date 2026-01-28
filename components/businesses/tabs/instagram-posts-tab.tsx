@@ -63,12 +63,11 @@ export function InstagramPostsTab({ businessId }: InstagramPostsTabProps) {
 
       // Get business for access token
       const business = await fetchBusiness();
-      if (!business?.instagram_access_token) {
-        setError("Instagram access token bulunamadi");
-        setLoading(false);
-        return;
-      }
-      setAccessToken(business.instagram_access_token);
+      // Note: Instagram access token is no longer stored in the business model
+      // This feature requires additional configuration
+      setError("Instagram entegrasyonu yapilandirilmamis");
+      setLoading(false);
+      return;
 
       // Fetch posts
       const postsRef = collection(db, "businesses", businessId, "instagram_posts");

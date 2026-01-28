@@ -18,6 +18,31 @@ import {
 import { useJobs } from "@/hooks";
 import type { Job, PlannedJob, RoutineJob } from "@/types/jobs";
 import { JOB_TYPE_LABELS, DAY_OF_WEEK_LABELS } from "@/types/jobs";
+import { Timestamp } from "firebase/firestore";
+
+// Helper to safely convert Firestore Timestamp or plain object to Date
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+  // Check if it's a Firestore Timestamp with toDate method
+  if (value instanceof Timestamp) {
+    return value.toDate();
+  }
+  // Check if it's a plain object with seconds and nanoseconds (serialized Timestamp)
+  if (typeof value === "object" && "seconds" in value && "nanoseconds" in value) {
+    const ts = value as { seconds: number; nanoseconds: number };
+    return new Date(ts.seconds * 1000 + ts.nanoseconds / 1000000);
+  }
+  // Check if it's already a Date
+  if (value instanceof Date) {
+    return value;
+  }
+  // Check if it's a string (ISO date)
+  if (typeof value === "string") {
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
 
 interface JobsTabProps {
   businessId: string;
@@ -51,7 +76,7 @@ export function JobsTab({ businessId }: JobsTabProps) {
   const formatJobSchedule = (job: Job) => {
     if (job.type === "planned") {
       const pJob = job as PlannedJob;
-      const date = pJob.scheduledAt?.toDate();
+      const date = toDate(pJob.scheduledAt);
       if (date) {
         return date.toLocaleString("tr-TR", {
           day: "2-digit",
@@ -77,8 +102,9 @@ export function JobsTab({ businessId }: JobsTabProps) {
   const formatLastExecuted = (job: Job) => {
     if (job.type === "routine") {
       const rJob = job as RoutineJob;
-      if (rJob.lastExecutedAt) {
-        return rJob.lastExecutedAt.toDate().toLocaleString("tr-TR", {
+      const date = toDate(rJob.lastExecutedAt);
+      if (date) {
+        return date.toLocaleString("tr-TR", {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
@@ -89,8 +115,9 @@ export function JobsTab({ businessId }: JobsTabProps) {
       return "Henuz calistirilmadi";
     } else if (job.type === "planned") {
       const pJob = job as PlannedJob;
-      if (pJob.executedAt) {
-        return pJob.executedAt.toDate().toLocaleString("tr-TR", {
+      const date = toDate(pJob.executedAt);
+      if (date) {
+        return date.toLocaleString("tr-TR", {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
@@ -333,13 +360,13 @@ export function JobsTab({ businessId }: JobsTabProps) {
                         </div>
                         <p className="text-sm font-medium">{job.task}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          {job.createdAt?.toDate().toLocaleString("tr-TR", {
+                          {toDate(job.createdAt)?.toLocaleString("tr-TR", {
                             day: "2-digit",
                             month: "2-digit",
                             year: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                          })}
+                          }) || "-"}
                         </p>
                       </div>
                       <Button

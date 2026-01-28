@@ -29,6 +29,7 @@ import {
   RulesSection,
   ExtraFieldsSection,
 } from "@/components/business/form";
+import { SyncAccountsButton } from "@/components/shared";
 import type { Business } from "@/types/firebase";
 
 interface BusinessDetailsTabProps {
@@ -161,10 +162,44 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
 
   const profile = currentBusiness.profile || {};
 
+  // Get platform IDs from business
+  const getPlatformIds = () => {
+    const platformIds: Array<{ platform: string; id: string }> = [];
+    const platformLabels: Record<string, string> = {
+      instagram_id: "Instagram",
+      facebook_id: "Facebook",
+      twitter_id: "Twitter",
+      tiktok_id: "TikTok",
+      youtube_id: "YouTube",
+      linkedin_id: "LinkedIn",
+    };
+
+    for (const [key, label] of Object.entries(platformLabels)) {
+      const value = currentBusiness[key as keyof Business];
+      if (value && typeof value === "string") {
+        platformIds.push({ platform: label, id: value });
+      }
+    }
+    return platformIds;
+  };
+
+  const platformIds = getPlatformIds();
+
+  const handleSyncComplete = () => {
+    // Reload the business data by triggering onUpdated
+    // The parent component should refetch the data
+    window.location.reload();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with Action Buttons */}
       <div className="flex justify-end gap-2">
+        <SyncAccountsButton
+          businessId={currentBusiness.id}
+          lateProfileId={currentBusiness.late_profile_id}
+          onSyncComplete={handleSyncComplete}
+        />
         <Button onClick={handleOpenEdit}>
           <Pencil className="w-4 h-4 mr-2" />
           Duzenle
@@ -199,15 +234,36 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
                   ))}
                 </div>
               )}
-              {currentBusiness.instagram_account_id && (
+              {currentBusiness.late_profile_id && (
                 <p className="text-sm text-muted-foreground">
-                  Instagram ID: {currentBusiness.instagram_account_id}
+                  Late Profile ID: {currentBusiness.late_profile_id}
                 </p>
               )}
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Synced Platform Accounts Card */}
+      {platformIds.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Senkronize Edilen Hesaplar</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {platformIds.map(({ platform, id }) => (
+                <div key={platform} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <span className="font-medium">{platform}</span>
+                  <span className="text-sm text-muted-foreground font-mono truncate max-w-[150px]" title={id}>
+                    {id.slice(0, 12)}...
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Profile Info Card */}
       {Object.keys(profile).length > 0 && (
@@ -258,16 +314,14 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
               existingLogo={currentBusiness.logo}
               colors={form.colors}
               newColor={form.newColor}
-              instagramId={form.instagramId}
-              instagramToken={form.instagramToken}
+              lateProfileId={form.lateProfileId}
               disabled={saving}
               onNameChange={(v) => setField("name", v)}
               onLogoSelect={handleLogoSelect}
               onColorAdd={addColor}
               onColorRemove={removeColor}
               onNewColorChange={(v) => setField("newColor", v)}
-              onInstagramIdChange={(v) => setField("instagramId", v)}
-              onInstagramTokenChange={(v) => setField("instagramToken", v)}
+              onLateProfileIdChange={(v) => setField("lateProfileId", v)}
               showLogoRequiredMark={false}
             />
 

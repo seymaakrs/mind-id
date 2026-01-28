@@ -46,7 +46,7 @@ export function AgentModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !loading && !isOpen && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-3xl sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Bot className="w-5 h-5" />
@@ -80,7 +80,7 @@ export function AgentModal({
             </div>
           ) : (
             <div className="flex gap-4 p-3 bg-muted rounded-lg">
-              <div className="w-24 h-24 bg-background rounded overflow-hidden flex-shrink-0">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-background rounded overflow-hidden flex-shrink-0">
                 {items[0].type === "image" ? (
                   <img
                     src={items[0].public_url}
@@ -93,13 +93,13 @@ export function AgentModal({
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{items[0].file_name}</p>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="font-medium truncate" title={items[0].file_name}>{items[0].file_name}</p>
                 <p className="text-sm text-muted-foreground">
                   {items[0].type === "image" ? "Görsel" : "Video"}
                 </p>
                 {items[0].prompt_summary && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
                     {items[0].prompt_summary}
                   </p>
                 )}

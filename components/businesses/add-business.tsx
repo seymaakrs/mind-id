@@ -26,6 +26,7 @@ import {
   RulesSection,
   ExtraFieldsSection,
 } from "@/components/business/form";
+import { SyncAccountsButton } from "@/components/shared";
 
 type Status = "bosta" | "kaydediliyor" | "basarili" | "hata";
 export default function AddBusinessComponent() {
@@ -99,10 +100,7 @@ export default function AddBusinessComponent() {
         name: tempName.trim(),
         logo: "", // Kullanıcı sonra ekleyecek
         colors: ["#000000"], // Varsayılan renk
-        instagram_account_id: "",
-        instagram_access_token: "",
-        client_id: "",
-        client_secret: "",
+        late_profile_id: "",
         profile: {},
       };
 
@@ -305,23 +303,38 @@ export default function AddBusinessComponent() {
           logoPreview={form.logoPreview}
           colors={form.colors}
           newColor={form.newColor}
-          instagramId={form.instagramId}
-          instagramToken={form.instagramToken}
-          facebookAppId={form.facebookAppId}
-          facebookAppSecret={form.facebookAppSecret}
+          lateProfileId={form.lateProfileId}
           disabled={isDisabled}
           onNameChange={(v) => setField("name", v)}
           onLogoSelect={handleLogoSelect}
           onColorAdd={addColor}
           onColorRemove={removeColor}
           onNewColorChange={(v) => setField("newColor", v)}
-          onInstagramIdChange={(v) => setField("instagramId", v)}
-          onInstagramTokenChange={(v) => setField("instagramToken", v)}
-          onFacebookAppIdChange={(v) => setField("facebookAppId", v)}
-          onFacebookAppSecretChange={(v) => setField("facebookAppSecret", v)}
+          onLateProfileIdChange={(v) => setField("lateProfileId", v)}
           logoFileName={form.logoFile?.name}
           showLogoRequiredMark={!createdBusinessId}
         />
+
+        {/* Sync Accounts Button - shown when business is created and has late_profile_id */}
+        {createdBusinessId && form.lateProfileId && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Hesap Senkronizasyonu</p>
+                  <p className="text-sm text-muted-foreground">
+                    Late Profile ID kullanarak diger platform hesaplarini senkronize edin
+                  </p>
+                </div>
+                <SyncAccountsButton
+                  businessId={createdBusinessId}
+                  lateProfileId={form.lateProfileId}
+                  disabled={isDisabled}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <IdentitySection
           slogan={form.slogan}

@@ -9,10 +9,7 @@ const initialState: BusinessFormState = {
   logoPreview: null,
   colors: [],
   newColor: DEFAULT_COLOR,
-  instagramId: "",
-  instagramToken: "",
-  facebookAppId: "",
-  facebookAppSecret: "",
+  lateProfileId: "",
   slogan: "",
   industry: "",
   subCategory: "",
@@ -68,10 +65,7 @@ type UseBusinessFormReturn = {
   buildBusinessData: () => {
     name: string;
     colors: string[];
-    instagram_account_id: string;
-    instagram_access_token: string;
-    client_id: string;
-    client_secret: string;
+    late_profile_id: string;
     profile: BusinessProfile;
   };
   validate: () => string | null;
@@ -155,10 +149,7 @@ export function useBusinessForm(): UseBusinessFormReturn {
       logoPreview: null,
       colors: business.colors || [],
       newColor: DEFAULT_COLOR,
-      instagramId: business.instagram_account_id || "",
-      instagramToken: business.instagram_access_token || "",
-      facebookAppId: business.client_id || "",
-      facebookAppSecret: business.client_secret || "",
+      lateProfileId: business.late_profile_id || "",
       slogan: p.slogan || "",
       industry: p.industry || "",
       subCategory: p.sub_category || "",
@@ -241,10 +232,7 @@ export function useBusinessForm(): UseBusinessFormReturn {
     return {
       name: form.name.trim(),
       colors: form.colors,
-      instagram_account_id: form.instagramId.trim(),
-      instagram_access_token: form.instagramToken.trim(),
-      client_id: form.facebookAppId.trim(),
-      client_secret: form.facebookAppSecret.trim(),
+      late_profile_id: form.lateProfileId.trim(),
       profile,
     };
   }, [form]);

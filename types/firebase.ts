@@ -67,11 +67,17 @@ export interface Business extends BaseDocument {
   name: string; // Zorunlu alan - işletme adı
   logo: string; // Zorunlu alan - logo URL (Storage path)
   colors: string[]; // Zorunlu alan - renk paleti (hex kodları)
-  instagram_account_id: string; // Zorunlu alan - Instagram hesap ID'si
-  instagram_access_token: string; // Zorunlu alan - Instagram erişim token'ı
-  client_id?: string; // Facebook App ID
-  client_secret?: string; // Facebook App Secret
+  late_profile_id?: string; // Late Profile ID
   profile: BusinessProfile; // İşletme profil bilgileri
+  // Platform IDs (synced from Late API)
+  instagram_id?: string;
+  facebook_id?: string;
+  twitter_id?: string;
+  tiktok_id?: string;
+  youtube_id?: string;
+  linkedin_id?: string;
+  // Allow any other platform_id fields
+  [key: `${string}_id`]: string | undefined;
 }
 
 // Business media (subcollection: businesses/{business_id}/media)
