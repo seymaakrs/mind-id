@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3 } from "lucide-react"
+import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home } from "lucide-react"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
@@ -15,11 +15,12 @@ import {
 } from "@/components/businesses"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
+import { WelcomeDashboard } from "@/components/dashboard/welcome-dashboard"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 
-type MainMenuType = "instagram" | "blog" | "agent" | "isletmeler" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "instagram" | "blog" | "agent" | "isletmeler" | "istatistikler" | "settings"
 type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
@@ -31,9 +32,9 @@ type SubMenuType =
   | "isletme-dashboard"
 
 export default function AdminPanel() {
-  const [activeMenu, setActiveMenu] = useState<MainMenuType>("instagram")
-  const [activeSubMenu, setActiveSubMenu] = useState<SubMenuType>("kaynak-ekle")
-  const [expandedMenu, setExpandedMenu] = useState<MainMenuType | null>("instagram")
+  const [activeMenu, setActiveMenu] = useState<MainMenuType>("anasayfa")
+  const [activeSubMenu, setActiveSubMenu] = useState<SubMenuType | null>(null)
+  const [expandedMenu, setExpandedMenu] = useState<MainMenuType | null>(null)
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -50,6 +51,12 @@ export default function AdminPanel() {
   }, [isMobileMenuOpen])
 
   const menuItems = [
+    {
+      id: "anasayfa" as MainMenuType,
+      label: "Anasayfa",
+      icon: Home,
+      subItems: [],
+    },
     {
       id: "instagram" as MainMenuType,
       label: "Instagram",
@@ -127,6 +134,20 @@ export default function AdminPanel() {
   const handleBusinessSelectFromList = (business: { id: string }) => {
     setSelectedBusinessId(business.id)
     setActiveSubMenu("isletme-dashboard")
+  }
+
+  // Handler for welcome dashboard navigation
+  const handleWelcomeNavigate = (menu: MainMenuType, subMenu?: SubMenuType | null) => {
+    setActiveMenu(menu)
+    setExpandedMenu(menu)
+    if (subMenu) {
+      setActiveSubMenu(subMenu)
+    } else {
+      const menuItem = menuItems.find(m => m.id === menu)
+      if (menuItem && menuItem.subItems.length > 0) {
+        setActiveSubMenu(menuItem.subItems[0].id)
+      }
+    }
   }
 
   return (
@@ -220,7 +241,9 @@ export default function AdminPanel() {
       {/* Main Content Area - Responsive */}
       <main className="flex-1 h-full overflow-y-auto overflow-x-hidden">
         <div className="p-4 pt-16 md:pt-4 md:p-8 max-w-full">
-          {activeMenu === "agent" ? (
+          {activeMenu === "anasayfa" ? (
+            <WelcomeDashboard onNavigate={handleWelcomeNavigate} />
+          ) : activeMenu === "agent" ? (
             <AgentGorevComponent />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />
