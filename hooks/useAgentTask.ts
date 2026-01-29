@@ -6,6 +6,7 @@ type AgentTaskExtras = Record<string, unknown>;
 type AgentTaskRequest = {
   task: string;
   businessId: string;
+  createdBy?: string;
   extras?: AgentTaskExtras;
 };
 
@@ -47,7 +48,7 @@ export function useAgentTask(): UseAgentTaskReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sendTask = useCallback(
-    async ({ task, businessId, extras }: AgentTaskRequest): Promise<string | null> => {
+    async ({ task, businessId, createdBy, extras }: AgentTaskRequest): Promise<string | null> => {
       if (!task.trim() || !businessId) {
         setError("Görev ve işletme ID'si zorunludur.");
         return null;
@@ -70,11 +71,16 @@ export function useAgentTask(): UseAgentTaskReturn {
 
       try {
         // Önce Firestore'da task oluştur
-        const taskData: { businessId: string; type: "immediate"; task: string; extras?: Record<string, unknown> } = {
+        const taskData: { businessId: string; type: "immediate"; task: string; createdBy?: string; extras?: Record<string, unknown> } = {
           businessId,
           type: "immediate",
           task: task.trim(),
         };
+
+        // createdBy sadece varsa ekle (Firestore undefined kabul etmez)
+        if (createdBy) {
+          taskData.createdBy = createdBy;
+        }
 
         // extras sadece varsa ekle (Firestore undefined kabul etmez)
         if (extras && Object.keys(extras).length > 0) {

@@ -29,6 +29,7 @@ import {
   Pause,
 } from "lucide-react";
 import { useBusinesses, useAgentTask, useServerHealth, useJobs } from "@/hooks";
+import { useAuth } from "@/contexts/AuthContext";
 import { BusinessSelector } from "@/components/shared/BusinessSelector";
 import type { JobType, IntervalType, Job, PlannedJob, RoutineJob } from "@/types/jobs";
 import {
@@ -54,6 +55,7 @@ export default function AgentGorevComponent() {
   const [dailyMinute, setDailyMinute] = useState(0);
   const [weeklyDay, setWeeklyDay] = useState(1); // Monday
 
+  const { user } = useAuth();
   const { businesses, loading: loadingBusinesses } = useBusinesses();
   const {
     response,
@@ -93,6 +95,7 @@ export default function AgentGorevComponent() {
       await sendTask({
         task: trimmedGorev,
         businessId: selectedBusinessId,
+        createdBy: user?.displayName || user?.email || undefined,
       });
 
       // Save to jobs collection for logging

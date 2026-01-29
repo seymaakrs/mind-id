@@ -182,6 +182,7 @@ interface Task {
   task: string;                  // Task content/description
   jobId?: string;                // Source job reference (for planned/routine)
   status: "pending" | "running" | "completed" | "failed";
+  createdBy?: string;            // Display name of user who created the task
   createdAt: Timestamp;
   startedAt?: Timestamp;
   completedAt?: Timestamp;

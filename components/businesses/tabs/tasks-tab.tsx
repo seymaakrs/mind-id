@@ -13,6 +13,7 @@ import {
     CheckCircle2,
     XCircle,
     PlayCircle,
+    User,
 } from "lucide-react";
 import { getBusinessTasks, getTaskLogs } from "@/lib/firebase/firestore";
 import type { Task, TaskStatus } from "@/types/tasks";
@@ -163,6 +164,12 @@ export function TasksTab({ businessId }: TasksTabProps) {
                                             {task.task}
                                         </p>
                                         <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                                            {task.createdBy && (
+                                                <span className="flex items-center gap-1">
+                                                    <User className="w-3 h-3" />
+                                                    {task.createdBy}
+                                                </span>
+                                            )}
                                             <span>Oluşturuldu: {formatDate(task.createdAt)}</span>
                                             {task.completedAt && (
                                                 <span>Tamamlandı: {formatDate(task.completedAt)}</span>

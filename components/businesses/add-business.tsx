@@ -15,6 +15,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Loader2, Globe, Sparkles } from "lucide-react";
 import { useBusinesses, useBusinessForm, useAgentTask } from "@/hooks";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   BasicInfoSection,
   IdentitySection,
@@ -39,6 +40,7 @@ export default function AddBusinessComponent() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(null);
 
+  const { user } = useAuth();
   const { createBusiness, uploadLogo } = useBusinesses();
   const {
     form,
@@ -120,6 +122,7 @@ export default function AddBusinessComponent() {
       const result = await sendTask({
         task: taskPrompt,
         businessId,
+        createdBy: user?.displayName || user?.email || undefined,
         extras: { website_url: websiteUrl },
       });
 

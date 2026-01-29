@@ -114,3 +114,31 @@ export interface InstagramPost {
   media_type?: string;
   timestamp?: string;
 }
+
+// Agent error types
+export type AgentErrorType =
+  | 'api_error'
+  | 'validation_error'
+  | 'timeout'
+  | 'rate_limit'
+  | 'not_found'
+  | 'permission'
+  | 'unknown';
+
+export type AgentErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+// Agent error (collection: errors)
+export interface AgentError {
+  id: string;
+  business_id: string;
+  agent: string; // "image_agent", "marketing_agent", etc.
+  task: string; // Ne yapmaya çalışıyordu
+  error_message: string;
+  error_type: AgentErrorType;
+  severity: AgentErrorSeverity;
+  context?: Record<string, unknown> | null;
+  created_at: string;
+  resolved: boolean;
+  resolved_at?: string | null;
+  resolution_note?: string | null;
+}

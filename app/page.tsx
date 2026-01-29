@@ -19,6 +19,7 @@ import { WelcomeDashboard } from "@/components/dashboard/welcome-dashboard"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
+import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell"
 
 type MainMenuType = "anasayfa" | "instagram" | "blog" | "agent" | "isletmeler" | "istatistikler" | "settings"
 type SubMenuType =
@@ -158,6 +159,11 @@ export default function AdminPanel() {
           isOpen={isMobileMenuOpen}
           onToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
+
+        {/* Error Notification Bell - Fixed top right */}
+        <div className="fixed top-3 right-4 z-50">
+          <ErrorNotificationBell />
+        </div>
 
         {/* Mobile Sidebar */}
         <MobileSidebar

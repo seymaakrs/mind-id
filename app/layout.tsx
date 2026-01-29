@@ -2,7 +2,9 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "sonner"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { ErrorNotificationProvider } from "@/contexts/ErrorNotificationContext"
 import "./globals.css"
 
 const _inter = Inter({ subsets: ["latin"] })
@@ -23,8 +25,18 @@ export default function RootLayout({
     <html lang="en">
       <body className={`dark font-sans antialiased`}>
         <AuthProvider>
-          {children}
+          <ErrorNotificationProvider>
+            {children}
+          </ErrorNotificationProvider>
         </AuthProvider>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            className: "dark:bg-background dark:border-border",
+          }}
+          richColors
+          closeButton
+        />
         <Analytics />
       </body>
     </html>

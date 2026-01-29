@@ -11,43 +11,17 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  getDoc,
-} from "firebase/firestore";
-import type { InstagramPost, Business } from "@/types/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import type { InstagramPost } from "@/types/firebase";
 
 interface InstagramPostsTabProps {
   businessId: string;
 }
 
-interface PostWithStatus extends InstagramPost {
-  loading?: boolean;
-  error?: string;
-}
-
 export function InstagramPostsTab({ businessId }: InstagramPostsTabProps) {
-  const [posts, setPosts] = useState<PostWithStatus[]>([]);
+  const [posts, setPosts] = useState<InstagramPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-
-  // Fetch business to get access token
-  const fetchBusiness = useCallback(async () => {
-    if (!db) return null;
-    try {
-      const businessDoc = await getDoc(doc(db, "businesses", businessId));
-      if (businessDoc.exists()) {
-        return businessDoc.data() as Business;
-      }
-    } catch (err) {
-      console.error("Error fetching business:", err);
-    }
-    return null;
-  }, [businessId]);
 
   // Fetch posts from Firestore
   const fetchPosts = useCallback(async () => {
@@ -61,22 +35,14 @@ export function InstagramPostsTab({ businessId }: InstagramPostsTabProps) {
       setLoading(true);
       setError(null);
 
-      // Get business for access token
-      const business = await fetchBusiness();
-      // Note: Instagram access token is no longer stored in the business model
-      // This feature requires additional configuration
-      setError("Instagram entegrasyonu yapilandirilmamis");
-      setLoading(false);
-      return;
-
       // Fetch posts
       const postsRef = collection(db, "businesses", businessId, "instagram_posts");
       const snapshot = await getDocs(postsRef);
 
-      const postsData: PostWithStatus[] = snapshot.docs.map((doc) => ({
+      const postsData: InstagramPost[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-      })) as PostWithStatus[];
+      })) as InstagramPost[];
 
       setPosts(postsData);
     } catch (err) {
@@ -85,81 +51,11 @@ export function InstagramPostsTab({ businessId }: InstagramPostsTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [businessId, fetchBusiness]);
+  }, [businessId]);
 
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
-
-  // Fetch permalink for a single post
-  const fetchPermalink = useCallback(
-    async (postId: string) => {
-      if (!accessToken || !db) return;
-
-      // Update loading state for this post
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, loading: true, error: undefined } : p))
-      );
-
-      try {
-        const response = await fetch("/api/instagram-permalink", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postId, accessToken }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Permalink alinamadi");
-        }
-
-        // Update Firestore
-        const postRef = doc(db, "businesses", businessId, "instagram_posts", postId);
-        await updateDoc(postRef, {
-          permalink: data.permalink,
-          owner_username: data.owner?.username,
-          owner_id: data.owner?.id,
-          fetched_at: new Date().toISOString(),
-        });
-
-        // Update local state
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  permalink: data.permalink,
-                  owner_username: data.owner?.username,
-                  owner_id: data.owner?.id,
-                  loading: false,
-                }
-              : p
-          )
-        );
-      } catch (err) {
-        console.error("Error fetching permalink:", err);
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? { ...p, loading: false, error: err instanceof Error ? err.message : "Hata olustu" }
-              : p
-          )
-        );
-      }
-    },
-    [accessToken, businessId]
-  );
-
-  // Fetch all missing permalinks
-  const fetchAllMissingPermalinks = async () => {
-    const postsWithoutPermalink = posts.filter((p) => !p.permalink);
-    for (const post of postsWithoutPermalink) {
-      await fetchPermalink(post.id);
-      // Small delay to avoid rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-  };
 
   // Get Instagram embed URL
   const getEmbedUrl = (permalink: string) => {
@@ -204,7 +100,6 @@ export function InstagramPostsTab({ businessId }: InstagramPostsTabProps) {
     );
   }
 
-  const postsWithoutPermalink = posts.filter((p) => !p.permalink);
   const postsWithPermalink = posts.filter((p) => p.permalink);
 
   return (
@@ -218,22 +113,14 @@ export function InstagramPostsTab({ businessId }: InstagramPostsTabProps) {
               <div>
                 <h3 className="font-semibold">Instagram Gonderileri</h3>
                 <p className="text-sm text-muted-foreground">
-                  {posts.length} gonderi • {postsWithPermalink.length} yuklendi
+                  {posts.length} gonderi • {postsWithPermalink.length} goruntulenebilir
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              {postsWithoutPermalink.length > 0 && (
-                <Button variant="outline" size="sm" onClick={fetchAllMissingPermalinks}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Tumu Yukle ({postsWithoutPermalink.length})
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={fetchPosts}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Yenile
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={fetchPosts}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Yenile
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -260,19 +147,7 @@ export function InstagramPostsTab({ businessId }: InstagramPostsTabProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {post.loading ? (
-                <div className="h-[400px] flex items-center justify-center bg-muted">
-                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : post.error ? (
-                <div className="h-[400px] flex flex-col items-center justify-center bg-muted p-4">
-                  <AlertCircle className="w-8 h-8 text-destructive mb-2" />
-                  <p className="text-sm text-destructive text-center mb-4">{post.error}</p>
-                  <Button variant="outline" size="sm" onClick={() => fetchPermalink(post.id)}>
-                    Tekrar Dene
-                  </Button>
-                </div>
-              ) : post.permalink ? (
+              {post.permalink ? (
                 <iframe
                   src={getEmbedUrl(post.permalink)}
                   className="w-full h-[500px] border-0"
@@ -281,15 +156,11 @@ export function InstagramPostsTab({ businessId }: InstagramPostsTabProps) {
                   allowFullScreen
                 />
               ) : (
-                <div className="h-[400px] flex flex-col items-center justify-center bg-muted p-4">
+                <div className="h-[300px] flex flex-col items-center justify-center bg-muted p-4">
                   <Instagram className="w-12 h-12 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground text-center mb-4">
-                    Gonderi yuklenmedi
+                  <p className="text-sm text-muted-foreground text-center">
+                    Gonderi linki henuz yuklenmedi
                   </p>
-                  <Button variant="outline" size="sm" onClick={() => fetchPermalink(post.id)}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Yukle
-                  </Button>
                 </div>
               )}
             </CardContent>

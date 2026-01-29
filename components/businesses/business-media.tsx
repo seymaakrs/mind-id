@@ -23,6 +23,7 @@ import {
   Bot,
 } from "lucide-react";
 import { useBusinesses, useBusinessMedia, useAgentTask } from "@/hooks";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   MediaCard,
   MediaDetailModal,
@@ -44,6 +45,7 @@ export default function BusinessMediaComponent() {
   const [selectedItems, setSelectedItems] = useState<BusinessMedia[]>([]);
 
   // Hooks
+  const { user } = useAuth();
   const { businesses, loading: loadingBusinesses } = useBusinesses();
   const {
     filteredMedia,
@@ -60,6 +62,7 @@ export default function BusinessMediaComponent() {
     response: agentResponse,
     loading: agentLoading,
     error: agentError,
+    progressMessages,
     sendTask,
     reset: resetAgent,
   } = useAgentTask();
@@ -94,6 +97,7 @@ export default function BusinessMediaComponent() {
     await sendTask({
       task: agentTaskInput.trim(),
       businessId: selectedBusinessId,
+      createdBy: user?.displayName || user?.email || undefined,
       extras: {
         source_media: mediaItems.map((m) => ({
           id: m.id,
@@ -336,6 +340,7 @@ export default function BusinessMediaComponent() {
         response={agentResponse}
         loading={agentLoading}
         error={agentError}
+        progressMessages={progressMessages}
         onClose={handleCloseAgentModal}
         onTaskInputChange={setAgentTaskInput}
         onSend={handleSendToAgent}

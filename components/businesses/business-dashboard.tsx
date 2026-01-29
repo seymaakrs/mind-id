@@ -34,6 +34,7 @@ import {
   Globe,
 } from "lucide-react";
 import { useBusinesses, useAgentTask } from "@/hooks";
+import { useAuth } from "@/contexts/AuthContext";
 import { BusinessSelector } from "@/components/shared/BusinessSelector";
 import {
   BusinessDetailsTab,
@@ -62,6 +63,7 @@ export default function BusinessDashboard({
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>(initialBusinessId || "");
   const [activeTab, setActiveTab] = useState<TabValue>("details");
 
+  const { user } = useAuth();
   const { businesses, loading: loadingBusinesses } = useBusinesses();
 
   const [analyzeDialogOpen, setAnalyzeDialogOpen] = useState(false);
@@ -97,6 +99,7 @@ export default function BusinessDashboard({
     const result = await sendTask({
       task: taskPrompt,
       businessId: selectedBusinessId,
+      createdBy: user?.displayName || user?.email || undefined,
       extras: { website_url: websiteUrl },
     });
     if (result) {
@@ -121,6 +124,7 @@ export default function BusinessDashboard({
     await sendTask({
       task: taskPrompt,
       businessId: selectedBusinessId,
+      createdBy: user?.displayName || user?.email || undefined,
       extras: { analysis_type: "swot" },
     });
 

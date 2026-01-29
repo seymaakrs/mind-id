@@ -16,6 +16,7 @@ import {
   Bot,
 } from "lucide-react";
 import { useBusinessMedia, useAgentTask } from "@/hooks";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   MediaCard,
   MediaDetailModal,
@@ -29,6 +30,7 @@ interface BusinessMediaTabProps {
 }
 
 export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
+  const { user } = useAuth();
   const [selectedMedia, setSelectedMedia] = useState<BusinessMedia | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [agentModalOpen, setAgentModalOpen] = useState(false);
@@ -55,6 +57,7 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
     response: agentResponse,
     loading: agentLoading,
     error: agentError,
+    progressMessages,
     sendTask,
     reset: resetAgent,
   } = useAgentTask();
@@ -90,6 +93,7 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
     await sendTask({
       task: agentTaskInput.trim(),
       businessId: businessId,
+      createdBy: user?.displayName || user?.email || undefined,
       extras: {
         source_media: mediaItems.map((m) => ({
           id: m.id,
@@ -277,6 +281,7 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
         response={agentResponse}
         loading={agentLoading}
         error={agentError}
+        progressMessages={progressMessages}
         onClose={handleCloseAgentModal}
         onTaskInputChange={setAgentTaskInput}
         onSend={handleSendToAgent}

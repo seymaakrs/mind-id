@@ -14,6 +14,7 @@ export interface Task {
   task: string; // The task content/description
   jobId?: string; // Reference to source job (for planned/routine)
   status: TaskStatus;
+  createdBy?: string; // Display name of the user who created the task
   createdAt: Timestamp;
   startedAt?: Timestamp;
   completedAt?: Timestamp;
@@ -28,6 +29,7 @@ export interface CreateTaskData {
   type: TaskType;
   task: string;
   jobId?: string;
+  createdBy?: string; // Display name of the user who created the task
   extras?: Record<string, unknown>;
 }
 

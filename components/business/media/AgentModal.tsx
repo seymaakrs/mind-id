@@ -12,6 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Bot, Video, Send, Loader2 } from "lucide-react";
 import type { BusinessMedia } from "@/types/firebase";
 
+type ProgressMessage = {
+  event: string;
+  message: string;
+  timestamp: string;
+  data?: Record<string, unknown>;
+};
+
 type Props = {
   open: boolean;
   media: BusinessMedia | null;
@@ -20,6 +27,7 @@ type Props = {
   response: string | null;
   loading: boolean;
   error: string | null;
+  progressMessages?: ProgressMessage[];
   onClose: () => void;
   onTaskInputChange: (value: string) => void;
   onSend: () => void;
@@ -33,6 +41,7 @@ export function AgentModal({
   response,
   loading,
   error,
+  progressMessages,
   onClose,
   onTaskInputChange,
   onSend,
@@ -126,6 +135,21 @@ export function AgentModal({
               disabled={loading}
             />
           </div>
+
+          {/* Progress Messages */}
+          {loading && progressMessages && progressMessages.length > 0 && (
+            <div className="p-3 rounded-md bg-muted font-mono text-xs max-h-[150px] overflow-y-auto space-y-1">
+              {progressMessages.map((msg, i) => (
+                <div key={i} className="flex gap-2">
+                  <span className="text-muted-foreground">
+                    [{new Date(msg.timestamp).toLocaleTimeString()}]
+                  </span>
+                  <span>{msg.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
               <p className="text-sm text-destructive">{error}</p>
