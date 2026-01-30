@@ -141,8 +141,6 @@ function getApiEndpoint(provider: ApiProvider): string | null {
       return "/api/statistics/google-ai?service=gemini";
     case "veo":
       return "/api/statistics/google-ai?service=veo";
-    case "firebase":
-      return "/api/statistics/google-ai?service=firebase";
     default:
       return null;
   }
@@ -203,7 +201,7 @@ export function useAllApiStatistics(timeRange: TimeRange) {
     setError(null);
 
     try {
-      const providers: ApiProvider[] = ["openai", "gemini", "veo", "cloudconvert", "firebase"];
+      const providers: ApiProvider[] = ["openai", "gemini", "veo", "cloudconvert"];
 
       // Fetch all providers in parallel
       const statsPromises = providers.map(async (p) => {

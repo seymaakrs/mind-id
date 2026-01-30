@@ -4,8 +4,7 @@ export type ApiProvider =
   | "openai"
   | "gemini"
   | "veo"
-  | "cloudconvert"
-  | "firebase";
+  | "cloudconvert";
 
 // Time range filter options
 export type TimeRange = "all" | "30d" | "7d" | "1d";
@@ -154,12 +153,6 @@ export const PROVIDER_INFO: Record<ApiProvider, ProviderInfo> = {
     label: "CloudConvert",
     description: "Dosya donusturme servisi",
     color: "#ff6600",
-  },
-  firebase: {
-    id: "firebase",
-    label: "Firebase",
-    description: "Auth, Firestore, Storage",
-    color: "#ffca28",
   },
 };
 

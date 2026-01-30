@@ -5,6 +5,8 @@ import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "sonner"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { ErrorNotificationProvider } from "@/contexts/ErrorNotificationContext"
+import { TaskStreamProvider } from "@/contexts/TaskStreamContext"
+import { TaskTrackerWidget } from "@/components/shared/TaskTrackerWidget"
 import "./globals.css"
 
 const _inter = Inter({ subsets: ["latin"] })
@@ -26,7 +28,10 @@ export default function RootLayout({
       <body className={`dark font-sans antialiased`}>
         <AuthProvider>
           <ErrorNotificationProvider>
-            {children}
+            <TaskStreamProvider>
+              {children}
+              <TaskTrackerWidget />
+            </TaskStreamProvider>
           </ErrorNotificationProvider>
         </AuthProvider>
         <Toaster

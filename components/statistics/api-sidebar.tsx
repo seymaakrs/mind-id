@@ -8,7 +8,6 @@ import {
   Wand2,
   Video,
   FileStack,
-  Flame,
 } from "lucide-react";
 
 interface ApiSidebarProps {
@@ -22,7 +21,6 @@ const providerIcons: Record<ApiProvider, React.ElementType> = {
   gemini: Wand2,
   veo: Video,
   cloudconvert: FileStack,
-  firebase: Flame,
 };
 
 export function ApiSidebar({ activeProvider, onProviderChange }: ApiSidebarProps) {
@@ -32,7 +30,6 @@ export function ApiSidebar({ activeProvider, onProviderChange }: ApiSidebarProps
     "gemini",
     "veo",
     "cloudconvert",
-    "firebase",
   ];
 
   return (
