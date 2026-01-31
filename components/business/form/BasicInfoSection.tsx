@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Building2, Upload, Palette, Plus, X } from "lucide-react";
+import { Building2, Upload, Palette, Plus, X, Globe } from "lucide-react";
 import { FormSection } from "@/components/shared";
 
 type Props = {
@@ -13,6 +13,7 @@ type Props = {
   existingLogo?: string;
   colors: string[];
   newColor: string;
+  website: string;
   lateProfileId: string;
   disabled?: boolean;
   onNameChange: (value: string) => void;
@@ -20,6 +21,7 @@ type Props = {
   onColorAdd: () => void;
   onColorRemove: (index: number) => void;
   onNewColorChange: (value: string) => void;
+  onWebsiteChange: (value: string) => void;
   onLateProfileIdChange: (value: string) => void;
   logoFileName?: string;
   showLogoRequiredMark?: boolean;
@@ -31,6 +33,7 @@ export function BasicInfoSection({
   existingLogo,
   colors,
   newColor,
+  website,
   lateProfileId,
   disabled = false,
   onNameChange,
@@ -38,6 +41,7 @@ export function BasicInfoSection({
   onColorAdd,
   onColorRemove,
   onNewColorChange,
+  onWebsiteChange,
   onLateProfileIdChange,
   logoFileName,
   showLogoRequiredMark = true,
@@ -149,6 +153,21 @@ export function BasicInfoSection({
               ))}
             </div>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="website">
+            <Globe className="w-4 h-4 inline mr-1" />
+            Web Sitesi
+          </Label>
+          <Input
+            id="website"
+            type="url"
+            placeholder="https://orneksite.com"
+            value={website}
+            onChange={(e) => onWebsiteChange(e.target.value)}
+            disabled={disabled}
+          />
         </div>
 
         <div className="space-y-2">

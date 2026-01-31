@@ -10,3 +10,4 @@ export { useAgentMemory } from "./useAgentMemory";
 export { useJobs } from "./useJobs";
 export { useReports } from "./useReports";
 export { useApiStatistics, useAllApiStatistics } from "./useApiStatistics";
+export { useSeo } from "./useSeo";

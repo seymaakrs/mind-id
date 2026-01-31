@@ -12,6 +12,7 @@ import {
   Pencil,
   X,
   Save,
+  Globe,
 } from "lucide-react";
 import { useBusinesses, useBusinessForm } from "@/hooks";
 import {
@@ -198,6 +199,19 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
                     ))}
                   </div>
                 )}
+                {currentBusiness.website && (
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-muted-foreground" />
+                    <a
+                      href={currentBusiness.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {currentBusiness.website}
+                    </a>
+                  </div>
+                )}
                 {currentBusiness.late_profile_id && (
                   <p className="text-sm text-muted-foreground">Late Profile ID: {currentBusiness.late_profile_id}</p>
                 )}
@@ -261,6 +275,7 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
         existingLogo={currentBusiness.logo}
         colors={form.colors}
         newColor={form.newColor}
+        website={form.website}
         lateProfileId={form.lateProfileId}
         disabled={isDisabled}
         onNameChange={(v) => setField("name", v)}
@@ -268,6 +283,7 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
         onColorAdd={addColor}
         onColorRemove={removeColor}
         onNewColorChange={(v) => setField("newColor", v)}
+        onWebsiteChange={(v) => setField("website", v)}
         onLateProfileIdChange={(v) => setField("lateProfileId", v)}
         showLogoRequiredMark={false}
       />

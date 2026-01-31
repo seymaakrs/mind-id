@@ -9,6 +9,7 @@ const initialState: BusinessFormState = {
   logoPreview: null,
   colors: [],
   newColor: DEFAULT_COLOR,
+  website: "",
   lateProfileId: "",
   slogan: "",
   industry: "",
@@ -65,6 +66,7 @@ type UseBusinessFormReturn = {
   buildBusinessData: () => {
     name: string;
     colors: string[];
+    website: string;
     late_profile_id: string;
     profile: BusinessProfile;
   };
@@ -149,6 +151,7 @@ export function useBusinessForm(): UseBusinessFormReturn {
       logoPreview: null,
       colors: business.colors || [],
       newColor: DEFAULT_COLOR,
+      website: business.website || "",
       lateProfileId: business.late_profile_id || "",
       slogan: p.slogan || "",
       industry: p.industry || "",
@@ -232,6 +235,7 @@ export function useBusinessForm(): UseBusinessFormReturn {
     return {
       name: form.name.trim(),
       colors: form.colors,
+      website: form.website.trim(),
       late_profile_id: form.lateProfileId.trim(),
       profile,
     };

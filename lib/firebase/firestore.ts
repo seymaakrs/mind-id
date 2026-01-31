@@ -362,8 +362,29 @@ export async function deleteBusinessReport(businessId: string, reportId: string)
   await deleteDoc(docRef);
 }
 
+// SEO operations (subcollection: businesses/{businessId}/seo)
+export async function getSeoSummary(businessId: string): Promise<SeoSummary | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'seo', 'summary');
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return docSnap.data() as SeoSummary;
+  }
+  return null;
+}
+
+export async function getSeoKeywords(businessId: string): Promise<SeoKeywords | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'seo', 'keywords');
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return docSnap.data() as SeoKeywords;
+  }
+  return null;
+}
+
 // Type imports
-import type { Business, BusinessMedia, BusinessProfile } from '@/types/firebase';
+import type { Business, BusinessMedia, BusinessProfile, SeoSummary, SeoKeywords } from '@/types/firebase';
 import type { ContentPlan } from '@/types/content-plan';
 import type { AgentMemory } from '@/types/agent-memory';
 import type { Job } from '@/types/jobs';

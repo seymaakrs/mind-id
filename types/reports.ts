@@ -1,7 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 
 // Report types
-export type ReportType = "swot" | "competitor" | "market" | "general" | "instagram_weekly" | "custom";
+export type ReportType = "swot" | "competitor" | "market" | "general" | "instagram_weekly" | "custom" | "seo";
 
 export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
     swot: "SWOT Analizi",
@@ -10,6 +10,7 @@ export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
     general: "Genel Rapor",
     instagram_weekly: "Instagram Haftalık Rapor",
     custom: "Özel Rapor",
+    seo: "SEO Analizi",
 };
 
 // Base report interface
@@ -103,6 +104,104 @@ export interface CustomReport extends Report {
     blocks: Block[];
     tags?: string[];
     sources?: string[];
+}
+
+// SEO Report types
+interface SeoMetaTags {
+    title: string | null;
+    title_length: number;
+    description: string | null;
+    description_length: number;
+    keywords: string[];
+    robots: string | null;
+    canonical: string | null;
+    og_title: string | null;
+    og_description: string | null;
+    og_image: string | null;
+}
+
+interface SeoHeadings {
+    h1: string[];
+    h2: string[];
+    h3: string[];
+    h1_count: number;
+    has_single_h1: boolean;
+}
+
+interface SeoImages {
+    total_images: number;
+    images_with_alt: number;
+    images_without_alt: number;
+    alt_texts: string[];
+    missing_alt_srcs: string[];
+}
+
+interface SeoLinks {
+    total_links: number;
+    internal_links: number;
+    external_links: number;
+    nofollow_links: number;
+}
+
+interface SeoSchemaMarkup {
+    has_schema: boolean;
+    schema_types: string[];
+}
+
+interface BusinessWebsiteAnalysis {
+    url: string;
+    meta_tags: SeoMetaTags;
+    headings: SeoHeadings;
+    images: SeoImages;
+    links: SeoLinks;
+    schema_markup: SeoSchemaMarkup;
+    word_count: number;
+    seo_score: number;
+}
+
+interface SeoCompetitor {
+    domain: string;
+    seo_score: number;
+    title: string | null;
+    h1: string[];
+    word_count: number;
+    schema_types: string[];
+    has_schema: boolean;
+}
+
+interface SeoKeywordRecommendation {
+    keyword: string;
+    category: "primary" | "secondary" | "long_tail" | "local";
+    search_intent: "informational" | "transactional" | "navigational";
+    priority: "high" | "medium" | "low";
+    competitor_usage: number;
+    notes: string;
+}
+
+interface SeoTechnicalIssue {
+    type: "error" | "warning" | "info";
+    issue: string;
+    recommendation: string;
+}
+
+// SEO Report
+export interface SeoReport extends Report {
+    type: "seo";
+    created_at: string;
+    created_by: "agent";
+    overall_score: number;
+    summary: string;
+    business_website_analysis: BusinessWebsiteAnalysis;
+    competitors: SeoCompetitor[];
+    competitor_urls: string[];
+    keyword_recommendations: SeoKeywordRecommendation[];
+    technical_issues: SeoTechnicalIssue[];
+    content_recommendations: string[];
+    data_sources: {
+        business_website: boolean;
+        competitors: boolean;
+        web_search: boolean;
+    };
 }
 
 // Create report data (without id and timestamps)

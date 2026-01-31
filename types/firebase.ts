@@ -67,6 +67,7 @@ export interface Business extends BaseDocument {
   name: string; // Zorunlu alan - işletme adı
   logo: string; // Zorunlu alan - logo URL (Storage path)
   colors: string[]; // Zorunlu alan - renk paleti (hex kodları)
+  website?: string; // İşletme web sitesi
   late_profile_id?: string; // Late Profile ID
   profile: BusinessProfile; // İşletme profil bilgileri
   // Platform IDs (synced from Late API)
@@ -141,4 +142,39 @@ export interface AgentError {
   resolved: boolean;
   resolved_at?: string | null;
   resolution_note?: string | null;
+}
+
+// SEO Summary (businesses/{businessId}/seo/summary)
+export interface SeoSummary {
+  overall_score: number;        // 0-100, genel SEO skoru
+  business_seo_score: number;   // 0-100, işletme sitesinin skoru
+  top_keywords: string[];       // En önemli 10 anahtar kelime
+  main_issues: string[];        // Düzeltilmesi gereken sorunlar (max 5)
+  competitor_count: number;     // Analiz edilen rakip sayısı
+  competitor_avg_score: number; // Rakiplerin ort. SEO skoru
+  last_report_id: string;       // "seo-20260131-abc123" (reports/ referansı)
+  last_analysis_date: string;   // ISO datetime
+  updated_at: string;           // ISO datetime
+}
+
+// SEO Keywords (businesses/{businessId}/seo/keywords)
+export type SeoKeywordCategory = "primary" | "secondary" | "long_tail" | "local";
+export type SeoSearchIntent = "informational" | "transactional" | "navigational";
+export type SeoKeywordPriority = "high" | "medium" | "low";
+
+export interface SeoKeywordItem {
+  keyword: string;          // "istanbul web tasarım"
+  category: SeoKeywordCategory;
+  search_intent: SeoSearchIntent;
+  priority: SeoKeywordPriority;
+  competitor_usage: number; // Kaç rakip kullanıyor
+  notes: string;            // Ek notlar
+}
+
+export interface SeoKeywords {
+  items: SeoKeywordItem[];
+  total_count: number;
+  source: string;           // "seo_analysis"
+  report_id: string | null; // İlişkili rapor ID'si
+  updated_at: string;       // ISO datetime
 }

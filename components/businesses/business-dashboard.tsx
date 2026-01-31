@@ -26,12 +26,11 @@ import {
   ListChecks,
   Instagram,
   FileBarChart,
-  MapPin,
-  CheckCircle2,
-  AlertCircle,
   Sparkles,
   Target,
   Globe,
+  Search,
+  Wrench,
 } from "lucide-react";
 import { useBusinesses, useAgentTask } from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,6 +45,7 @@ import {
   TasksTab,
   InstagramPostsTab,
   ReportsTab,
+  SeoTab,
 } from "./tabs";
 import type { Business } from "@/types/firebase";
 
@@ -54,7 +54,7 @@ interface BusinessDashboardProps {
   onBusinessChange?: (business: Business | null) => void;
 }
 
-type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "tasks" | "stats" | "instagram" | "reports";
+type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "tasks" | "stats" | "instagram" | "reports" | "seo";
 
 export default function BusinessDashboard({
   initialBusinessId,
@@ -132,6 +132,28 @@ export default function BusinessDashboard({
     setRefreshKey((prev) => prev + 1);
   };
 
+  const handleSeoAnalysis = async () => {
+    if (analyzing) return;
+
+    resetAgent();
+    setHata(null);
+
+    // Switch to reports tab immediately to show loading state or results
+    setActiveTab("reports");
+
+    const taskPrompt = `Isletmenin websitesini inceleyerek SEO analizi yap.`;
+
+    await sendTask({
+      task: taskPrompt,
+      businessId: selectedBusinessId,
+      createdBy: user?.displayName || user?.email || undefined,
+      extras: { analysis_type: "seo" },
+    });
+
+    // Refresh reports list
+    setRefreshKey((prev) => prev + 1);
+  };
+
   // Sync with initialBusinessId when it changes
   useEffect(() => {
     if (initialBusinessId && initialBusinessId !== selectedBusinessId) {
@@ -199,91 +221,68 @@ export default function BusinessDashboard({
               )}
             </div>
 
-            {/* Right: Quick Stats */}
+            {/* Right: Tools */}
             {selectedBusiness && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 w-full xl:max-w-[55%] 2xl:max-w-none mt-4 xl:mt-0">
-                {/* Industry Stat */}
-                <div className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm">
-                  <div className="p-1.5 sm:p-2 bg-primary/10 rounded-full shrink-0">
-                    <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">Sektor</p>
-                    <p className="text-xs sm:text-sm font-medium truncate">
-                      {selectedBusiness.profile?.industry || "-"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Location Stat */}
-                <div className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm">
-                  <div className="p-1.5 sm:p-2 bg-orange-500/10 rounded-full shrink-0">
-                    <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">Konum</p>
-                    <p className="text-xs sm:text-sm font-medium truncate">
-                      {selectedBusiness.profile?.location_city || "-"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Late Profile Stat */}
-                <div className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm">
+              <div className="flex flex-col gap-2 mt-4 xl:mt-0">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Wrench className="w-3 h-3" />
+                  Araclar
+                </label>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  {/* Website Analysis Action */}
                   <div
-                    className={`p-1.5 sm:p-2 rounded-full shrink-0 ${selectedBusiness.late_profile_id ? "bg-green-500/10" : "bg-red-500/10"
-                      }`}
+                    className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm cursor-pointer hover:bg-accent transition-colors group"
+                    onClick={handleOpenAnalyze}
                   >
-                    <CheckCircle2
-                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${selectedBusiness.late_profile_id ? "text-green-500" : "text-red-500"
-                        }`}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold whitespace-nowrap">Late Profile</p>
-                    <div className="flex items-center gap-1">
-                      {selectedBusiness.late_profile_id ? (
-                        <span className="text-xs sm:text-sm font-medium text-green-600 truncate">Tanimli</span>
-                      ) : (
-                        <span className="text-xs sm:text-sm font-medium text-red-600 truncate">Tanimli Degil</span>
-                      )}
+                    <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-full group-hover:bg-blue-500/20 transition-colors shrink-0">
+                      <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold whitespace-nowrap">Site Analizi</p>
+                      <p className="text-xs sm:text-sm font-medium text-primary flex items-center gap-1">
+                        Analiz Et <Sparkles className="w-3 h-3 shrink-0 hidden sm:inline" />
+                      </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Website Analysis Action */}
-                <div
-                  className="bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm cursor-pointer hover:bg-accent transition-colors group"
-                  onClick={handleOpenAnalyze}
-                >
-                  <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-full group-hover:bg-blue-500/20 transition-colors shrink-0">
-                    <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
+                  {/* SEO Analysis Action */}
+                  <div
+                    className={`bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm cursor-pointer hover:bg-accent transition-colors group ${analyzing ? 'opacity-50 pointer-events-none' : ''}`}
+                    onClick={handleSeoAnalysis}
+                  >
+                    <div className="p-1.5 sm:p-2 bg-green-500/10 rounded-full group-hover:bg-green-500/20 transition-colors shrink-0">
+                      {analyzing ? (
+                        <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500 animate-spin" />
+                      ) : (
+                        <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold whitespace-nowrap">SEO</p>
+                      <p className="text-xs sm:text-sm font-medium text-primary truncate">
+                        {analyzing ? "Analiz..." : "Analiz Et"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold whitespace-nowrap">Site Analizi</p>
-                    <p className="text-xs sm:text-sm font-medium text-primary flex items-center gap-1">
-                      Analiz Et <Sparkles className="w-3 h-3 shrink-0 hidden sm:inline" />
-                    </p>
-                  </div>
-                </div>
 
-                {/* SWOT Analysis Action */}
-                <div
-                  className={`bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm cursor-pointer hover:bg-accent transition-colors group ${analyzing ? 'opacity-50 pointer-events-none' : ''}`}
-                  onClick={handleSwotAnalysis}
-                >
-                  <div className="p-1.5 sm:p-2 bg-purple-500/10 rounded-full group-hover:bg-purple-500/20 transition-colors shrink-0">
-                    {analyzing ? (
-                      <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 animate-spin" />
-                    ) : (
-                      <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">SWOT</p>
-                    <p className="text-xs sm:text-sm font-medium text-primary truncate">
-                      {analyzing ? "Analiz..." : "Rapor Olustur"}
-                    </p>
+                  {/* SWOT Analysis Action */}
+                  <div
+                    className={`bg-background border rounded-lg p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 shadow-sm cursor-pointer hover:bg-accent transition-colors group ${analyzing ? 'opacity-50 pointer-events-none' : ''}`}
+                    onClick={handleSwotAnalysis}
+                  >
+                    <div className="p-1.5 sm:p-2 bg-purple-500/10 rounded-full group-hover:bg-purple-500/20 transition-colors shrink-0">
+                      {analyzing ? (
+                        <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 animate-spin" />
+                      ) : (
+                        <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">SWOT</p>
+                      <p className="text-xs sm:text-sm font-medium text-primary truncate">
+                        {analyzing ? "Analiz..." : "Analiz Et"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -296,7 +295,7 @@ export default function BusinessDashboard({
       {selectedBusinessId && selectedBusiness ? (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
           {/* Desktop: Grid layout */}
-          <TabsList className="hidden md:grid w-full grid-cols-9">
+          <TabsList className="hidden md:grid w-full grid-cols-10">
             <TabsTrigger value="details" className="gap-2">
               <Info className="w-4 h-4" />
               <span>Detaylar</span>
@@ -333,6 +332,10 @@ export default function BusinessDashboard({
               <FileBarChart className="w-4 h-4" />
               <span>Raporlar</span>
             </TabsTrigger>
+            <TabsTrigger value="seo" className="gap-2">
+              <Search className="w-4 h-4" />
+              <span>SEO</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Mobile: Horizontal scroll */}
@@ -364,6 +367,9 @@ export default function BusinessDashboard({
               </TabsTrigger>
               <TabsTrigger value="reports" className="min-w-[44px] px-3">
                 <FileBarChart className="w-4 h-4" />
+              </TabsTrigger>
+              <TabsTrigger value="seo" className="min-w-[44px] px-3">
+                <Search className="w-4 h-4" />
               </TabsTrigger>
             </TabsList>
           </div>
@@ -407,6 +413,10 @@ export default function BusinessDashboard({
 
             <TabsContent value="reports" className="m-0">
               <ReportsTab key={`reports-${refreshKey}`} businessId={selectedBusinessId} />
+            </TabsContent>
+
+            <TabsContent value="seo" className="m-0">
+              <SeoTab businessId={selectedBusinessId} />
             </TabsContent>
           </div>
         </Tabs>

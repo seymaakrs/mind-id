@@ -12,6 +12,7 @@ export type BusinessFormState = {
   logoPreview: string | null;
   colors: string[];
   newColor: string;
+  website: string;
   lateProfileId: string;
 
   // Profile - Identity

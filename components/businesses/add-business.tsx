@@ -306,6 +306,7 @@ export default function AddBusinessComponent() {
           logoPreview={form.logoPreview}
           colors={form.colors}
           newColor={form.newColor}
+          website={form.website}
           lateProfileId={form.lateProfileId}
           disabled={isDisabled}
           onNameChange={(v) => setField("name", v)}
@@ -313,6 +314,7 @@ export default function AddBusinessComponent() {
           onColorAdd={addColor}
           onColorRemove={removeColor}
           onNewColorChange={(v) => setField("newColor", v)}
+          onWebsiteChange={(v) => setField("website", v)}
           onLateProfileIdChange={(v) => setField("lateProfileId", v)}
           logoFileName={form.logoFile?.name}
           showLogoRequiredMark={!createdBusinessId}

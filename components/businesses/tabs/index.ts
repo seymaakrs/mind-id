@@ -7,3 +7,4 @@ export { JobsTab } from "./jobs-tab";
 export { TasksTab } from "./tasks-tab";
 export { InstagramPostsTab } from "./instagram-posts-tab";
 export { ReportsTab } from "./reports-tab";
+export { SeoTab } from "./seo-tab";
