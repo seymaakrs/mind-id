@@ -8,12 +8,13 @@ const CACHE_DURATION = 60 * 15;
 // Service name mappings for BigQuery queries
 const SERVICE_FILTERS: Record<string, string[]> = {
   gemini: [
+    "Gemini API",
     "Vertex AI",
     "Cloud AI Platform",
     "Generative Language API",
     "AI Platform",
   ],
-  veo: ["Vertex AI", "Video Intelligence API", "Cloud AI Platform"],
+  veo: ["Gemini API", "Vertex AI", "Video Intelligence API", "Cloud AI Platform"],
 };
 
 // SKU filters for more accurate service filtering
