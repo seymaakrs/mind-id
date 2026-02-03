@@ -1,11 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
+import { adminDb } from "@/lib/firebase/admin";
 
 // OpenAI Admin API endpoint for costs
 const OPENAI_COSTS_URL = "https://api.openai.com/v1/organization/costs";
 
 // Cache duration: 10 minutes
 const CACHE_DURATION = 60 * 10;
+
+// Default USD to TRY rate (will be overridden by Firestore if available)
+// This should match the rate used in Google Cloud billing (~42.86 as of Jan 2026)
+const DEFAULT_USD_TRY_RATE = 42.86;
+
+// Get exchange rate from Firestore or use default
+async function getExchangeRate(): Promise<number> {
+  if (!adminDb) return DEFAULT_USD_TRY_RATE;
+
+  try {
+    const doc = await adminDb.collection("secrets").doc("exchange-rates").get();
+    if (doc.exists) {
+      const data = doc.data();
+      return data?.usdTry || DEFAULT_USD_TRY_RATE;
+    }
+  } catch (error) {
+    console.error("[Exchange Rate] Error fetching from Firestore:", error);
+  }
+
+  return DEFAULT_USD_TRY_RATE;
+}
 
 interface OpenAICostResult {
   object: string;
@@ -45,7 +67,8 @@ const fetchOpenAIStats = unstable_cache(
         break;
       case "all":
       default:
-        startTime = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        // Last 365 days for "all"
+        startTime = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
         break;
     }
 
@@ -162,8 +185,31 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const timeRange = searchParams.get("timeRange") || "30d";
 
-    // Use cached function
-    const data = await fetchOpenAIStats(timeRange, adminKey);
+    // Use cached function (returns USD values)
+    const usdData = await fetchOpenAIStats(timeRange, adminKey);
+
+    // Get exchange rate for USD to TRY conversion
+    const exchangeRate = await getExchangeRate();
+
+    // Convert USD to TRY
+    const data = {
+      ...usdData,
+      currency: "TRY",
+      summary: {
+        ...usdData.summary,
+        totalSpend: Math.round(usdData.summary.totalSpend * exchangeRate * 100) / 100,
+        currentPeriodSpend: Math.round(usdData.summary.currentPeriodSpend * exchangeRate * 100) / 100,
+      },
+      dailyData: usdData.dailyData.map((d: { date: string; amount: number }) => ({
+        ...d,
+        amount: Math.round(d.amount * exchangeRate * 100) / 100,
+      })),
+      usdEquivalent: {
+        totalSpend: usdData.summary.totalSpend,
+        currentPeriodSpend: usdData.summary.currentPeriodSpend,
+        exchangeRate,
+      },
+    };
 
     return NextResponse.json({
       success: true,
@@ -171,7 +217,7 @@ export async function GET(request: NextRequest) {
       cached: true,
       cacheInfo: {
         duration: `${CACHE_DURATION / 60} dakika`,
-        cachedAt: data.debug?.cachedAt,
+        cachedAt: usdData.debug?.cachedAt,
       },
     });
   } catch (error) {

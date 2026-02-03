@@ -9,21 +9,24 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { DailySpending, PROVIDER_INFO, ApiProvider } from "@/types/statistics";
+import { DailySpending, PROVIDER_INFO, ApiProvider, CURRENCY_SYMBOLS } from "@/types/statistics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface SpendingLineChartProps {
   data: DailySpending[];
   provider: ApiProvider;
   loading?: boolean;
+  currency?: string;
 }
 
 export function SpendingLineChart({
   data,
   provider,
   loading,
+  currency = "USD",
 }: SpendingLineChartProps) {
   const info = PROVIDER_INFO[provider];
+  const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
 
   // Format date for display
   const formatDate = (dateStr: string) => {
@@ -49,7 +52,7 @@ export function SpendingLineChart({
         <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
           <p className="text-sm text-muted-foreground">{formatDate(label)}</p>
           <p className="text-lg font-semibold" style={{ color: info.color }}>
-            ${payload[0].value.toFixed(2)}
+            {currencySymbol}{payload[0].value.toFixed(2)}
           </p>
         </div>
       );
@@ -115,11 +118,11 @@ export function SpendingLineChart({
                 interval="preserveStartEnd"
               />
               <YAxis
-                tickFormatter={(v) => `$${v}`}
+                tickFormatter={(v) => `${currencySymbol}${v}`}
                 tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                 tickLine={false}
                 axisLine={false}
-                width={50}
+                width={60}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line

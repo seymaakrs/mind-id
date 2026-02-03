@@ -173,51 +173,56 @@ function getServiceLabel(service: string): string {
 }
 
 // Calculate date range based on timeRange parameter
-function getDateRange(timeRange: string): { startDate: string; endDate: string } {
+function getDateRange(timeRange: string): { startDate: string; periodDays: number } {
   const now = new Date();
-  const endDate = now.toISOString().split("T")[0];
 
   let startDate: string;
+  let periodDays: number;
   switch (timeRange) {
     case "1d":
-      startDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000)
+      periodDays = 1;
+      startDate = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0];
       break;
     case "7d":
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      periodDays = 7;
+      startDate = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0];
       break;
     case "30d":
-      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      periodDays = 30;
+      startDate = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0];
       break;
     case "all":
     default:
-      // Last 90 days for "all"
-      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+      // Last 365 days for "all" - BigQuery billing export tipik olarak 1 yillik veri tutar
+      periodDays = 365;
+      startDate = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0];
       break;
   }
 
-  return { startDate, endDate };
+  return { startDate, periodDays };
 }
 
 // Fetch billing data from BigQuery
 async function fetchBillingFromBigQuery(
   config: ProjectConfig,
   service: string,
-  timeRange: string
+  timeRange: string,
+  debug: boolean = false
 ) {
   const bigquery = new BigQuery({
     projectId: config.projectId,
     credentials: config.credentials,
   });
 
-  const { startDate, endDate } = getDateRange(timeRange);
+  const { startDate, periodDays } = getDateRange(timeRange);
   const serviceFilters = SERVICE_FILTERS[service] || [];
   const skuFilters = SKU_FILTERS[service] || [];
 
@@ -232,17 +237,21 @@ async function fetchBillingFromBigQuery(
 
   const tableRef = `\`${config.projectId}.${config.bigqueryDataset}.${config.bigqueryTable}\``;
 
-  // Query for total and period spend
+  // Query for total and period spend (with currency info)
+  // totalSpend: secilen donem icindeki toplam harcama
+  // periodSpend: ayni deger (eskiden tum zamanlar vs donem karsilastirmasi icindi)
   const summaryQuery = `
     SELECT
       SUM(cost) as total_cost,
-      SUM(CASE WHEN usage_start_time >= TIMESTAMP('${startDate}') THEN cost ELSE 0 END) as period_cost,
-      COUNT(*) as request_count
+      SUM(cost) as period_cost,
+      COUNT(*) as request_count,
+      ANY_VALUE(currency) as currency,
+      AVG(currency_conversion_rate) as avg_conversion_rate
     FROM ${tableRef}
     WHERE
       (${serviceConditions})
       ${skuConditions ? `AND (${skuConditions})` : ""}
-      AND usage_start_time >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY))
+      AND usage_start_time >= TIMESTAMP('${startDate}')
   `;
 
   // Query for daily spending
@@ -255,14 +264,11 @@ async function fetchBillingFromBigQuery(
       (${serviceConditions})
       ${skuConditions ? `AND (${skuConditions})` : ""}
       AND usage_start_time >= TIMESTAMP('${startDate}')
-      AND usage_start_time <= TIMESTAMP('${endDate}')
     GROUP BY date
     ORDER BY date ASC
   `;
 
   // Query for previous period (for trend calculation)
-  const periodDays =
-    timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
   const previousPeriodQuery = `
     SELECT
       SUM(cost) as previous_cost
@@ -274,48 +280,162 @@ async function fetchBillingFromBigQuery(
       AND usage_start_time < TIMESTAMP('${startDate}')
   `;
 
+  // Debug query - shows breakdown by service and SKU
+  const debugQuery = `
+    SELECT
+      service.description as service_name,
+      sku.description as sku_name,
+      SUM(cost) as total_cost,
+      COUNT(*) as row_count
+    FROM ${tableRef}
+    WHERE
+      (${serviceConditions})
+      ${skuConditions ? `AND (${skuConditions})` : ""}
+      AND usage_start_time >= TIMESTAMP('${startDate}')
+    GROUP BY service.description, sku.description
+    ORDER BY total_cost DESC
+    LIMIT 50
+  `;
+
+  // Detailed usage query - shows individual records with timestamps
+  const detailedUsageQuery = `
+    SELECT
+      DATE(usage_start_time) as date,
+      FORMAT_TIMESTAMP('%H:%M', usage_start_time) as time,
+      service.description as service_name,
+      sku.description as sku_name,
+      project.id as project_id,
+      cost,
+      usage.amount as usage_amount,
+      usage.unit as usage_unit,
+      credits
+    FROM ${tableRef}
+    WHERE
+      (${serviceConditions})
+      ${skuConditions ? `AND (${skuConditions})` : ""}
+      AND usage_start_time >= TIMESTAMP('${startDate}')
+      AND cost > 0.01
+    ORDER BY cost DESC
+    LIMIT 100
+  `;
+
   try {
     const [summaryRows] = await bigquery.query({ query: summaryQuery });
     const [dailyRows] = await bigquery.query({ query: dailyQuery });
     const [previousRows] = await bigquery.query({ query: previousPeriodQuery });
 
+    // Fetch debug data if requested
+    let debugData = null;
+    if (debug) {
+      const [debugRows] = await bigquery.query({ query: debugQuery });
+      const [detailedRows] = await bigquery.query({ query: detailedUsageQuery });
+      debugData = {
+        serviceFilters,
+        skuFilters,
+        dateRange: { startDate, endDate: new Date().toISOString().split("T")[0] },
+        queries: {
+          summary: summaryQuery.trim(),
+          daily: dailyQuery.trim(),
+          debug: debugQuery.trim(),
+        },
+        breakdown: debugRows.map((row: { service_name: string; sku_name: string; total_cost: number; row_count: number }) => ({
+          serviceName: row.service_name,
+          skuName: row.sku_name,
+          cost: Number(row.total_cost) || 0,
+          rowCount: Number(row.row_count) || 0,
+        })),
+        detailedUsage: detailedRows.map((row: {
+          date: { value: string } | string;
+          time: string;
+          service_name: string;
+          sku_name: string;
+          project_id: string;
+          cost: number;
+          usage_amount: number;
+          usage_unit: string;
+          credits: Array<{ amount: number; name: string }> | null;
+        }) => ({
+          date: typeof row.date === "object" && row.date.value ? row.date.value : String(row.date),
+          time: row.time,
+          serviceName: row.service_name,
+          skuName: row.sku_name,
+          projectId: row.project_id,
+          cost: Number(row.cost) || 0,
+          usageAmount: Number(row.usage_amount) || 0,
+          usageUnit: row.usage_unit,
+          credits: row.credits,
+        })),
+      };
+    }
+
     const summary = summaryRows[0] || {
       total_cost: 0,
       period_cost: 0,
       request_count: 0,
+      currency: "USD",
+      avg_conversion_rate: 1,
     };
     const previousCost = previousRows[0]?.previous_cost || 0;
 
+    // Get currency info
+    const currency = summary.currency || "USD";
+    const conversionRate = Number(summary.avg_conversion_rate) || 1;
+
+    // Convert to USD if not already in USD
+    // Note: currency_conversion_rate in BigQuery is "1 USD = X local currency"
+    // So to convert local to USD, we DIVIDE by the rate
+    const isLocalCurrency = currency !== "USD";
+    const totalCostLocal = Number(summary.total_cost) || 0;
+    const periodCostLocal = Number(summary.period_cost) || 0;
+    const previousCostLocal = Number(previousCost) || 0;
+
+    // Convert to USD by dividing by conversion rate
+    const totalCostUSD = isLocalCurrency && conversionRate > 0
+      ? totalCostLocal / conversionRate
+      : totalCostLocal;
+    const periodCostUSD = isLocalCurrency && conversionRate > 0
+      ? periodCostLocal / conversionRate
+      : periodCostLocal;
+    const previousCostUSD = isLocalCurrency && conversionRate > 0
+      ? previousCostLocal / conversionRate
+      : previousCostLocal;
+
     // Calculate trend percentage
     let trend = 0;
-    if (previousCost > 0) {
-      trend = ((summary.period_cost - previousCost) / previousCost) * 100;
+    if (previousCostUSD > 0) {
+      trend = ((periodCostUSD - previousCostUSD) / previousCostUSD) * 100;
     }
 
-    // Format daily data
-    const dailyData = dailyRows.map((row: { date: { value: string }; amount: number }) => ({
-      date:
-        typeof row.date === "object" && row.date.value
-          ? row.date.value
-          : String(row.date),
-      amount: Number(row.amount) || 0,
-    }));
-
+    // Use local currency values directly (TL)
     return {
       configured: true,
       service,
       label: getServiceLabel(service),
       projectId: config.projectId,
+      currency: currency, // "TRY", "USD", etc.
       summary: {
         provider: service,
         label: getServiceLabel(service),
-        totalSpend: Number(summary.total_cost) || 0,
-        currentPeriodSpend: Number(summary.period_cost) || 0,
+        totalSpend: Math.round(totalCostLocal * 100) / 100,
+        currentPeriodSpend: Math.round(periodCostLocal * 100) / 100,
         trend: Math.round(trend * 100) / 100,
         requests: Number(summary.request_count) || 0,
       },
-      dailyData,
+      // Also include USD conversion for reference
+      usdEquivalent: {
+        totalSpend: Math.round(totalCostUSD * 100) / 100,
+        currentPeriodSpend: Math.round(periodCostUSD * 100) / 100,
+        conversionRate,
+      },
+      dailyData: dailyRows.map((row: { date: { value: string }; amount: number }) => ({
+        date:
+          typeof row.date === "object" && row.date.value
+            ? row.date.value
+            : String(row.date),
+        amount: Number(row.amount) || 0, // Keep in local currency
+      })),
       cachedAt: new Date().toISOString(),
+      ...(debug && { debug: debugData }),
     };
   } catch (error) {
     console.error(`[BigQuery] Error fetching ${service} stats:`, error);
@@ -328,6 +448,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const service = searchParams.get("service");
     const timeRange = searchParams.get("timeRange") || "30d";
+    const debug = searchParams.get("debug") === "true";
 
     const config = await getProjectConfig();
 
@@ -357,7 +478,7 @@ export async function GET(request: NextRequest) {
 
     // If specific service requested
     if (service && (service === "gemini" || service === "veo")) {
-      const data = await fetchBillingFromBigQuery(config, service, timeRange);
+      const data = await fetchBillingFromBigQuery(config, service, timeRange, debug);
 
       return NextResponse.json({
         success: true,
@@ -371,7 +492,7 @@ export async function GET(request: NextRequest) {
     // Fetch both services
     const services = ["gemini", "veo"];
     const results = await Promise.all(
-      services.map((svc) => fetchBillingFromBigQuery(config, svc, timeRange))
+      services.map((svc) => fetchBillingFromBigQuery(config, svc, timeRange, debug))
     );
 
     return NextResponse.json({

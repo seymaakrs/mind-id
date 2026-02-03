@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { ProviderStats, PROVIDER_INFO } from "@/types/statistics";
+import { ProviderStats, PROVIDER_INFO, CURRENCY_SYMBOLS } from "@/types/statistics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface SpendingBarChartProps {
@@ -19,12 +19,19 @@ interface SpendingBarChartProps {
 }
 
 export function SpendingBarChart({ data, loading }: SpendingBarChartProps) {
+  // Get the dominant currency (prefer TRY if any stat uses it)
+  const dominantCurrency = data.find((stat) => stat.currency === "TRY")?.currency
+    || data.find((stat) => stat.currency)?.currency
+    || "USD";
+  const currencySymbol = CURRENCY_SYMBOLS[dominantCurrency] || dominantCurrency;
+
   // Transform data for bar chart
   const chartData = data.map((stat) => ({
     provider: stat.provider,
     label: PROVIDER_INFO[stat.provider].label,
     totalSpend: stat.summary.currentPeriodSpend,
     color: PROVIDER_INFO[stat.provider].color,
+    currency: stat.currency || "USD",
   }));
 
   // Custom tooltip
@@ -33,15 +40,16 @@ export function SpendingBarChart({ data, loading }: SpendingBarChartProps) {
     payload,
   }: {
     active?: boolean;
-    payload?: { payload: { label: string; totalSpend: number; color: string } }[];
+    payload?: { payload: { label: string; totalSpend: number; color: string; currency: string } }[];
   }) => {
     if (active && payload && payload.length) {
       const item = payload[0].payload;
+      const symbol = CURRENCY_SYMBOLS[item.currency] || item.currency;
       return (
         <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
           <p className="text-sm font-medium">{item.label}</p>
           <p className="text-lg font-semibold" style={{ color: item.color }}>
-            ${item.totalSpend.toFixed(2)}
+            {symbol}{item.totalSpend.toFixed(2)}
           </p>
         </div>
       );
@@ -109,11 +117,11 @@ export function SpendingBarChart({ data, loading }: SpendingBarChartProps) {
                 height={60}
               />
               <YAxis
-                tickFormatter={(v) => `$${v}`}
+                tickFormatter={(v) => `${currencySymbol}${v}`}
                 tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                 tickLine={false}
                 axisLine={false}
-                width={50}
+                width={60}
               />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="totalSpend" radius={[4, 4, 0, 0]}>

@@ -139,7 +139,7 @@ export function ProviderStatsView({
 
       {/* Show summary cards for OpenAI (has real spend data) */}
       {hasSpendData && (
-        <ApiUsageSummaryCards summary={stats.summary} loading={stats.loading} />
+        <ApiUsageSummaryCards summary={stats.summary} loading={stats.loading} currency={stats.currency} />
       )}
 
       {/* Show chart if we have daily data */}
@@ -148,6 +148,7 @@ export function ProviderStatsView({
           data={stats.dailyData}
           provider={provider}
           loading={stats.loading}
+          currency={stats.currency}
         />
       )}
 

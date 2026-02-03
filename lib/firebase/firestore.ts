@@ -383,6 +383,67 @@ export async function getSeoKeywords(businessId: string): Promise<SeoKeywords | 
   return null;
 }
 
+// Instagram Statistics operations (subcollection: businesses/{businessId}/instagram_stats)
+
+// Get all weekly stats for a business (sorted by year and week descending)
+export async function getInstagramStats(businessId: string): Promise<InstagramWeeklyStats[]> {
+  if (!db) throw new Error('Firestore is not configured');
+  const statsRef = collection(db, 'businesses', businessId, 'instagram_stats');
+  const querySnapshot = await getDocs(statsRef);
+  const stats = querySnapshot.docs.map((docSnap) => ({
+    ...docSnap.data(),
+    week_id: docSnap.id,
+  })) as InstagramWeeklyStats[];
+
+  // Sort by year desc, then week_number desc
+  return stats.sort((a, b) => {
+    if (b.year !== a.year) return b.year - a.year;
+    return b.week_number - a.week_number;
+  });
+}
+
+// Get stats for a specific week
+export async function getInstagramStatsByWeek(
+  businessId: string,
+  weekId: string
+): Promise<InstagramWeeklyStats | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'instagram_stats', weekId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { ...docSnap.data(), week_id: docSnap.id } as InstagramWeeklyStats;
+  }
+  return null;
+}
+
+// Get available weeks for dropdown (lightweight list)
+export async function getInstagramAvailableWeeks(businessId: string): Promise<InstagramWeekOption[]> {
+  if (!db) throw new Error('Firestore is not configured');
+  const stats = await getInstagramStats(businessId);
+
+  return stats.map((stat) => {
+    // Format date range for label
+    const startDate = new Date(stat.date_range.start);
+    const endDate = new Date(stat.date_range.end);
+
+    const formatDate = (date: Date) => {
+      const day = date.getDate();
+      const months = ['Oca', 'Sub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Agu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+      return `${day} ${months[date.getMonth()]}`;
+    };
+
+    const label = `Hafta ${stat.week_number} (${formatDate(startDate)} - ${formatDate(endDate)} ${stat.year})`;
+
+    return {
+      week_id: stat.week_id,
+      week_number: stat.week_number,
+      year: stat.year,
+      label,
+      date_range: stat.date_range,
+    };
+  });
+}
+
 // Type imports
 import type { Business, BusinessMedia, BusinessProfile, SeoSummary, SeoKeywords } from '@/types/firebase';
 import type { ContentPlan } from '@/types/content-plan';
@@ -390,3 +451,4 @@ import type { AgentMemory } from '@/types/agent-memory';
 import type { Job } from '@/types/jobs';
 import type { Task, TaskStatus, CreateTaskData } from '@/types/tasks';
 import type { Report, CreateReportData } from '@/types/reports';
+import type { InstagramWeeklyStats, InstagramWeekOption } from '@/types/instagram-statistics';

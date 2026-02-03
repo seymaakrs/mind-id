@@ -15,6 +15,7 @@ interface GoogleCloudServiceData {
   label: string;
   configured: boolean;
   projectId?: string;
+  currency?: string; // Currency code (TRY, USD, etc.)
   billingAccount?: {
     name: string;
     displayName: string;
@@ -106,6 +107,7 @@ async function fetchRealStats(
         billingAccount,
         configured: serviceData.configured,
         note: serviceData.note || data.note,
+        currency: serviceData.currency || "USD",
       };
     }
   }
@@ -127,6 +129,7 @@ async function fetchRealStats(
     loading: false,
     error: null,
     configured: true,
+    currency: data.currency || "USD",
   };
 }
 

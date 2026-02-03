@@ -19,13 +19,21 @@ export interface DailySpending {
 export interface ApiUsageSummary {
   provider: ApiProvider;
   label: string;
-  totalSpend: number; // Total USD spent
+  totalSpend: number; // Total spent (in local currency)
   currentPeriodSpend: number; // Spend in selected period
   trend: number; // Percentage change from previous period
   requests?: number; // Total API requests (if available)
   tokensUsed?: number; // Tokens used (for LLM APIs)
   creditsRemaining?: number; // For credit-based APIs like CloudConvert
 }
+
+// Currency symbols mapping
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  TRY: "₺",
+  EUR: "€",
+  GBP: "£",
+};
 
 // Billing account info (for Google Cloud services)
 export interface BillingAccountInfo {
@@ -46,6 +54,7 @@ export interface ProviderStats {
   billingAccount?: BillingAccountInfo; // For Google Cloud services
   configured?: boolean; // Whether the service is configured
   note?: string; // Additional info message
+  currency?: string; // Currency code (TRY, USD, etc.)
 }
 
 // OpenAI specific response types

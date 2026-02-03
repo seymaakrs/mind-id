@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiUsageSummary, PROVIDER_INFO } from "@/types/statistics";
+import { ApiUsageSummary, PROVIDER_INFO, CURRENCY_SYMBOLS } from "@/types/statistics";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Minus, DollarSign, Zap, Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,13 +8,22 @@ import { cn } from "@/lib/utils";
 interface ApiUsageSummaryCardsProps {
   summary: ApiUsageSummary;
   loading?: boolean;
+  currency?: string; // Currency code (TRY, USD, etc.)
+}
+
+// Format currency value with proper symbol
+function formatCurrency(value: number, currencyCode: string = "USD"): string {
+  const symbol = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
+  return `${symbol}${value.toFixed(2)}`;
 }
 
 export function ApiUsageSummaryCards({
   summary,
   loading,
+  currency = "USD",
 }: ApiUsageSummaryCardsProps) {
   const info = PROVIDER_INFO[summary.provider];
+  const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
 
   const TrendIcon =
     summary.trend > 0 ? TrendingUp : summary.trend < 0 ? TrendingDown : Minus;
@@ -48,19 +57,19 @@ export function ApiUsageSummaryCards({
             <div>
               <p className="text-sm text-muted-foreground">Donem Harcamasi</p>
               <p className="text-2xl font-bold mt-1">
-                ${summary.currentPeriodSpend.toFixed(2)}
+                {formatCurrency(summary.currentPeriodSpend, currency)}
               </p>
             </div>
             <div
               className="w-12 h-12 rounded-lg flex items-center justify-center"
               style={{ backgroundColor: `${info.color}20` }}
             >
-              <DollarSign className="w-6 h-6" style={{ color: info.color }} />
+              <span className="text-lg font-bold" style={{ color: info.color }}>{currencySymbol}</span>
             </div>
           </div>
           <div className={cn("flex items-center gap-1 mt-2 text-sm", trendColor)}>
             <TrendIcon className="w-4 h-4" />
-            <span>{Math.abs(summary.trend)}% onceki doneme gore</span>
+            <span>{Math.abs(summary.trend).toFixed(1)}% onceki doneme gore</span>
           </div>
         </CardContent>
       </Card>
@@ -72,11 +81,11 @@ export function ApiUsageSummaryCards({
             <div>
               <p className="text-sm text-muted-foreground">Toplam Harcama</p>
               <p className="text-2xl font-bold mt-1">
-                ${summary.totalSpend.toFixed(2)}
+                {formatCurrency(summary.totalSpend, currency)}
               </p>
             </div>
             <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-muted-foreground" />
+              <span className="text-lg font-bold text-muted-foreground">{currencySymbol}</span>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mt-2">Tum zamanlar</p>

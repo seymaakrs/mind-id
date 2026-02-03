@@ -1,10 +1,16 @@
 "use client";
 
-import { TimeRange } from "@/types/statistics";
+import { TimeRange, CURRENCY_SYMBOLS } from "@/types/statistics";
 import { useAllApiStatistics } from "@/hooks/useApiStatistics";
 import { SpendingBarChart } from "../api-charts/spending-bar-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Activity, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { TrendingUp, Activity, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+
+// Format currency value with proper symbol
+function formatCurrency(value: number, currencyCode: string = "USD"): string {
+  const symbol = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
+  return `${symbol}${value.toFixed(2)}`;
+}
 
 interface AllStatsOverviewProps {
   timeRange: TimeRange;
@@ -31,6 +37,12 @@ export function AllStatsOverview({ timeRange }: AllStatsOverviewProps) {
     0
   );
 
+  // Get the dominant currency (prefer TRY if any stat uses it)
+  const dominantCurrency = allStats.find((stat) => stat.currency === "TRY")?.currency
+    || allStats.find((stat) => stat.currency)?.currency
+    || "USD";
+  const currencySymbol = CURRENCY_SYMBOLS[dominantCurrency] || dominantCurrency;
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -51,11 +63,11 @@ export function AllStatsOverview({ timeRange }: AllStatsOverviewProps) {
                   Toplam Donem Harcamasi
                 </p>
                 <p className="text-3xl font-bold mt-1">
-                  {loading ? "..." : `$${totalSpend.toFixed(2)}`}
+                  {loading ? "..." : formatCurrency(totalSpend, dominantCurrency)}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-primary" />
+                <span className="text-xl font-bold text-primary">{currencySymbol}</span>
               </div>
             </div>
           </CardContent>
@@ -176,7 +188,7 @@ export function AllStatsOverview({ timeRange }: AllStatsOverviewProps) {
                         </td>
                         <td className="text-right py-3 px-4">
                           {stat.summary.currentPeriodSpend > 0
-                            ? `$${stat.summary.currentPeriodSpend.toFixed(2)}`
+                            ? formatCurrency(stat.summary.currentPeriodSpend, stat.currency || "USD")
                             : "-"}
                         </td>
                         <td className="text-right py-3 px-4 text-muted-foreground text-sm">
