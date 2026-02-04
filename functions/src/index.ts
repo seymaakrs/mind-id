@@ -16,6 +16,22 @@ const db = getFirestore();
 // Set global options
 setGlobalOptions({ maxInstances: 10 });
 
+// Admin API key for HTTP function authentication
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
+
+/**
+ * Verify admin API key from x-admin-key header
+ * Returns true if valid, false otherwise
+ */
+function verifyAdminApiKey(req: { headers: Record<string, string | string[] | undefined> }): boolean {
+  if (!ADMIN_API_KEY) {
+    logger.warn("ADMIN_API_KEY not configured - all requests will be rejected");
+    return false;
+  }
+  const providedKey = req.headers["x-admin-key"];
+  return providedKey === ADMIN_API_KEY;
+}
+
 // Types for jobs
 interface BaseJob {
   id: string;
@@ -882,6 +898,12 @@ export const collectInstagramStatsNow = onRequest({
   cors: true,
   timeoutSeconds: 300,
 }, async (req, res) => {
+  // Verify admin API key
+  if (!verifyAdminApiKey(req)) {
+    res.status(401).json({ success: false, error: "Yetkisiz erisim" });
+    return;
+  }
+
   logger.info("Manual Instagram stats collection triggered");
 
   // Get Late API key
@@ -1073,6 +1095,12 @@ export const healthCheck = onSchedule({
 export const runJobsNow = onRequest({
   cors: true,
 }, async (req, res) => {
+  // Verify admin API key
+  if (!verifyAdminApiKey(req)) {
+    res.status(401).json({ success: false, error: "Yetkisiz erisim" });
+    return;
+  }
+
   logger.info("Manual job processing triggered");
 
   // Get server URL

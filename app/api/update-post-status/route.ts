@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
+import { verifyApiAuth } from "@/lib/auth/verifyApiAuth";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,12 @@ interface UpdatePostStatusRequest {
 }
 
 export async function POST(request: Request) {
+  // Verify authentication
+  const authResult = await verifyApiAuth(request);
+  if (!authResult.success) {
+    return authResult.response;
+  }
+
   let body: unknown;
 
   try {

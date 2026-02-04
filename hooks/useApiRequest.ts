@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { authenticatedFetch } from "@/lib/api-client";
 
 type RequestState<T> = {
   data: T | null;
@@ -29,7 +30,7 @@ export function useApiRequest<T = unknown>(): UseApiRequestReturn<T> {
       setState({ data: null, loading: true, error: null });
 
       try {
-        const response = await fetch(url, {
+        const response = await authenticatedFetch(url, {
           method: options.method || "GET",
           headers: {
             "Content-Type": "application/json",

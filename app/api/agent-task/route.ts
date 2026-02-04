@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb, getSignedUrl } from "@/lib/firebase/admin";
+import { verifyApiAuth } from "@/lib/auth/verifyApiAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // Streaming için zorunlu
@@ -21,14 +22,68 @@ const SETTINGS_DOC_ID = "app_settings";
 const FALLBACK_ENDPOINT = "https://learning-partially-rabbit.ngrok-free.app";
 
 /**
+ * Validate storage path to prevent path traversal and unauthorized access
+ * Valid patterns:
+ * - businesses/{businessId}/...
+ * - images/{businessId}/...
+ * - videos/{businessId}/...
+ *
+ * @param storagePath - The storage path to validate
+ * @param businessId - The expected business ID that should match in the path
+ * @returns true if valid, false otherwise
+ */
+function validateStoragePath(storagePath: string, businessId: string): boolean {
+  // Check for path traversal attempts
+  if (storagePath.includes("..") || storagePath.startsWith("/")) {
+    return false;
+  }
+
+  // Validate path pattern matches business ID
+  const validPrefixes = [
+    `businesses/${businessId}/`,
+    `images/${businessId}/`,
+    `videos/${businessId}/`,
+  ];
+
+  const isValidPrefix = validPrefixes.some((prefix) => storagePath.startsWith(prefix));
+
+  if (!isValidPrefix) {
+    return false;
+  }
+
+  // Additional validation: path should not be empty after prefix
+  const matchedPrefix = validPrefixes.find((prefix) => storagePath.startsWith(prefix));
+  if (matchedPrefix) {
+    const remainder = storagePath.substring(matchedPrefix.length);
+    if (remainder.trim().length === 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Process source_media items and generate signed URLs for storage_path
  * Signed URLs expire in 60 minutes
+ *
+ * @param sourceMedia - Media items to process
+ * @param businessId - Business ID for path validation
+ * @returns Processed items with signed URLs, or throws on invalid path
  */
 async function processSourceMedia(
-  sourceMedia: SourceMediaItem | SourceMediaItem[]
+  sourceMedia: SourceMediaItem | SourceMediaItem[],
+  businessId: string
 ): Promise<SourceMediaItem[]> {
   // Normalize to array
   const items = Array.isArray(sourceMedia) ? sourceMedia : [sourceMedia];
+
+  // Validate all storage paths first
+  for (const item of items) {
+    if (item.storage_path && !validateStoragePath(item.storage_path, businessId)) {
+      throw new Error(`Geçersiz depolama yolu: ${item.storage_path}`);
+    }
+  }
 
   // Generate signed URLs in parallel
   const processedItems = await Promise.all(
@@ -92,6 +147,12 @@ async function getAgentEndpoint(): Promise<string> {
 }
 
 export async function POST(request: Request) {
+  // Verify authentication
+  const authResult = await verifyApiAuth(request);
+  if (!authResult.success) {
+    return authResult.response;
+  }
+
   let body: unknown;
 
   try {
@@ -138,12 +199,17 @@ export async function POST(request: Request) {
       if (processedExtras.source_media) {
         try {
           const processedMedia = await processSourceMedia(
-            processedExtras.source_media as SourceMediaItem | SourceMediaItem[]
+            processedExtras.source_media as SourceMediaItem | SourceMediaItem[],
+            business_id
           );
           processedExtras.source_media = processedMedia;
         } catch (error) {
           console.error("Error processing source_media:", error);
-          // Hata olsa bile devam et, orijinal verileri kullan
+          // Storage path validation hatası - 400 döndür
+          if (error instanceof Error && error.message.startsWith("Geçersiz depolama yolu")) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+          }
+          // Diğer hatalar için devam et, orijinal verileri kullan
         }
       }
 
@@ -165,7 +231,6 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,
-      // @ts-expect-error - Next.js fetch extension
       next: { revalidate: 0 },
     });
 

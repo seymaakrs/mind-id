@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react';
-import { db } from '@/lib/firebase/config';
+import { db, auth } from '@/lib/firebase/config';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, limit } from 'firebase/firestore';
 import { toast } from 'sonner';
 import type { AgentError, AgentErrorSeverity } from '@/types/firebase';
@@ -30,53 +31,76 @@ export function ErrorNotificationProvider({ children }: { children: ReactNode })
   const isInitialLoad = useRef(true);
 
   useEffect(() => {
-    if (!db) {
+    if (!db || !auth) {
       setLoading(false);
       return;
     }
 
-    // Query unresolved errors, ordered by created_at desc, limit 50
-    const errorsQuery = query(
-      collection(db, 'errors'),
-      where('resolved', '==', false),
-      orderBy('created_at', 'desc'),
-      limit(50)
-    );
+    let unsubscribeErrors: (() => void) | null = null;
 
-    const unsubscribe = onSnapshot(
-      errorsQuery,
-      (snapshot) => {
-        const errorsData: AgentError[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as AgentError[];
-
-        // Show toast for new errors (not on initial load)
-        if (!isInitialLoad.current) {
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              const error = { id: change.doc.id, ...change.doc.data() } as AgentError;
-              if (!seenErrorIds.current.has(error.id)) {
-                showErrorToast(error);
-              }
-            }
-          });
-        }
-
-        // Update seen error IDs
-        errorsData.forEach((error) => seenErrorIds.current.add(error.id));
-
-        setErrors(errorsData);
-        setLoading(false);
-        isInitialLoad.current = false;
-      },
-      (error) => {
-        console.error('Error listening to errors collection:', error);
-        setLoading(false);
+    // Wait for authentication before listening to errors
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // Cleanup previous errors listener if exists
+      if (unsubscribeErrors) {
+        unsubscribeErrors();
+        unsubscribeErrors = null;
       }
-    );
 
-    return () => unsubscribe();
+      if (!user) {
+        // User not authenticated, clear errors and stop loading
+        setErrors([]);
+        setLoading(false);
+        return;
+      }
+
+      // User is authenticated, start listening to errors
+      const errorsQuery = query(
+        collection(db, 'errors'),
+        where('resolved', '==', false),
+        orderBy('created_at', 'desc'),
+        limit(50)
+      );
+
+      unsubscribeErrors = onSnapshot(
+        errorsQuery,
+        (snapshot) => {
+          const errorsData: AgentError[] = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as AgentError[];
+
+          // Show toast for new errors (not on initial load)
+          if (!isInitialLoad.current) {
+            snapshot.docChanges().forEach((change) => {
+              if (change.type === 'added') {
+                const error = { id: change.doc.id, ...change.doc.data() } as AgentError;
+                if (!seenErrorIds.current.has(error.id)) {
+                  showErrorToast(error);
+                }
+              }
+            });
+          }
+
+          // Update seen error IDs
+          errorsData.forEach((error) => seenErrorIds.current.add(error.id));
+
+          setErrors(errorsData);
+          setLoading(false);
+          isInitialLoad.current = false;
+        },
+        (error) => {
+          console.error('Error listening to errors collection:', error);
+          setLoading(false);
+        }
+      );
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeErrors) {
+        unsubscribeErrors();
+      }
+    };
   }, []);
 
   const showErrorToast = (error: AgentError) => {

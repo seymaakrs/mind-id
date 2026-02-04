@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server"
+import { verifyApiAuth } from "@/lib/auth/verifyApiAuth"
 
 const baseUrl = process.env.BASE_URL?.replace(/\/$/, "")
 
-export async function POST() {
+export async function POST(request: Request) {
+  // Verify authentication
+  const authResult = await verifyApiAuth(request)
+  if (!authResult.success) {
+    return authResult.response
+  }
+
   if (!baseUrl) {
     return NextResponse.json({ error: "BASE_URL tanimli degil. Sunucu ayarlarini kontrol edin." }, { status: 500 })
   }

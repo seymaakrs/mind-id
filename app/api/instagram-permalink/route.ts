@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyApiAuth } from "@/lib/auth/verifyApiAuth";
 
 export const maxDuration = 30;
 
@@ -17,6 +18,12 @@ interface GraphAPIResponse {
 }
 
 export async function POST(request: NextRequest) {
+  // Verify authentication
+  const authResult = await verifyApiAuth(request);
+  if (!authResult.success) {
+    return authResult.response;
+  }
+
   try {
     const body = await request.json();
     const { postId, accessToken } = body;
@@ -28,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const url = `https://graph.facebook.com/v19.0/${postId}?fields=permalink,owner{username,id}&access_token=${accessToken}`;
+    const url = `https://graph.facebook.com/v19.0/${encodeURIComponent(postId)}?fields=permalink,owner{username,id}&access_token=${accessToken}`;
 
     const response = await fetch(url, {
       method: "GET",

@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
+import { verifyApiAuth } from "@/lib/auth/verifyApiAuth";
 
 export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
+  // Verify authentication
+  const authResult = await verifyApiAuth(request);
+  if (!authResult.success) {
+    return authResult.response;
+  }
+
   try {
+    if (!adminDb) {
+      return NextResponse.json(
+        { error: "Firebase Admin yapilandirilmamis" },
+        { status: 500 }
+      );
+    }
+
     const { businessId } = await request.json();
 
     if (!businessId) {

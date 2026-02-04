@@ -9,6 +9,7 @@ import React, {
   useEffect,
 } from "react";
 import { createTask, updateTaskStatus } from "@/lib/firebase/firestore";
+import { getAuthToken } from "@/lib/api-client";
 
 // Progress event types
 export type ProgressEvent =
@@ -394,13 +395,32 @@ export function TaskStreamProvider({
         // Create a promise that will resolve when the stream completes
         const resultPromise = (async (): Promise<string | null> => {
           try {
-            // Make API request
+            // Get auth token
+            const authToken = await getAuthToken();
+            if (!authToken) {
+              const errorMsg = "Oturum açılmamış. Lütfen giriş yapın.";
+              await updateTaskStatus(
+                businessId,
+                taskId,
+                "failed",
+                undefined,
+                errorMsg
+              );
+              updateTask(taskId, {
+                status: "failed",
+                error: errorMsg,
+              });
+              return null;
+            }
+
+            // Make API request with auth header
             const res = await fetch("/api/agent-task", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 Accept: "application/x-ndjson",
                 Connection: "keep-alive",
+                Authorization: `Bearer ${authToken}`,
               },
               body: JSON.stringify({
                 task: task.trim(),

@@ -15,7 +15,7 @@ import {
   X,
   Bot,
 } from "lucide-react";
-import { useBusinessMedia, useAgentTask } from "@/hooks";
+import { useBusinessMedia, useAgentTask, useJobs } from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   MediaCard,
@@ -24,6 +24,7 @@ import {
   AgentModal,
 } from "@/components/business/media";
 import type { BusinessMedia } from "@/types/firebase";
+import type { JobType } from "@/types/jobs";
 
 interface BusinessMediaTabProps {
   businessId: string;
@@ -62,6 +63,11 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
     reset: resetAgent,
   } = useAgentTask();
 
+  const {
+    createJob,
+    fetchJobs,
+  } = useJobs();
+
   useEffect(() => {
     if (businessId) {
       loadMedia(businessId);
@@ -83,14 +89,14 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
     setAgentModalOpen(true);
   };
 
-  const handleSendToAgent = async () => {
+  const handleSendToAgent = async (jobType: JobType, scheduledAt?: Date) => {
     if (!businessId) return;
 
     // Check if bulk or single
     const mediaItems = selectedItems.length > 0 ? selectedItems : agentMedia ? [agentMedia] : [];
     if (mediaItems.length === 0 || !agentTaskInput.trim()) return;
 
-    await sendTask({
+    const taskData = {
       task: agentTaskInput.trim(),
       businessId: businessId,
       createdBy: user?.displayName || user?.email || undefined,
@@ -104,7 +110,36 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
           prompt_summary: m.prompt_summary,
         })),
       },
-    });
+    };
+
+    if (jobType === "immediate") {
+      // Send immediately
+      await sendTask(taskData);
+
+      // Also save to jobs collection for logging
+      await createJob(businessId, {
+        type: "immediate",
+        task: agentTaskInput.trim(),
+      });
+    } else if (jobType === "planned" && scheduledAt) {
+      // Save to jobs collection for scheduled execution
+      const jobId = await createJob(businessId, {
+        type: "planned",
+        task: agentTaskInput.trim(),
+        scheduledAt,
+      });
+
+      if (jobId) {
+        await fetchJobs(businessId);
+        // Close modal and clear selection
+        setAgentModalOpen(false);
+        if (selectedItems.length > 0) {
+          setSelectionMode(false);
+          setSelectedItems([]);
+        }
+        alert("Görev başarıyla planlandı.");
+      }
+    }
   };
 
   // Bulk selection handlers

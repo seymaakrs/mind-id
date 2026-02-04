@@ -64,7 +64,6 @@ export async function GET() {
       const data = await response.json().catch(() => ({}));
       return NextResponse.json({
         status: "connected",
-        serverUrl: baseUrl,
         details: data,
       });
     }
@@ -72,7 +71,6 @@ export async function GET() {
     return NextResponse.json(
       {
         status: "error",
-        serverUrl: baseUrl,
         message: `Server responded with status ${response.status}`,
       },
       { status: 502 }

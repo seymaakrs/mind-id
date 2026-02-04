@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +10,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Bot, Video, Send, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Bot, Video, Send, Loader2, Clock, Calendar } from "lucide-react";
 import type { BusinessMedia } from "@/types/firebase";
+import type { JobType } from "@/types/jobs";
+import { JOB_TYPE_LABELS } from "@/types/jobs";
 
 type ProgressMessage = {
   event: string;
@@ -30,7 +41,7 @@ type Props = {
   progressMessages?: ProgressMessage[];
   onClose: () => void;
   onTaskInputChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (jobType: JobType, scheduledAt?: Date) => void;
 };
 
 export function AgentModal({
@@ -46,6 +57,12 @@ export function AgentModal({
   onTaskInputChange,
   onSend,
 }: Props) {
+  // Job type selection state
+  const [jobType, setJobType] = useState<JobType>("immediate");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [plannedHour, setPlannedHour] = useState(9);
+  const [plannedMinute, setPlannedMinute] = useState(0);
+
   // Support both single media and multiple media
   const items = mediaList && mediaList.length > 0 ? mediaList : media ? [media] : [];
 
@@ -53,8 +70,36 @@ export function AgentModal({
 
   const isBulk = items.length > 1;
 
+  const handleSend = () => {
+    if (jobType === "planned") {
+      if (!scheduledDate) {
+        alert("Lütfen bir tarih seçin.");
+        return;
+      }
+      const scheduledAt = new Date(scheduledDate);
+      scheduledAt.setHours(plannedHour, plannedMinute, 0, 0);
+
+      if (scheduledAt <= new Date()) {
+        alert("Planlanan tarih/saat geçmiş olamaz.");
+        return;
+      }
+      onSend(jobType, scheduledAt);
+    } else {
+      onSend(jobType);
+    }
+  };
+
+  const handleClose = () => {
+    // Reset state when closing
+    setJobType("immediate");
+    setScheduledDate("");
+    setPlannedHour(9);
+    setPlannedMinute(0);
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !loading && !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !loading && !isOpen && handleClose()}>
       <DialogContent className="w-[95vw] max-w-3xl sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -136,6 +181,87 @@ export function AgentModal({
             />
           </div>
 
+          {/* Job Type Selection */}
+          <div className="space-y-2">
+            <Label>Görev Tipi</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={jobType === "immediate" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => setJobType("immediate")}
+                disabled={loading}
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                {JOB_TYPE_LABELS.immediate}
+              </Button>
+              <Button
+                type="button"
+                variant={jobType === "planned" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => setJobType("planned")}
+                disabled={loading}
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                {JOB_TYPE_LABELS.planned}
+              </Button>
+            </div>
+          </div>
+
+          {/* Planned Job Date/Time Options */}
+          {jobType === "planned" && (
+            <div className="grid grid-cols-3 gap-3 p-4 bg-muted/50 rounded-lg">
+              <div className="space-y-2">
+                <Label>Tarih</Label>
+                <Input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Saat</Label>
+                <Select
+                  value={String(plannedHour)}
+                  onValueChange={(v) => setPlannedHour(Number(v))}
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <SelectItem key={i} value={String(i)}>
+                        {String(i).padStart(2, "0")}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Dakika</Label>
+                <Select
+                  value={String(plannedMinute)}
+                  onValueChange={(v) => setPlannedMinute(Number(v))}
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 15, 30, 45].map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        :{String(m).padStart(2, "0")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {/* Progress Messages */}
           {loading && progressMessages && progressMessages.length > 0 && (
             <div className="p-3 rounded-md bg-muted font-mono text-xs max-h-[150px] overflow-y-auto space-y-1">
@@ -164,20 +290,28 @@ export function AgentModal({
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={onClose} disabled={loading}>
+            <Button variant="outline" onClick={handleClose} disabled={loading}>
               {response ? "Kapat" : "İptal"}
             </Button>
             {!response && (
-              <Button onClick={onSend} disabled={!taskInput.trim() || loading}>
+              <Button
+                onClick={handleSend}
+                disabled={!taskInput.trim() || loading || (jobType === "planned" && !scheduledDate)}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Gönderiliyor...
+                    {jobType === "immediate" ? "Gönderiliyor..." : "Kaydediliyor..."}
                   </>
-                ) : (
+                ) : jobType === "immediate" ? (
                   <>
                     <Send className="w-4 h-4 mr-2" />
                     Gönder
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Planla
                   </>
                 )}
               </Button>
