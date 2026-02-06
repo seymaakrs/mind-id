@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import https from "node:https";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyApiAuth } from "@/lib/auth/verifyApiAuth";
+
+function httpsGet(url: string, headers: Record<string, string>): Promise<{ ok: boolean; status: number; data: string }> {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers, family: 4 }, (res) => {
+      let data = "";
+      res.on("data", (chunk: Buffer) => (data += chunk.toString()));
+      res.on("end", () => {
+        const status = res.statusCode || 500;
+        resolve({ ok: status >= 200 && status < 300, status, data });
+      });
+    });
+    req.on("error", reject);
+    req.setTimeout(15000, () => req.destroy(new Error("Request timeout")));
+  });
+}
 
 export const maxDuration = 30;
 
@@ -68,27 +84,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Make request to Late API
+    // Make request to Late API (IPv4 forced - Windows DNS IPv6 timeout fix)
     const lateApiUrl = `https://getlate.dev/api/v1/accounts?profileId=${encodeURIComponent(lateProfileId)}`;
 
-    const response = await fetch(lateApiUrl, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${lateApiKey}`,
-        "Content-Type": "application/json",
-      },
+    const response = await httpsGet(lateApiUrl, {
+      "Authorization": `Bearer ${lateApiKey}`,
+      "Content-Type": "application/json",
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Late API error:", errorText);
+      console.error("Late API error:", response.data);
       return NextResponse.json(
         { error: `Late API hatasi: ${response.status}` },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    const data = JSON.parse(response.data);
+    console.log("Late API response:", JSON.stringify(data, null, 2));
     const accounts = data.accounts || [];
 
     // Process accounts and create update object

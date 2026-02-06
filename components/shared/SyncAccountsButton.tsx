@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RefreshCw, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { authenticatedFetch } from "@/lib/api-client";
 
 type SyncResult = {
   platform: string;
@@ -59,11 +60,8 @@ export function SyncAccountsButton({
     setDialogOpen(true);
 
     try {
-      const response = await fetch("/api/sync-accounts", {
+      const response = await authenticatedFetch("/api/sync-accounts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ businessId }),
       });
 
