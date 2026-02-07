@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home } from "lucide-react"
+import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
@@ -20,8 +20,10 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell"
+import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
+import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
 
-type MainMenuType = "anasayfa" | "instagram" | "blog" | "agent" | "isletmeler" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "instagram" | "blog" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
 type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
@@ -79,6 +81,12 @@ export default function AdminPanel() {
       id: "agent" as MainMenuType,
       label: "Agent",
       icon: Bot,
+      subItems: [],
+    },
+    {
+      id: "aktif-gorevler" as MainMenuType,
+      label: "Aktif Gorevler",
+      icon: Activity,
       subItems: [],
     },
     {
@@ -154,17 +162,6 @@ export default function AdminPanel() {
   return (
     <ProtectedRoute>
       <div className="fixed inset-0 flex bg-background overflow-hidden">
-        {/* Mobile Menu Button */}
-        <MobileMenuButton
-          isOpen={isMobileMenuOpen}
-          onToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-
-        {/* Error Notification Bell - Fixed top right */}
-        <div className="fixed top-3 right-4 z-50">
-          <ErrorNotificationBell />
-        </div>
-
         {/* Mobile Sidebar */}
         <MobileSidebar
           isOpen={isMobileMenuOpen}
@@ -246,9 +243,35 @@ export default function AdminPanel() {
 
       {/* Main Content Area - Responsive */}
       <main className="flex-1 h-full overflow-y-auto overflow-x-hidden">
-        <div className="p-4 pt-16 md:pt-4 md:p-8 max-w-full">
+        {/* Top Header Bar */}
+        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 md:px-8 md:py-3 bg-background/80 backdrop-blur-sm border-b border-border">
+          {/* Mobile menu toggle (left) */}
+          <div className="md:hidden">
+            <MobileMenuButton
+              isOpen={isMobileMenuOpen}
+              onToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            />
+          </div>
+          {/* Spacer on desktop where there's no menu button */}
+          <div className="hidden md:block" />
+
+          {/* Notification indicators (right) */}
+          <div className="flex items-center gap-1">
+            <ActiveTasksIndicator
+              onNavigate={() => {
+                setActiveMenu("aktif-gorevler");
+                setExpandedMenu(null);
+              }}
+            />
+            <ErrorNotificationBell />
+          </div>
+        </div>
+
+        <div className="p-4 md:p-8 max-w-full">
           {activeMenu === "anasayfa" ? (
             <WelcomeDashboard onNavigate={handleWelcomeNavigate} />
+          ) : activeMenu === "aktif-gorevler" ? (
+            <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
             <AgentGorevComponent />
           ) : activeMenu === "settings" ? (

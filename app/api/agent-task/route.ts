@@ -218,6 +218,8 @@ export async function POST(request: Request) {
 
     // Get dynamic endpoint from settings
     const agentEndpoint = await getAgentEndpoint();
+    console.log("[agent-task] Endpoint:", agentEndpoint);
+    console.log("[agent-task] Request body:", JSON.stringify(requestBody, null, 2));
 
     // AbortController ile timeout yönetimi (5 dakika)
     const controller = new AbortController();
@@ -231,13 +233,16 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,
-      next: { revalidate: 0 },
+      cache: "no-store",
     });
 
     clearTimeout(timeoutId);
+    console.log("[agent-task] Response status:", externalResponse.status);
 
     if (!externalResponse.ok) {
       const errorText = await externalResponse.text();
+      console.log("[agent-task] Error response body:", errorText);
+      console.log("[agent-task] Response headers:", Object.fromEntries(externalResponse.headers.entries()));
       return NextResponse.json(
         {
           error: "Agent istegi basarisiz oldu.",

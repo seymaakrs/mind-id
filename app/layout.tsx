@@ -6,6 +6,7 @@ import { Toaster } from "sonner"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { ErrorNotificationProvider } from "@/contexts/ErrorNotificationContext"
 import { TaskStreamProvider } from "@/contexts/TaskStreamContext"
+import { ActiveTasksProvider } from "@/contexts/ActiveTasksContext"
 import { TaskTrackerWidget } from "@/components/shared/TaskTrackerWidget"
 import "./globals.css"
 
@@ -28,10 +29,12 @@ export default function RootLayout({
       <body className={`dark font-sans antialiased`}>
         <AuthProvider>
           <ErrorNotificationProvider>
-            <TaskStreamProvider>
-              {children}
-              <TaskTrackerWidget />
-            </TaskStreamProvider>
+            <ActiveTasksProvider>
+              <TaskStreamProvider>
+                {children}
+                <TaskTrackerWidget />
+              </TaskStreamProvider>
+            </ActiveTasksProvider>
           </ErrorNotificationProvider>
         </AuthProvider>
         <Toaster

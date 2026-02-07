@@ -12,3 +12,4 @@ export { useReports } from "./useReports";
 export { useApiStatistics, useAllApiStatistics } from "./useApiStatistics";
 export { useSeo } from "./useSeo";
 export { useInstagramStatistics } from "./useInstagramStatistics";
+export { useActiveTasks } from "@/contexts/ActiveTasksContext";

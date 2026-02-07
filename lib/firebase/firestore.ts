@@ -10,6 +10,9 @@ import {
   DocumentData,
   query,
   where,
+  onSnapshot,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -452,3 +455,38 @@ import type { Job } from '@/types/jobs';
 import type { Task, TaskStatus, CreateTaskData } from '@/types/tasks';
 import type { Report, CreateReportData } from '@/types/reports';
 import type { InstagramWeeklyStats, InstagramWeekOption } from '@/types/instagram-statistics';
+import type { ActiveTask } from '@/types/active-tasks';
+
+// Active Tasks operations (top-level collection)
+export function subscribeToActiveTasks(
+  callback: (tasks: ActiveTask[]) => void,
+  onError?: (error: Error) => void
+): () => void {
+  if (!db) {
+    onError?.(new Error('Firestore is not configured'));
+    return () => {};
+  }
+
+  const activeTasksQuery = query(
+    collection(db, 'active_tasks'),
+    orderBy('started_at', 'desc'),
+    limit(50)
+  );
+
+  const unsubscribe = onSnapshot(
+    activeTasksQuery,
+    (snapshot) => {
+      const tasks: ActiveTask[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as ActiveTask[];
+      callback(tasks);
+    },
+    (error) => {
+      console.error('Error listening to active_tasks collection:', error);
+      onError?.(error as Error);
+    }
+  );
+
+  return unsubscribe;
+}
