@@ -202,6 +202,8 @@ export interface SeoReport extends Report {
         competitors: boolean;
         web_search: boolean;
     };
+    geo_readiness_score?: number | null;
+    geo_analysis?: import("@/types/firebase").GeoAnalysis | null;
 }
 
 // Create report data (without id and timestamps)

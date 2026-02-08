@@ -35,6 +35,7 @@ export interface AgentMemory {
   last_updated: Timestamp | string;
   last_compacted?: Timestamp | string;
   cleared_at?: Timestamp | string;
+  geo_readiness?: number;  // GEO skoru (0-100)
 }
 
 export const PRIORITY_COLORS: Record<AdminNote["priority"], string> = {

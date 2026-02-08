@@ -39,6 +39,7 @@ import {
   Target,
   Volume2,
   Pencil,
+  Bot,
 } from "lucide-react";
 import { useAgentMemory } from "@/hooks";
 import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/types/agent-memory";
@@ -495,6 +496,51 @@ export function AgentMemoryTab({ businessId }: AgentMemoryTabProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* GEO Hazirlik Skoru */}
+      {memory.geo_readiness != null && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-cyan-500" />
+              GEO Hazirlik
+            </CardTitle>
+            <CardDescription>AI arama motorlarinda alintilanabilirlik skoru</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className={`text-4xl font-bold ${
+                memory.geo_readiness >= 80 ? "text-green-500" :
+                memory.geo_readiness >= 60 ? "text-yellow-500" :
+                memory.geo_readiness >= 40 ? "text-orange-500" :
+                "text-red-500"
+              }`}>
+                {memory.geo_readiness}
+                <span className="text-lg text-muted-foreground">/100</span>
+              </div>
+              <div className="flex-1">
+                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      memory.geo_readiness >= 80 ? "bg-green-500" :
+                      memory.geo_readiness >= 60 ? "bg-yellow-500" :
+                      memory.geo_readiness >= 40 ? "bg-orange-500" :
+                      "bg-red-500"
+                    }`}
+                    style={{ width: `${memory.geo_readiness}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {memory.geo_readiness >= 80 ? "Mukemmel - AI motorlari icin optimize" :
+                   memory.geo_readiness >= 60 ? "Iyi - Bazi iyilestirmeler gerekli" :
+                   memory.geo_readiness >= 40 ? "Orta - Onemli eksikler var" :
+                   "Dusuk - Acil iyilestirme gerekli"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Metadata */}
       <Card className="md:col-span-2">

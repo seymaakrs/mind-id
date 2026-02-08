@@ -144,6 +144,50 @@ export interface AgentError {
   resolution_note?: string | null;
 }
 
+// GEO Analysis sub-types
+export interface GeoCrawlerAccess {
+  score: number;
+  max: number;
+  bots_allowed: string[];
+  bots_blocked: string[];
+  bots_not_mentioned: string[];
+}
+
+export interface GeoContentStructure {
+  score: number;
+  max: number;
+  has_faq_section: boolean;
+  faq_schema: boolean;
+  tables_count: number;
+  lists_count: number;
+  question_headings_count: number;
+}
+
+export interface GeoCitationData {
+  score: number;
+  max: number;
+  external_citations: number;
+  citation_density_per_1k: number;
+  statistics_count: number;
+  statistics_density_per_1k: number;
+}
+
+export interface GeoAiDiscovery {
+  score: number;
+  max: number;
+  has_llms_txt: boolean;
+  geo_schema_types_present: string[];
+  geo_schema_types_missing: string[];
+  freshness_signals: string[];
+}
+
+export interface GeoAnalysis {
+  ai_crawler_access: GeoCrawlerAccess;
+  content_structure: GeoContentStructure;
+  citation_data: GeoCitationData;
+  ai_discovery: GeoAiDiscovery;
+}
+
 // SEO Summary (businesses/{businessId}/seo/summary)
 export interface SeoSummary {
   overall_score: number;        // 0-100, genel SEO skoru
@@ -155,6 +199,8 @@ export interface SeoSummary {
   last_report_id: string;       // "seo-20260131-abc123" (reports/ referansı)
   last_analysis_date: string;   // ISO datetime
   updated_at: string;           // ISO datetime
+  geo_readiness_score?: number | null;  // 0-100, GEO hazırlık skoru
+  geo_analysis?: GeoAnalysis | null;    // 4 kategorili GEO analiz detayı
 }
 
 // SEO Keywords (businesses/{businessId}/seo/keywords)

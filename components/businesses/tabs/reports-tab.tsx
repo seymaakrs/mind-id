@@ -39,13 +39,19 @@ import {
     Info,
     CircleAlert,
     FileWarning,
+    Bot,
+    ShieldCheck,
+    Radar,
+    Download,
 } from "lucide-react";
 import { useReports } from "@/hooks";
 import { REPORT_TYPE_LABELS } from "@/types/reports";
 import type { Report, InstagramReport, SwotReport, CustomReport, SeoReport, Block } from "@/types/reports";
+import { exportReportPdf } from "@/lib/pdf/report-pdf";
 
 interface ReportsTabProps {
     businessId: string;
+    businessName?: string;
 }
 
 // Type guard
@@ -866,6 +872,177 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                 </div>
             )}
 
+            {/* GEO Readiness Section */}
+            {report.geo_readiness_score != null && (
+                <div className="space-y-4">
+                    <h4 className="font-semibold flex items-center gap-2 text-cyan-500">
+                        <Bot className="w-5 h-5" />
+                        GEO Hazirlik Analizi
+                        <ScoreIndicator score={report.geo_readiness_score} label="GEO Skoru" size="sm" />
+                    </h4>
+
+                    {report.geo_analysis && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* AI Crawler Access */}
+                            <div className="p-4 rounded-lg border bg-card space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-semibold flex items-center gap-2">
+                                        <ShieldCheck className="w-4 h-4 text-blue-500" />
+                                        AI Bot Erisimi
+                                    </h5>
+                                    <Badge variant="outline">
+                                        {report.geo_analysis.ai_crawler_access.score}/{report.geo_analysis.ai_crawler_access.max}
+                                    </Badge>
+                                </div>
+                                {report.geo_analysis.ai_crawler_access.bots_allowed.length > 0 && (
+                                    <div>
+                                        <span className="text-xs text-muted-foreground">Izin Verilen:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {report.geo_analysis.ai_crawler_access.bots_allowed.map((bot, i) => (
+                                                <Badge key={i} variant="secondary" className="text-xs bg-green-500/10 text-green-500">
+                                                    <CheckCircle2 className="w-3 h-3 mr-1" />{bot}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {report.geo_analysis.ai_crawler_access.bots_blocked.length > 0 && (
+                                    <div>
+                                        <span className="text-xs text-muted-foreground">Engellenen:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {report.geo_analysis.ai_crawler_access.bots_blocked.map((bot, i) => (
+                                                <Badge key={i} variant="secondary" className="text-xs bg-red-500/10 text-red-500">
+                                                    <XCircle className="w-3 h-3 mr-1" />{bot}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {report.geo_analysis.ai_crawler_access.bots_not_mentioned.length > 0 && (
+                                    <div>
+                                        <span className="text-xs text-muted-foreground">Belirtilmemis:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {report.geo_analysis.ai_crawler_access.bots_not_mentioned.map((bot, i) => (
+                                                <Badge key={i} variant="outline" className="text-xs">{bot}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Content Structure */}
+                            <div className="p-4 rounded-lg border bg-card space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-semibold flex items-center gap-2">
+                                        <FileText className="w-4 h-4 text-purple-500" />
+                                        Icerik Yapisi
+                                    </h5>
+                                    <Badge variant="outline">
+                                        {report.geo_analysis.content_structure.score}/{report.geo_analysis.content_structure.max}
+                                    </Badge>
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">FAQ Bolumu:</span>
+                                        {report.geo_analysis.content_structure.has_faq_section ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">FAQ Schema:</span>
+                                        {report.geo_analysis.content_structure.faq_schema ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Tablo / Liste / Soru Basligi:</span>
+                                        <span>
+                                            {report.geo_analysis.content_structure.tables_count} / {report.geo_analysis.content_structure.lists_count} / {report.geo_analysis.content_structure.question_headings_count}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Citation Data */}
+                            <div className="p-4 rounded-lg border bg-card space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-semibold flex items-center gap-2">
+                                        <Quote className="w-4 h-4 text-orange-500" />
+                                        Alinti Verileri
+                                    </h5>
+                                    <Badge variant="outline">
+                                        {report.geo_analysis.citation_data.score}/{report.geo_analysis.citation_data.max}
+                                    </Badge>
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Dis Alinti:</span>
+                                        <span>{report.geo_analysis.citation_data.external_citations}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Alinti Yogunlugu (1K):</span>
+                                        <span>{report.geo_analysis.citation_data.citation_density_per_1k.toFixed(1)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Istatistik:</span>
+                                        <span>{report.geo_analysis.citation_data.statistics_count}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Istatistik Yogunlugu (1K):</span>
+                                        <span>{report.geo_analysis.citation_data.statistics_density_per_1k.toFixed(1)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* AI Discovery */}
+                            <div className="p-4 rounded-lg border bg-card space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-semibold flex items-center gap-2">
+                                        <Radar className="w-4 h-4 text-cyan-500" />
+                                        AI Kesfedilebilirlik
+                                    </h5>
+                                    <Badge variant="outline">
+                                        {report.geo_analysis.ai_discovery.score}/{report.geo_analysis.ai_discovery.max}
+                                    </Badge>
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">llms.txt:</span>
+                                        {report.geo_analysis.ai_discovery.has_llms_txt ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}
+                                    </div>
+                                </div>
+                                {report.geo_analysis.ai_discovery.geo_schema_types_present.length > 0 && (
+                                    <div>
+                                        <span className="text-xs text-muted-foreground">Mevcut Schema:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {report.geo_analysis.ai_discovery.geo_schema_types_present.map((t, i) => (
+                                                <Badge key={i} variant="secondary" className="text-xs bg-green-500/10 text-green-500">{t}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {report.geo_analysis.ai_discovery.geo_schema_types_missing.length > 0 && (
+                                    <div>
+                                        <span className="text-xs text-muted-foreground">Eksik Schema:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {report.geo_analysis.ai_discovery.geo_schema_types_missing.map((t, i) => (
+                                                <Badge key={i} variant="outline" className="text-xs text-yellow-500 border-yellow-500/30">{t}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {report.geo_analysis.ai_discovery.freshness_signals.length > 0 && (
+                                    <div>
+                                        <span className="text-xs text-muted-foreground">Guncellik Sinyalleri:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {report.geo_analysis.ai_discovery.freshness_signals.map((s, i) => (
+                                                <Badge key={i} variant="secondary" className="text-xs">{s}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Analyzed URLs */}
             {(report.competitor_urls?.length ?? 0) > 0 && (
                 <div className="pt-4 border-t space-y-2">
@@ -901,7 +1078,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
     );
 };
 
-export function ReportsTab({ businessId }: ReportsTabProps) {
+export function ReportsTab({ businessId, businessName }: ReportsTabProps) {
     const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
 
     const {
@@ -1027,6 +1204,17 @@ export function ReportsTab({ businessId }: ReportsTabProps) {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    exportReportPdf(report, businessName || "Isletme");
+                                                }}
+                                                title="PDF Indir"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"

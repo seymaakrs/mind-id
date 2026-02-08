@@ -412,11 +412,11 @@ export default function BusinessDashboard({
             </TabsContent>
 
             <TabsContent value="reports" className="m-0">
-              <ReportsTab key={`reports-${refreshKey}`} businessId={selectedBusinessId} />
+              <ReportsTab key={`reports-${refreshKey}`} businessId={selectedBusinessId} businessName={selectedBusiness?.name} />
             </TabsContent>
 
             <TabsContent value="seo" className="m-0">
-              <SeoTab businessId={selectedBusinessId} />
+              <SeoTab businessId={selectedBusinessId} businessName={selectedBusiness?.name} />
             </TabsContent>
           </div>
         </Tabs>
