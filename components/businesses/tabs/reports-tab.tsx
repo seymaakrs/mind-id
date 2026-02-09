@@ -43,10 +43,12 @@ import {
     ShieldCheck,
     Radar,
     Download,
+    ArrowRight,
 } from "lucide-react";
 import { useReports } from "@/hooks";
 import { REPORT_TYPE_LABELS } from "@/types/reports";
 import type { Report, InstagramReport, SwotReport, CustomReport, SeoReport, Block } from "@/types/reports";
+import type { GeoRecommendation, ScoreBreakdownRecommendation } from "@/types/firebase";
 import { exportReportPdf } from "@/lib/pdf/report-pdf";
 
 interface ReportsTabProps {
@@ -507,6 +509,47 @@ const CategoryBadge = ({ category }: { category: "primary" | "secondary" | "long
     );
 };
 
+// Recommendation helpers
+const REC_PRIORITY_BORDER: Record<string, string> = {
+    high: "border-l-red-500",
+    medium: "border-l-yellow-500",
+    low: "border-l-green-500",
+};
+const REC_PRIORITY_BADGE: Record<string, string> = {
+    high: "bg-red-500/10 text-red-500 border-red-500/30",
+    medium: "bg-yellow-500/10 text-yellow-500 border-yellow-500/30",
+    low: "bg-green-500/10 text-green-500 border-green-500/30",
+};
+const REC_PRIORITY_LABEL: Record<string, string> = {
+    high: "Yuksek",
+    medium: "Orta",
+    low: "Dusuk",
+};
+
+const ReportRecommendationCard = ({ rec }: { rec: GeoRecommendation | ScoreBreakdownRecommendation }) => (
+    <div className={`p-3 rounded-lg border border-l-4 ${REC_PRIORITY_BORDER[rec.priority] || "border-l-muted"} bg-card`}>
+        <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <Badge variant="secondary" className="text-xs">
+                        {rec.category}
+                    </Badge>
+                    <Badge variant="outline" className={`text-xs ${REC_PRIORITY_BADGE[rec.priority] || ""}`}>
+                        {REC_PRIORITY_LABEL[rec.priority] || rec.priority}
+                    </Badge>
+                </div>
+                <p className="text-sm font-medium flex items-start gap-1.5">
+                    <ArrowRight className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-primary" />
+                    {rec.action}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 ml-5">
+                    {rec.reason}
+                </p>
+            </div>
+        </div>
+    </div>
+);
+
 // SEO Report view component
 const SeoReportView = ({ report }: { report: SeoReport }) => {
     const analysis = report.business_website_analysis;
@@ -884,6 +927,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                     {report.geo_analysis && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* AI Crawler Access */}
+                            {report.geo_analysis.ai_crawler_access && (
                             <div className="p-4 rounded-lg border bg-card space-y-3">
                                 <div className="flex items-center justify-between">
                                     <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -894,7 +938,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                         {report.geo_analysis.ai_crawler_access.score}/{report.geo_analysis.ai_crawler_access.max}
                                     </Badge>
                                 </div>
-                                {report.geo_analysis.ai_crawler_access.bots_allowed.length > 0 && (
+                                {(report.geo_analysis.ai_crawler_access.bots_allowed?.length ?? 0) > 0 && (
                                     <div>
                                         <span className="text-xs text-muted-foreground">Izin Verilen:</span>
                                         <div className="flex flex-wrap gap-1 mt-1">
@@ -906,7 +950,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                         </div>
                                     </div>
                                 )}
-                                {report.geo_analysis.ai_crawler_access.bots_blocked.length > 0 && (
+                                {(report.geo_analysis.ai_crawler_access.bots_blocked?.length ?? 0) > 0 && (
                                     <div>
                                         <span className="text-xs text-muted-foreground">Engellenen:</span>
                                         <div className="flex flex-wrap gap-1 mt-1">
@@ -918,7 +962,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                         </div>
                                     </div>
                                 )}
-                                {report.geo_analysis.ai_crawler_access.bots_not_mentioned.length > 0 && (
+                                {(report.geo_analysis.ai_crawler_access.bots_not_mentioned?.length ?? 0) > 0 && (
                                     <div>
                                         <span className="text-xs text-muted-foreground">Belirtilmemis:</span>
                                         <div className="flex flex-wrap gap-1 mt-1">
@@ -929,8 +973,10 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                     </div>
                                 )}
                             </div>
+                            )}
 
                             {/* Content Structure */}
+                            {report.geo_analysis.content_structure && (
                             <div className="p-4 rounded-lg border bg-card space-y-3">
                                 <div className="flex items-center justify-between">
                                     <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -958,8 +1004,10 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                     </div>
                                 </div>
                             </div>
+                            )}
 
                             {/* Citation Data */}
+                            {report.geo_analysis.citation_data && (
                             <div className="p-4 rounded-lg border bg-card space-y-3">
                                 <div className="flex items-center justify-between">
                                     <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -977,7 +1025,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-muted-foreground">Alinti Yogunlugu (1K):</span>
-                                        <span>{report.geo_analysis.citation_data.citation_density_per_1k.toFixed(1)}</span>
+                                        <span>{report.geo_analysis.citation_data.citation_density_per_1k?.toFixed(1) ?? 0}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-muted-foreground">Istatistik:</span>
@@ -985,12 +1033,14 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-muted-foreground">Istatistik Yogunlugu (1K):</span>
-                                        <span>{report.geo_analysis.citation_data.statistics_density_per_1k.toFixed(1)}</span>
+                                        <span>{report.geo_analysis.citation_data.statistics_density_per_1k?.toFixed(1) ?? 0}</span>
                                     </div>
                                 </div>
                             </div>
+                            )}
 
                             {/* AI Discovery */}
+                            {report.geo_analysis.ai_discovery && (
                             <div className="p-4 rounded-lg border bg-card space-y-3">
                                 <div className="flex items-center justify-between">
                                     <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -1007,7 +1057,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                         {report.geo_analysis.ai_discovery.has_llms_txt ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}
                                     </div>
                                 </div>
-                                {report.geo_analysis.ai_discovery.geo_schema_types_present.length > 0 && (
+                                {(report.geo_analysis.ai_discovery.geo_schema_types_present?.length ?? 0) > 0 && (
                                     <div>
                                         <span className="text-xs text-muted-foreground">Mevcut Schema:</span>
                                         <div className="flex flex-wrap gap-1 mt-1">
@@ -1017,7 +1067,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                         </div>
                                     </div>
                                 )}
-                                {report.geo_analysis.ai_discovery.geo_schema_types_missing.length > 0 && (
+                                {(report.geo_analysis.ai_discovery.geo_schema_types_missing?.length ?? 0) > 0 && (
                                     <div>
                                         <span className="text-xs text-muted-foreground">Eksik Schema:</span>
                                         <div className="flex flex-wrap gap-1 mt-1">
@@ -1027,7 +1077,7 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                         </div>
                                     </div>
                                 )}
-                                {report.geo_analysis.ai_discovery.freshness_signals.length > 0 && (
+                                {(report.geo_analysis.ai_discovery.freshness_signals?.length ?? 0) > 0 && (
                                     <div>
                                         <span className="text-xs text-muted-foreground">Guncellik Sinyalleri:</span>
                                         <div className="flex flex-wrap gap-1 mt-1">
@@ -1038,8 +1088,41 @@ const SeoReportView = ({ report }: { report: SeoReport }) => {
                                     </div>
                                 )}
                             </div>
+                            )}
                         </div>
                     )}
+
+                    {/* GEO Recommendations */}
+                    {report.geo_analysis?.recommendations && report.geo_analysis.recommendations.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                            <h5 className="text-sm font-semibold flex items-center gap-2">
+                                <Lightbulb className="w-4 h-4 text-cyan-500" />
+                                GEO Onerileri
+                                <Badge variant="secondary" className="text-xs">{report.geo_analysis.recommendations.length}</Badge>
+                            </h5>
+                            <div className="grid gap-2">
+                                {report.geo_analysis.recommendations.map((rec, i) => (
+                                    <ReportRecommendationCard key={i} rec={rec} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Score Breakdown Recommendations */}
+            {report.score_breakdown?.recommendations && report.score_breakdown.recommendations.length > 0 && (
+                <div className="space-y-3">
+                    <h4 className="font-semibold flex items-center gap-2 text-yellow-500">
+                        <Lightbulb className="w-5 h-5" />
+                        SEO Iyilestirme Onerileri
+                        <Badge variant="secondary" className="text-xs">{report.score_breakdown.recommendations.length}</Badge>
+                    </h4>
+                    <div className="grid gap-2">
+                        {report.score_breakdown.recommendations.map((rec, i) => (
+                            <ReportRecommendationCard key={i} rec={rec} />
+                        ))}
+                    </div>
                 </div>
             )}
 

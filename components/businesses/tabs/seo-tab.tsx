@@ -39,9 +39,14 @@ import {
   CheckCircle2,
   XCircle,
   Download,
+  Lightbulb,
+  ArrowRight,
+  Globe,
+  BarChart3,
+  MinusCircle,
 } from "lucide-react";
 import { useSeo } from "@/hooks";
-import type { SeoKeywordCategory, SeoKeywordPriority, SeoKeywordItem } from "@/types/firebase";
+import type { SeoKeywordCategory, SeoKeywordPriority, SeoKeywordItem, GeoRecommendation, ScoreBreakdownRecommendation } from "@/types/firebase";
 import { exportSeoPdf } from "@/lib/pdf/seo-pdf";
 
 interface SeoTabProps {
@@ -123,6 +128,50 @@ function getScoreBgColor(score: number): string {
   if (score >= 60) return "bg-yellow-500/10";
   if (score >= 40) return "bg-orange-500/10";
   return "bg-red-500/10";
+}
+
+const PRIORITY_BORDER_COLORS: Record<string, string> = {
+  high: "border-l-red-500",
+  medium: "border-l-yellow-500",
+  low: "border-l-green-500",
+};
+
+const PRIORITY_BADGE_COLORS: Record<string, string> = {
+  high: "bg-red-500/10 text-red-500 border-red-500/30",
+  medium: "bg-yellow-500/10 text-yellow-500 border-yellow-500/30",
+  low: "bg-green-500/10 text-green-500 border-green-500/30",
+};
+
+const PRIORITY_TR_LABELS: Record<string, string> = {
+  high: "Yuksek",
+  medium: "Orta",
+  low: "Dusuk",
+};
+
+function RecommendationCard({ rec }: { rec: GeoRecommendation | ScoreBreakdownRecommendation }) {
+  return (
+    <div className={`p-3 rounded-lg border border-l-4 ${PRIORITY_BORDER_COLORS[rec.priority] || "border-l-muted"} bg-card`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <Badge variant="secondary" className="text-xs">
+              {rec.category}
+            </Badge>
+            <Badge variant="outline" className={`text-xs ${PRIORITY_BADGE_COLORS[rec.priority] || ""}`}>
+              {PRIORITY_TR_LABELS[rec.priority] || rec.priority}
+            </Badge>
+          </div>
+          <p className="text-sm font-medium flex items-start gap-1.5">
+            <ArrowRight className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-primary" />
+            {rec.action}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 ml-5">
+            {rec.reason}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function SeoTab({ businessId, businessName }: SeoTabProps) {
@@ -228,7 +277,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
           {summary && (
             <>
               {/* Score Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Overall Score */}
                 <Card className={getScoreBgColor(summary.overall_score)}>
                   <CardContent className="pt-6">
@@ -297,6 +346,31 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                   </CardContent>
                 </Card>
 
+                {/* SERP Visibility Score */}
+                {summary.serp_visibility_score != null && (
+                  <Card className={getScoreBgColor(summary.serp_visibility_score)}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            SERP Gorunurluk
+                          </p>
+                          <p className={`text-3xl font-bold ${getScoreColor(summary.serp_visibility_score)}`}>
+                            {summary.serp_visibility_score}
+                            <span className="text-lg text-muted-foreground">/100</span>
+                          </p>
+                        </div>
+                        <div className={`p-3 rounded-full ${getScoreBgColor(summary.serp_visibility_score)}`}>
+                          <Globe className={`w-6 h-6 ${getScoreColor(summary.serp_visibility_score)}`} />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Arama sonuc sayfasi gorunurlugu
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* GEO Readiness Score */}
                 {summary.geo_readiness_score != null && (
                   <Card className={getScoreBgColor(summary.geo_readiness_score)}>
@@ -338,6 +412,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* AI Crawler Access */}
+                      {summary.geo_analysis.ai_crawler_access && (
                       <div className="p-4 rounded-lg border bg-card space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -350,7 +425,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             {summary.geo_analysis.ai_crawler_access.score}/{summary.geo_analysis.ai_crawler_access.max}
                           </Badge>
                         </div>
-                        {summary.geo_analysis.ai_crawler_access.bots_allowed.length > 0 && (
+                        {(summary.geo_analysis.ai_crawler_access.bots_allowed?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Izin Verilen:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -363,7 +438,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             </div>
                           </div>
                         )}
-                        {summary.geo_analysis.ai_crawler_access.bots_blocked.length > 0 && (
+                        {(summary.geo_analysis.ai_crawler_access.bots_blocked?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Engellenen:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -376,7 +451,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             </div>
                           </div>
                         )}
-                        {summary.geo_analysis.ai_crawler_access.bots_not_mentioned.length > 0 && (
+                        {(summary.geo_analysis.ai_crawler_access.bots_not_mentioned?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Belirtilmemis:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -389,8 +464,10 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                           </div>
                         )}
                       </div>
+                      )}
 
                       {/* Content Structure */}
+                      {summary.geo_analysis.content_structure && (
                       <div className="p-4 rounded-lg border bg-card space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -426,8 +503,10 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                           </div>
                         </div>
                       </div>
+                      )}
 
                       {/* Citation Data */}
+                      {summary.geo_analysis.citation_data && (
                       <div className="p-4 rounded-lg border bg-card space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -447,7 +526,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Alinti Yogunlugu (1K):</span>
-                            <span>{summary.geo_analysis.citation_data.citation_density_per_1k.toFixed(1)}</span>
+                            <span>{summary.geo_analysis.citation_data.citation_density_per_1k?.toFixed(1) ?? 0}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Istatistik Sayisi:</span>
@@ -455,12 +534,14 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Istatistik Yogunlugu (1K):</span>
-                            <span>{summary.geo_analysis.citation_data.statistics_density_per_1k.toFixed(1)}</span>
+                            <span>{summary.geo_analysis.citation_data.statistics_density_per_1k?.toFixed(1) ?? 0}</span>
                           </div>
                         </div>
                       </div>
+                      )}
 
                       {/* AI Discovery */}
+                      {summary.geo_analysis.ai_discovery && (
                       <div className="p-4 rounded-lg border bg-card space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -479,7 +560,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             <span>{summary.geo_analysis.ai_discovery.has_llms_txt ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}</span>
                           </div>
                         </div>
-                        {summary.geo_analysis.ai_discovery.geo_schema_types_present.length > 0 && (
+                        {(summary.geo_analysis.ai_discovery.geo_schema_types_present?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Mevcut Schema:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -491,7 +572,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             </div>
                           </div>
                         )}
-                        {summary.geo_analysis.ai_discovery.geo_schema_types_missing.length > 0 && (
+                        {(summary.geo_analysis.ai_discovery.geo_schema_types_missing?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Eksik Schema:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -503,7 +584,7 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             </div>
                           </div>
                         )}
-                        {summary.geo_analysis.ai_discovery.freshness_signals.length > 0 && (
+                        {(summary.geo_analysis.ai_discovery.freshness_signals?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Guncellik Sinyalleri:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -516,7 +597,111 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                           </div>
                         )}
                       </div>
+                      )}
                     </div>
+
+                    {/* GEO Recommendations */}
+                    {(summary.geo_analysis.recommendations?.length ?? 0) > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <h5 className="text-sm font-semibold flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4 text-cyan-500" />
+                          GEO Onerileri
+                          <Badge variant="secondary" className="text-xs">{summary.geo_analysis.recommendations!.length}</Badge>
+                        </h5>
+                        <div className="grid gap-2">
+                          {summary.geo_analysis.recommendations!.map((rec, i) => (
+                            <RecommendationCard key={i} rec={rec} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Score Breakdown Details */}
+              {summary.score_breakdown && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Skor Kirilimi
+                    </CardTitle>
+                    <CardDescription>
+                      Ham skor: {summary.score_breakdown.raw_score} / Toplam skor: {summary.score_breakdown.total_score}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Breakdown Categories */}
+                    {summary.score_breakdown.breakdown && Object.keys(summary.score_breakdown.breakdown).length > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="text-sm font-semibold text-muted-foreground">Kategori Puanlari</h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {Object.entries(summary.score_breakdown.breakdown).map(([key, val]) => {
+                            const value = val as Record<string, unknown> | number;
+                            const score = typeof value === "number" ? value : (value as Record<string, unknown>)?.score as number | undefined;
+                            const max = typeof value === "object" ? (value as Record<string, unknown>)?.max as number | undefined : undefined;
+                            const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+                            return (
+                              <div key={key} className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+                                <span className="text-sm truncate mr-2">{label}</span>
+                                {score != null ? (
+                                  <span className={`text-sm font-bold ${getScoreColor(max ? (score / max) * 100 : score)}`}>
+                                    {score}{max ? `/${max}` : ""}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">{JSON.stringify(val)}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Penalties */}
+                    {(summary.score_breakdown.penalties?.length ?? 0) > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="text-sm font-semibold flex items-center gap-1.5 text-red-500">
+                          <MinusCircle className="w-3.5 h-3.5" />
+                          Ceza Puanlari
+                        </h5>
+                        <div className="space-y-1.5">
+                          {summary.score_breakdown.penalties.map((penalty, i) => {
+                            const p = penalty as Record<string, unknown>;
+                            const reason = p?.reason as string | undefined;
+                            const points = p?.points as number | undefined;
+                            return (
+                              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg border border-red-500/20 bg-red-500/5">
+                                <span className="text-sm">{reason || JSON.stringify(penalty)}</span>
+                                {points != null && (
+                                  <Badge variant="outline" className="text-xs bg-red-500/10 text-red-500 border-red-500/30">
+                                    -{points}
+                                  </Badge>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {(summary.score_breakdown.recommendations?.length ?? 0) > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="text-sm font-semibold flex items-center gap-1.5 text-yellow-500">
+                          <Lightbulb className="w-3.5 h-3.5" />
+                          SEO Iyilestirme Onerileri
+                          <Badge variant="secondary" className="text-xs">{summary.score_breakdown.recommendations!.length}</Badge>
+                        </h5>
+                        <div className="grid gap-2">
+                          {summary.score_breakdown.recommendations!.map((rec, i) => (
+                            <RecommendationCard key={i} rec={rec} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

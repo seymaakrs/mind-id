@@ -181,11 +181,34 @@ export interface GeoAiDiscovery {
   freshness_signals: string[];
 }
 
+export interface GeoRecommendation {
+  category: string;
+  priority: "high" | "medium" | "low";
+  action: string;
+  reason: string;
+}
+
 export interface GeoAnalysis {
   ai_crawler_access: GeoCrawlerAccess;
   content_structure: GeoContentStructure;
   citation_data: GeoCitationData;
   ai_discovery: GeoAiDiscovery;
+  recommendations?: GeoRecommendation[];
+}
+
+export interface ScoreBreakdownRecommendation {
+  category: string;
+  priority: "high" | "medium" | "low";
+  action: string;
+  reason: string;
+}
+
+export interface ScoreBreakdown {
+  total_score: number;
+  raw_score: number;
+  breakdown: Record<string, unknown>;
+  penalties: unknown[];
+  recommendations?: ScoreBreakdownRecommendation[];
 }
 
 // SEO Summary (businesses/{businessId}/seo/summary)
@@ -196,11 +219,13 @@ export interface SeoSummary {
   main_issues: string[];        // Düzeltilmesi gereken sorunlar (max 5)
   competitor_count: number;     // Analiz edilen rakip sayısı
   competitor_avg_score: number; // Rakiplerin ort. SEO skoru
-  last_report_id: string;       // "seo-20260131-abc123" (reports/ referansı)
+  last_report_id: string | null; // "seo-20260131-abc123" (reports/ referansı)
   last_analysis_date: string;   // ISO datetime
   updated_at: string;           // ISO datetime
-  geo_readiness_score?: number | null;  // 0-100, GEO hazırlık skoru
-  geo_analysis?: GeoAnalysis | null;    // 4 kategorili GEO analiz detayı
+  serp_visibility_score?: number | null; // 0-100, SERP görünürlük skoru
+  geo_readiness_score?: number | null;   // 0-100, GEO hazırlık skoru
+  geo_analysis?: GeoAnalysis | null;     // 4 kategorili GEO analiz detayı
+  score_breakdown?: ScoreBreakdown | null; // Skor kırılımı ve öneriler
 }
 
 // SEO Keywords (businesses/{businessId}/seo/keywords)

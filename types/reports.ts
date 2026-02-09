@@ -204,6 +204,7 @@ export interface SeoReport extends Report {
     };
     geo_readiness_score?: number | null;
     geo_analysis?: import("@/types/firebase").GeoAnalysis | null;
+    score_breakdown?: import("@/types/firebase").ScoreBreakdown | null;
 }
 
 // Create report data (without id and timestamps)
