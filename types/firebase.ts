@@ -74,11 +74,11 @@ export interface Business extends BaseDocument {
   instagram_id?: string;
   facebook_id?: string;
   twitter_id?: string;
-  tiktok_id?: string;
+  tiktok_account_id?: string;
   youtube_id?: string;
-  linkedin_id?: string;
-  // Allow any other platform_id fields
-  [key: `${string}_id`]: string | undefined;
+  linkedin_account_id?: string;
+  // Allow any other platform ID fields
+  [key: `${string}_id` | `${string}_account_id`]: string | undefined;
 }
 
 // Business media (subcollection: businesses/{business_id}/media)

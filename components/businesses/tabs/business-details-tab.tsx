@@ -170,9 +170,9 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
       instagram_id: "Instagram",
       facebook_id: "Facebook",
       twitter_id: "Twitter",
-      tiktok_id: "TikTok",
+      tiktok_account_id: "TikTok",
       youtube_id: "YouTube",
-      linkedin_id: "LinkedIn",
+      linkedin_account_id: "LinkedIn",
     };
 
     for (const [key, label] of Object.entries(platformLabels)) {

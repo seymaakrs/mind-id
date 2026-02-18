@@ -108,9 +108,14 @@ export async function POST(request: NextRequest) {
     const platformUpdates: Record<string, string> = {};
     const accountsSummary: Array<{ platform: string; id: string; username?: string }> = [];
 
+    const fieldNameOverrides: Record<string, string> = {
+      tiktok: "tiktok_account_id",
+      linkedin: "linkedin_account_id",
+    };
+
     for (const account of accounts) {
       if (account.platform && account._id) {
-        const fieldName = `${account.platform}_id`;
+        const fieldName = fieldNameOverrides[account.platform] || `${account.platform}_id`;
         platformUpdates[fieldName] = account._id;
         accountsSummary.push({
           platform: account.platform,
