@@ -314,19 +314,21 @@ const BlockRenderer = ({ block }: { block: Block }) => {
             const ListTag = block.ordered ? "ol" : "ul";
             return (
                 <ListTag className={`space-y-1 my-3 ${block.ordered ? "list-decimal" : "list-disc"} list-inside`}>
-                    {block.items.map((item, i) => (
+                    {(block.items ?? []).map((item, i) => (
                         <li key={i} className="text-sm text-muted-foreground">{item}</li>
                     ))}
                 </ListTag>
             );
 
         case "table":
+            // Firestore flattens rows (2D array) into rows_json (JSON string)
+            const rows: string[][] = block.rows ?? (block.rows_json ? JSON.parse(block.rows_json) : []);
             return (
                 <div className="overflow-x-auto my-4 border rounded-lg">
                     <table className="w-full text-sm">
                         <thead className="bg-muted/50">
                             <tr>
-                                {block.headers.map((header, i) => (
+                                {(block.headers ?? []).map((header, i) => (
                                     <th key={i} className="px-4 py-2 text-left font-semibold border-b">
                                         {header}
                                     </th>
@@ -334,7 +336,7 @@ const BlockRenderer = ({ block }: { block: Block }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {block.rows.map((row, i) => (
+                            {rows.map((row, i) => (
                                 <tr key={i} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
                                     {row.map((cell, j) => (
                                         <td key={j} className="px-4 py-2 text-muted-foreground">

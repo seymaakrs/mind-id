@@ -25,6 +25,7 @@ type Props = {
   onLateProfileIdChange: (value: string) => void;
   logoFileName?: string;
   showLogoRequiredMark?: boolean;
+  hideLateProfileId?: boolean;
 };
 
 export function BasicInfoSection({
@@ -45,6 +46,7 @@ export function BasicInfoSection({
   onLateProfileIdChange,
   logoFileName,
   showLogoRequiredMark = true,
+  hideLateProfileId = false,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,16 +172,18 @@ export function BasicInfoSection({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="late-profile-id">Late Profile ID</Label>
-          <Input
-            id="late-profile-id"
-            placeholder="Late profil ID'si"
-            value={lateProfileId}
-            onChange={(e) => onLateProfileIdChange(e.target.value)}
-            disabled={disabled}
-          />
-        </div>
+        {!hideLateProfileId && (
+          <div className="space-y-2">
+            <Label htmlFor="late-profile-id">Late Profile ID</Label>
+            <Input
+              id="late-profile-id"
+              placeholder="Late profil ID'si"
+              value={lateProfileId}
+              onChange={(e) => onLateProfileIdChange(e.target.value)}
+              disabled={disabled}
+            />
+          </div>
+        )}
       </div>
     </FormSection>
   );

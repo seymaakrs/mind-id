@@ -13,6 +13,7 @@ import {
   BusinessListComponent,
   BusinessDashboard,
 } from "@/components/businesses"
+import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
 import { WelcomeDashboard } from "@/components/dashboard/welcome-dashboard"
@@ -33,6 +34,7 @@ type SubMenuType =
   | "isletme-ekle"
   | "isletme-listele"
   | "isletme-dashboard"
+  | "davet-linkleri"
 
 export default function AdminPanel() {
   const [activeMenu, setActiveMenu] = useState<MainMenuType>("anasayfa")
@@ -97,6 +99,7 @@ export default function AdminPanel() {
         { id: "isletme-listele" as SubMenuType, label: "İşletme Listesi" },
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
         { id: "isletme-dashboard" as SubMenuType, label: "İşletme Dashboard" },
+        { id: "davet-linkleri" as SubMenuType, label: "Davet Linkleri" },
       ],
     },
     {
@@ -300,6 +303,7 @@ export default function AdminPanel() {
                   onBusinessChange={(b) => b && setSelectedBusinessId(b.id)}
                 />
               )}
+              {activeSubMenu === "davet-linkleri" && <InviteLinksComponent />}
             </>
           )}
         </div>

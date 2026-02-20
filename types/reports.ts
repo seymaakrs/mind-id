@@ -90,7 +90,7 @@ export type Block =
     | { type: "text"; content: string }
     | { type: "heading"; content: string; level: 1 | 2 | 3 }
     | { type: "list"; items: string[]; ordered?: boolean }
-    | { type: "table"; headers: string[]; rows: string[][] }
+    | { type: "table"; headers: string[]; rows?: string[][]; rows_json?: string }
     | { type: "quote"; content: string }
     | { type: "code"; content: string; language?: string }
     | { type: "divider" };

@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Loader2, RefreshCw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Building2, Loader2, RefreshCw, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { useBusinesses } from "@/hooks";
 import type { Business } from "@/types/firebase";
+
+type TabFilter = "approved" | "pending";
 
 interface BusinessListComponentProps {
   onBusinessSelect?: (business: Business) => void;
@@ -16,7 +20,20 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
     loading,
     error,
     loadBusinesses,
+    editBusiness,
+    removeBusiness,
   } = useBusinesses();
+
+  const [activeTab, setActiveTab] = useState<TabFilter>("approved");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const approvedBusinesses = businesses.filter(
+    (b) => !b.status || b.status === "approved"
+  );
+  const pendingBusinesses = businesses.filter((b) => b.status === "pending");
+
+  const filteredBusinesses =
+    activeTab === "approved" ? approvedBusinesses : pendingBusinesses;
 
   const handleBusinessClick = (business: Business) => {
     if (onBusinessSelect) {
@@ -24,7 +41,27 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
     }
   };
 
-  // Liste görünümü
+  const handleApprove = async (e: React.MouseEvent, businessId: string) => {
+    e.stopPropagation();
+    setActionLoading(businessId);
+    try {
+      await editBusiness(businessId, { status: "approved" } as Partial<Business>);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (e: React.MouseEvent, businessId: string) => {
+    e.stopPropagation();
+    if (!confirm("Bu işletmeyi silmek istediğinize emin misiniz?")) return;
+    setActionLoading(businessId);
+    try {
+      await removeBusiness(businessId);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -43,21 +80,43 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
         </Button>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2">
+        <Button
+          variant={activeTab === "approved" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("approved")}
+        >
+          <CheckCircle2 className="w-4 h-4 mr-1" />
+          Onaylanmış ({approvedBusinesses.length})
+        </Button>
+        <Button
+          variant={activeTab === "pending" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("pending")}
+        >
+          <Clock className="w-4 h-4 mr-1" />
+          Bekleyen ({pendingBusinesses.length})
+        </Button>
+      </div>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
-      ) : businesses.length === 0 ? (
+      ) : filteredBusinesses.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Henüz kayıtlı işletme bulunmuyor.
+            {activeTab === "pending"
+              ? "Bekleyen işletme bulunmuyor."
+              : "Henüz kayıtlı işletme bulunmuyor."}
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {businesses.map((business) => (
+          {filteredBusinesses.map((business) => (
             <Card
               key={business.id}
               className="cursor-pointer hover:border-primary/50 transition-colors"
@@ -78,6 +137,12 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
                 <h3 className="font-semibold text-center truncate" title={business.name}>
                   {business.name}
                 </h3>
+                {business.status === "pending" && (
+                  <Badge variant="secondary" className="w-full justify-center">
+                    <Clock className="w-3 h-3 mr-1" />
+                    Onay Bekliyor
+                  </Badge>
+                )}
                 {business.colors && business.colors.length > 0 && (
                   <div className="flex justify-center gap-1">
                     {business.colors.slice(0, 6).map((color, index) => (
@@ -93,6 +158,35 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
                         +{business.colors.length - 6}
                       </span>
                     )}
+                  </div>
+                )}
+                {activeTab === "pending" && (
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      disabled={actionLoading === business.id}
+                      onClick={(e) => handleApprove(e, business.id)}
+                    >
+                      {actionLoading === business.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Onayla
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={actionLoading === business.id}
+                      onClick={(e) => handleReject(e, business.id)}
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Reddet
+                    </Button>
                   </div>
                 )}
               </CardContent>

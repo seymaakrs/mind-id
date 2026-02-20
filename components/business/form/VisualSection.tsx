@@ -1,8 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import { FormSection, SelectField } from "@/components/shared";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AESTHETIC_OPTIONS,
   PHOTOGRAPHY_STYLE_OPTIONS,
@@ -10,6 +18,20 @@ import {
   VISUAL_MOOD_OPTIONS,
   FONT_OPTIONS,
 } from "@/lib/constants";
+
+// Google Fonts family name mapping for preview
+const FONT_FAMILIES: Record<string, string> = {
+  inter: "Inter",
+  roboto: "Roboto",
+  "open-sans": "Open Sans",
+  montserrat: "Montserrat",
+  poppins: "Poppins",
+  "playfair-display": "Playfair Display",
+  lora: "Lora",
+  raleway: "Raleway",
+  oswald: "Oswald",
+  "bebas-neue": "Bebas Neue",
+};
 
 type Props = {
   aesthetic: string;
@@ -42,6 +64,19 @@ export function VisualSection({
   onFontChange,
   onCustomFontChange,
 }: Props) {
+  // Load Google Fonts for preview
+  useEffect(() => {
+    const families = Object.values(FONT_FAMILIES).map((f) => f.replace(/ /g, "+")).join("&family=");
+    const linkId = "google-fonts-preview";
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement("link");
+      link.id = linkId;
+      link.rel = "stylesheet";
+      link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`;
+      document.head.appendChild(link);
+    }
+  }, []);
+
   return (
     <FormSection title="Görsel Tercihler">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -73,13 +108,35 @@ export function VisualSection({
           options={VISUAL_MOOD_OPTIONS}
           disabled={disabled}
         />
-        <SelectField
-          label="Yazı Fontu"
-          value={font}
-          onChange={onFontChange}
-          options={FONT_OPTIONS}
-          disabled={disabled}
-        />
+        <div className="space-y-2">
+          <Label>Yazı Fontu</Label>
+          <Select value={font} onValueChange={onFontChange} disabled={disabled}>
+            <SelectTrigger
+              style={
+                font && font !== "custom" && FONT_FAMILIES[font]
+                  ? { fontFamily: `'${FONT_FAMILIES[font]}', sans-serif` }
+                  : undefined
+              }
+            >
+              <SelectValue placeholder="Seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              {FONT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <span
+                    style={
+                      FONT_FAMILIES[option.value]
+                        ? { fontFamily: `'${FONT_FAMILIES[option.value]}', sans-serif` }
+                        : undefined
+                    }
+                  >
+                    {option.label}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         {font === "custom" && (
           <div className="space-y-2">
             <Label htmlFor="custom-font">Özel Font Adı</Label>
