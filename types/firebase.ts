@@ -35,6 +35,8 @@ export interface BusinessProfile {
   photography_style?: string;
   color_mood?: string;
   visual_mood?: string;
+  font?: string;
+  custom_font?: string;
 
   // Hedef Kitle
   target_age_range?: string;

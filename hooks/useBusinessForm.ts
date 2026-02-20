@@ -63,6 +63,7 @@ type UseBusinessFormReturn = {
   updateExtraField: (index: number, field: "key" | "value", value: string) => void;
   resetForm: () => void;
   loadFromBusiness: (business: Business) => void;
+  loadFromSavedData: (data: Record<string, unknown>) => void;
   buildBusinessData: () => {
     name: string;
     colors: string[];
@@ -190,6 +191,54 @@ export function useBusinessForm(): UseBusinessFormReturn {
     });
   }, []);
 
+  const loadFromSavedData = useCallback((data: Record<string, unknown>) => {
+    const p = (data.profile || {}) as Record<string, unknown>;
+    const extras = (p.extras || {}) as Record<string, string>;
+    setForm({
+      name: (data.name as string) || "",
+      logoFile: null,
+      logoPreview: null,
+      colors: Array.isArray(data.colors) ? data.colors : [],
+      newColor: DEFAULT_COLOR,
+      website: (data.website as string) || "",
+      lateProfileId: (data.late_profile_id as string) || "",
+      slogan: (p.slogan as string) || "",
+      industry: (p.industry as string) || "",
+      subCategory: (p.sub_category as string) || "",
+      marketPosition: (p.market_position as string) || "",
+      locationCity: (p.location_city as string) || "",
+      tone: (p.tone as string) || "",
+      language: (p.language as string) || DEFAULT_LANGUAGE,
+      formality: (p.formality as string) || "",
+      emojiUsage: (p.emoji_usage as string) || "",
+      captionStyle: (p.caption_style as string) || "",
+      aesthetic: (p.aesthetic as string) || "",
+      photographyStyle: (p.photography_style as string) || "",
+      colorMood: (p.color_mood as string) || "",
+      visualMood: (p.visual_mood as string) || "",
+      font: (p.font as string) || "",
+      customFont: (p.custom_font as string) || "",
+      targetAgeRange: (p.target_age_range as string) || "",
+      targetGender: (p.target_gender as string) || "",
+      targetDescription: (p.target_description as string) || "",
+      targetInterests: arrayToString(p.target_interests as string[] | undefined),
+      brandValues: arrayToString(p.brand_values as string[] | undefined),
+      uniquePoints: arrayToString(p.unique_points as string[] | undefined),
+      brandStoryShort: (p.brand_story_short as string) || "",
+      hashtagsBrand: arrayToString(p.hashtags_brand as string[] | undefined),
+      hashtagsIndustry: arrayToString(p.hashtags_industry as string[] | undefined),
+      hashtagsLocation: arrayToString(p.hashtags_location as string[] | undefined),
+      contentPillars: arrayToString(p.content_pillars as string[] | undefined),
+      avoidTopics: arrayToString(p.avoid_topics as string[] | undefined),
+      seasonalContent: p.seasonal_content !== false,
+      promoFrequency: (p.promo_frequency as string) || "",
+      extraFields: Object.entries(extras).map(([key, value]) => ({
+        key,
+        value: String(value),
+      })),
+    });
+  }, []);
+
   const buildBusinessData = useCallback(() => {
     const extras: Record<string, string> = {};
     form.extraFields.forEach((field) => {
@@ -262,6 +311,7 @@ export function useBusinessForm(): UseBusinessFormReturn {
     updateExtraField,
     resetForm,
     loadFromBusiness,
+    loadFromSavedData,
     buildBusinessData,
     validate,
   };

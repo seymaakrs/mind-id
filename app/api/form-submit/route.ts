@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
-import { FieldValue } from "firebase-admin/firestore";
 
 export const maxDuration = 60;
 
@@ -89,7 +88,7 @@ export async function POST(request: NextRequest) {
         const bucket = adminStorage!.bucket();
         const logoBuffer = Buffer.from(await logoFile.arrayBuffer());
         const ext = logoFile.name.split(".").pop() || "png";
-        const storagePath = `businesses/pending_${Date.now()}/logo.${ext}`;
+        const storagePath = `form_submissions/${token}/logo.${ext}`;
         const file = bucket.file(storagePath);
 
         await file.save(logoBuffer, {
@@ -103,32 +102,51 @@ export async function POST(request: NextRequest) {
         logoUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
       }
 
-      // Create business document
-      const businessDoc = {
-        name: (businessData.name as string).trim(),
-        logo: logoUrl,
-        colors: Array.isArray(businessData.colors) ? businessData.colors : [],
-        website: typeof businessData.website === "string" ? businessData.website.trim() : "",
-        profile: typeof businessData.profile === "object" && businessData.profile !== null
-          ? businessData.profile
-          : {},
-        status: "pending",
-        submitted_via: token,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      };
+      const nowISO = now.toISOString();
 
-      const businessRef = adminDb!.collection("businesses").doc();
-      transaction.set(businessRef, businessDoc);
+      // Check if there's an existing draft submission for this token
+      const submissionsSnapshot = await adminDb!
+        .collection("form_submissions")
+        .where("token", "==", token)
+        .limit(1)
+        .get();
+
+      let submissionId: string;
+
+      if (!submissionsSnapshot.empty) {
+        // Update existing draft to submitted
+        const existingDoc = submissionsSnapshot.docs[0];
+        submissionId = existingDoc.id;
+        transaction.update(existingDoc.ref, {
+          status: "submitted",
+          data: businessData,
+          logoUrl,
+          updatedAt: nowISO,
+          submittedAt: nowISO,
+        });
+      } else {
+        // Create new submission as submitted
+        const newRef = adminDb!.collection("form_submissions").doc();
+        submissionId = newRef.id;
+        transaction.set(newRef, {
+          token,
+          status: "submitted",
+          data: businessData,
+          logoUrl,
+          createdAt: nowISO,
+          updatedAt: nowISO,
+          submittedAt: nowISO,
+        });
+      }
 
       // Mark invite as used
       transaction.update(inviteRef, {
         used: true,
-        usedAt: now.toISOString(),
-        businessId: businessRef.id,
+        usedAt: nowISO,
+        submissionId,
       });
 
-      return { success: true, businessId: businessRef.id };
+      return { success: true, submissionId };
     });
 
     if ("error" in result) {
@@ -140,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      businessId: result.businessId,
+      submissionId: result.submissionId,
     });
   } catch (error) {
     console.error("Form submit error:", error);

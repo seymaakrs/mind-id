@@ -51,10 +51,25 @@ export async function GET(
       );
     }
 
+    // Check if there's an existing draft submission
+    let savedData: Record<string, unknown> | null = null;
+    const submissionsSnapshot = await adminDb
+      .collection("form_submissions")
+      .where("token", "==", token)
+      .where("status", "==", "draft")
+      .limit(1)
+      .get();
+
+    if (!submissionsSnapshot.empty) {
+      const submission = submissionsSnapshot.docs[0].data();
+      savedData = submission.data as Record<string, unknown>;
+    }
+
     return NextResponse.json({
       valid: true,
       label: invite.label || null,
       expiresAt: invite.expiresAt,
+      savedData,
     });
   } catch (error) {
     console.error("Token validation error:", error);

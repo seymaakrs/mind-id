@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Building2, Loader2, CheckCircle2, XCircle, Clock, Save } from "lucide-react";
 import { useBusinessForm } from "@/hooks/useBusinessForm";
 import {
   BasicInfoSection,
@@ -19,6 +19,7 @@ import {
 } from "@/components/business/form";
 
 type PageStatus = "loading" | "valid" | "invalid" | "submitting" | "success" | "error";
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export default function PublicFormPage() {
   const params = useParams();
@@ -28,6 +29,8 @@ export default function PublicFormPage() {
   const [inviteLabel, setInviteLabel] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const {
     form,
@@ -38,11 +41,95 @@ export default function PublicFormPage() {
     addExtraField,
     removeExtraField,
     updateExtraField,
+    loadFromSavedData,
     buildBusinessData,
     validate,
   } = useBusinessForm();
 
-  // Validate token on mount
+  // Refs for autosave
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedDataRef = useRef<string>("");
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  // Autosave function
+  const autosave = useCallback(async () => {
+    const currentForm = formRef.current;
+    // Don't save if form is empty (no name entered yet)
+    if (!currentForm.name.trim()) return;
+
+    const businessData = buildBusinessData();
+    const dataJson = JSON.stringify(businessData);
+
+    // Skip if data hasn't changed
+    if (dataJson === lastSavedDataRef.current) return;
+
+    setSaveStatus("saving");
+    try {
+      const res = await fetch("/api/form-autosave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, data: businessData }),
+      });
+
+      if (res.ok) {
+        lastSavedDataRef.current = dataJson;
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      } else {
+        setSaveStatus("error");
+        setTimeout(() => setSaveStatus("idle"), 3000);
+      }
+    } catch {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    }
+  }, [token, buildBusinessData]);
+
+  // Debounced autosave: trigger 3 seconds after last change
+  useEffect(() => {
+    if (!dataLoaded || pageStatus !== "valid") return;
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = setTimeout(() => {
+      autosave();
+    }, 3000);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [form, dataLoaded, pageStatus, autosave]);
+
+  // Save on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const currentForm = formRef.current;
+      if (!currentForm.name.trim()) return;
+
+      const businessData = buildBusinessData();
+      const dataJson = JSON.stringify(businessData);
+      if (dataJson === lastSavedDataRef.current) return;
+
+      // Use sendBeacon for reliable save on page close
+      navigator.sendBeacon(
+        "/api/form-autosave",
+        new Blob(
+          [JSON.stringify({ token, data: businessData })],
+          { type: "application/json" }
+        )
+      );
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [token, buildBusinessData]);
+
+  // Validate token on mount and load saved data
   useEffect(() => {
     async function validateToken() {
       try {
@@ -52,6 +139,13 @@ export default function PublicFormPage() {
         if (data.valid) {
           setPageStatus("valid");
           setInviteLabel(data.label);
+
+          // Load saved draft data if exists
+          if (data.savedData) {
+            loadFromSavedData(data.savedData);
+            lastSavedDataRef.current = JSON.stringify(data.savedData);
+          }
+          setDataLoaded(true);
         } else {
           setPageStatus("invalid");
           setErrorMessage(data.error || "Geçersiz davet linki");
@@ -65,7 +159,7 @@ export default function PublicFormPage() {
     if (token) {
       validateToken();
     }
-  }, [token]);
+  }, [token, loadFromSavedData]);
 
   const handleLogoSelect = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -171,19 +265,40 @@ export default function PublicFormPage() {
   // Form
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Building2 className="w-8 h-8" />
-        <div>
-          <h2 className="text-2xl font-bold">İşletme Bilgileri</h2>
-          <p className="text-muted-foreground">
-            {inviteLabel
-              ? `${inviteLabel} - İşletme bilgilerinizi doldurun`
-              : "İşletme bilgilerinizi doldurun"}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Building2 className="w-8 h-8" />
+          <div>
+            <h2 className="text-2xl font-bold">İşletme Bilgileri</h2>
+            <p className="text-muted-foreground">
+              {inviteLabel
+                ? `${inviteLabel} - İşletme bilgilerinizi doldurun`
+                : "İşletme bilgilerinizi doldurun"}
+            </p>
+          </div>
+        </div>
+
+        {/* Autosave indicator */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {saveStatus === "saving" && (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Kaydediliyor...</span>
+            </>
+          )}
+          {saveStatus === "saved" && (
+            <>
+              <Save className="w-3 h-3 text-green-500" />
+              <span className="text-green-500">Kaydedildi</span>
+            </>
+          )}
+          {saveStatus === "error" && (
+            <span className="text-destructive">Kaydetme hatası</span>
+          )}
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault() }} className="space-y-6">
         <BasicInfoSection
           name={form.name}
           logoPreview={form.logoPreview}
