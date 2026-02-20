@@ -127,13 +127,13 @@ export default function InviteLinksComponent() {
   };
 
   const getInviteStatus = (invite: FormInvite) => {
-    if (invite.used) {
-      return { label: "Kullanıldı", variant: "secondary" as const, icon: CheckCircle2 };
-    }
     const now = new Date();
     const expiresAt = new Date(invite.expiresAt);
     if (now > expiresAt) {
       return { label: "Süresi Doldu", variant: "destructive" as const, icon: XCircle };
+    }
+    if (invite.used) {
+      return { label: "Gönderildi", variant: "secondary" as const, icon: CheckCircle2 };
     }
     return { label: "Aktif", variant: "default" as const, icon: Clock };
   };
@@ -273,7 +273,7 @@ export default function InviteLinksComponent() {
                       variant="outline"
                       size="sm"
                       onClick={() => copyLink(invite.id)}
-                      disabled={invite.used || new Date() > new Date(invite.expiresAt)}
+                      disabled={new Date() > new Date(invite.expiresAt)}
                     >
                       {copiedId === invite.id ? (
                         <>

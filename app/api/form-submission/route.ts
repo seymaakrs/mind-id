@@ -23,14 +23,19 @@ export async function GET(request: NextRequest) {
     const snapshot = await adminDb
       .collection("form_submissions")
       .where("status", "==", status)
-      .orderBy("updatedAt", "desc")
       .limit(50)
       .get();
 
-    const submissions = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const submissions = snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .sort((a, b) => {
+        const aDate = (a as Record<string, unknown>).updatedAt as string || "";
+        const bDate = (b as Record<string, unknown>).updatedAt as string || "";
+        return bDate.localeCompare(aDate);
+      });
 
     return NextResponse.json({ submissions });
   } catch (error) {

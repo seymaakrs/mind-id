@@ -34,13 +34,7 @@ export async function GET(
 
     const invite = docSnap.data()!;
 
-    if (invite.used) {
-      return NextResponse.json(
-        { valid: false, error: "Bu davet linki zaten kullanılmış" },
-        { status: 410 }
-      );
-    }
-
+    // Check expiry — this is the only hard block
     const now = new Date();
     const expiresAt = new Date(invite.expiresAt);
 
@@ -51,18 +45,24 @@ export async function GET(
       );
     }
 
-    // Check if there's an existing draft submission
+    // Check if there's an existing submission (draft, submitted, or approved)
     let savedData: Record<string, unknown> | null = null;
+    let submissionStatus: string | null = null;
+    let logoUrl: string | null = null;
+    let businessId: string | null = null;
+
     const submissionsSnapshot = await adminDb
       .collection("form_submissions")
       .where("token", "==", token)
-      .where("status", "==", "draft")
       .limit(1)
       .get();
 
     if (!submissionsSnapshot.empty) {
       const submission = submissionsSnapshot.docs[0].data();
+      submissionStatus = submission.status as string;
       savedData = submission.data as Record<string, unknown>;
+      logoUrl = submission.logoUrl || null;
+      businessId = submission.businessId || null;
     }
 
     return NextResponse.json({
@@ -70,6 +70,9 @@ export async function GET(
       label: invite.label || null,
       expiresAt: invite.expiresAt,
       savedData,
+      submissionStatus, // "draft" | "submitted" | "approved" | null
+      logoUrl,
+      businessId,
     });
   } catch (error) {
     console.error("Token validation error:", error);

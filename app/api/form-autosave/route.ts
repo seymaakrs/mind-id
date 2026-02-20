@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 // POST: Save/update draft data for a token
 export async function POST(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate token exists and is not expired/used
+    // Validate token exists and is not expired
     const inviteRef = adminDb.collection("form_invites").doc(token);
     const inviteDoc = await inviteRef.get();
 
@@ -32,13 +33,6 @@ export async function POST(request: NextRequest) {
     }
 
     const invite = inviteDoc.data()!;
-
-    if (invite.used) {
-      return NextResponse.json(
-        { error: "Bu davet linki zaten kullanılmış" },
-        { status: 410 }
-      );
-    }
 
     const now = new Date();
     if (now > new Date(invite.expiresAt)) {
@@ -72,22 +66,32 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ success: true, submissionId: docRef.id });
     } else {
-      // Update existing draft
+      // Update existing submission (draft, submitted, or approved)
       const existingDoc = existingSnapshot.docs[0];
       const existing = existingDoc.data();
-
-      // Don't overwrite if already submitted
-      if (existing.status === "submitted") {
-        return NextResponse.json(
-          { error: "Bu form zaten gönderilmiş" },
-          { status: 410 }
-        );
-      }
 
       await existingDoc.ref.update({
         data,
         updatedAt: nowISO,
       });
+
+      // If approved, also update the linked business
+      if (existing.status === "approved" && existing.businessId) {
+        try {
+          const businessRef = adminDb.collection("businesses").doc(existing.businessId);
+          const profile = typeof data.profile === "object" && data.profile !== null ? data.profile : {};
+          await businessRef.update({
+            name: ((data.name as string) || "").trim(),
+            colors: Array.isArray(data.colors) ? data.colors : [],
+            website: typeof data.website === "string" ? data.website.trim() : "",
+            profile,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } catch (error) {
+          console.error("Business sync error:", error);
+          // Non-critical: submission saved, business sync failed
+        }
+      }
 
       return NextResponse.json({ success: true, submissionId: existingDoc.id });
     }

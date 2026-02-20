@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Loader2, CheckCircle2, XCircle, Clock, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Building2, Loader2, CheckCircle2, XCircle, Clock, Save, Pencil } from "lucide-react";
 import { useBusinessForm } from "@/hooks/useBusinessForm";
 import {
   BasicInfoSection,
@@ -18,8 +19,9 @@ import {
   ExtraFieldsSection,
 } from "@/components/business/form";
 
-type PageStatus = "loading" | "valid" | "invalid" | "submitting" | "success" | "error";
+type PageStatus = "loading" | "valid" | "invalid" | "submitting";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SubmissionStatus = "draft" | "submitted" | "approved" | null;
 
 export default function PublicFormPage() {
   const params = useParams();
@@ -31,6 +33,9 @@ export default function PublicFormPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>(null);
+  const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const {
     form,
@@ -55,13 +60,11 @@ export default function PublicFormPage() {
   // Autosave function
   const autosave = useCallback(async () => {
     const currentForm = formRef.current;
-    // Don't save if form is empty (no name entered yet)
     if (!currentForm.name.trim()) return;
 
     const businessData = buildBusinessData();
     const dataJson = JSON.stringify(businessData);
 
-    // Skip if data hasn't changed
     if (dataJson === lastSavedDataRef.current) return;
 
     setSaveStatus("saving");
@@ -86,7 +89,7 @@ export default function PublicFormPage() {
     }
   }, [token, buildBusinessData]);
 
-  // Debounced autosave: trigger 3 seconds after last change
+  // Debounced autosave
   useEffect(() => {
     if (!dataLoaded || pageStatus !== "valid") return;
 
@@ -115,7 +118,6 @@ export default function PublicFormPage() {
       const dataJson = JSON.stringify(businessData);
       if (dataJson === lastSavedDataRef.current) return;
 
-      // Use sendBeacon for reliable save on page close
       navigator.sendBeacon(
         "/api/form-autosave",
         new Blob(
@@ -139,8 +141,9 @@ export default function PublicFormPage() {
         if (data.valid) {
           setPageStatus("valid");
           setInviteLabel(data.label);
+          setSubmissionStatus(data.submissionStatus);
+          setExistingLogoUrl(data.logoUrl);
 
-          // Load saved draft data if exists
           if (data.savedData) {
             loadFromSavedData(data.savedData);
             lastSavedDataRef.current = JSON.stringify(data.savedData);
@@ -183,31 +186,40 @@ export default function PublicFormPage() {
       return;
     }
 
-    if (!form.logoFile) {
+    // Logo required only on first submit (no existing logo)
+    if (!form.logoFile && !existingLogoUrl) {
       setSubmitError("Logo yüklemek zorunludur.");
       return;
     }
 
     setPageStatus("submitting");
     setSubmitError(null);
+    setSubmitSuccess(false);
 
     try {
       const businessData = buildBusinessData();
 
-      const formData = new FormData();
-      formData.append("token", token);
-      formData.append("businessData", JSON.stringify(businessData));
-      formData.append("logo", form.logoFile);
+      const fd = new FormData();
+      fd.append("token", token);
+      fd.append("businessData", JSON.stringify(businessData));
+      if (form.logoFile) {
+        fd.append("logo", form.logoFile);
+      }
 
       const res = await fetch("/api/form-submit", {
         method: "POST",
-        body: formData,
+        body: fd,
       });
 
       const result = await res.json();
 
       if (result.success) {
-        setPageStatus("success");
+        setPageStatus("valid");
+        setSubmitSuccess(true);
+        if (submissionStatus === "draft" || submissionStatus === null) {
+          setSubmissionStatus("submitted");
+        }
+        setTimeout(() => setSubmitSuccess(false), 5000);
       } else {
         setPageStatus("valid");
         setSubmitError(result.error || "Bir hata oluştu.");
@@ -241,28 +253,9 @@ export default function PublicFormPage() {
     );
   }
 
-  // Success state
-  if (pageStatus === "success") {
-    return (
-      <Card className="max-w-md mx-auto">
-        <CardContent className="py-12 text-center space-y-4">
-          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
-          <h2 className="text-xl font-semibold">Başarıyla Gönderildi!</h2>
-          <p className="text-muted-foreground">
-            İşletme bilgileriniz başarıyla kaydedildi. Ekibimiz bilgilerinizi inceleyip onaylayacaktır.
-          </p>
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>Onay bekleniyor</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const isDisabled = pageStatus === "submitting";
+  const isResubmit = submissionStatus === "submitted" || submissionStatus === "approved";
 
-  // Form
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -278,30 +271,58 @@ export default function PublicFormPage() {
           </div>
         </div>
 
-        {/* Autosave indicator */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {saveStatus === "saving" && (
-            <>
-              <Loader2 className="w-3 h-3 animate-spin" />
-              <span>Kaydediliyor...</span>
-            </>
+        <div className="flex items-center gap-3">
+          {/* Status badge */}
+          {submissionStatus === "submitted" && (
+            <Badge variant="secondary" className="gap-1">
+              <Clock className="w-3 h-3" />
+              Gönderildi - Onay Bekleniyor
+            </Badge>
           )}
-          {saveStatus === "saved" && (
-            <>
-              <Save className="w-3 h-3 text-green-500" />
-              <span className="text-green-500">Kaydedildi</span>
-            </>
+          {submissionStatus === "approved" && (
+            <Badge className="gap-1 bg-green-600">
+              <CheckCircle2 className="w-3 h-3" />
+              Onaylandı
+            </Badge>
           )}
-          {saveStatus === "error" && (
-            <span className="text-destructive">Kaydetme hatası</span>
-          )}
+
+          {/* Autosave indicator */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {saveStatus === "saving" && (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Kaydediliyor...</span>
+              </>
+            )}
+            {saveStatus === "saved" && (
+              <>
+                <Save className="w-3 h-3 text-green-500" />
+                <span className="text-green-500">Kaydedildi</span>
+              </>
+            )}
+            {saveStatus === "error" && (
+              <span className="text-destructive">Kaydetme hatası</span>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Success message after submit */}
+      {submitSuccess && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <p className="text-sm">
+            {submissionStatus === "approved"
+              ? "Değişiklikleriniz kaydedildi ve işletme bilgileri güncellendi."
+              : "İşletme bilgileriniz başarıyla gönderildi. Ekibimiz inceleyip onaylayacaktır. Bu sayfadan düzenlemeye devam edebilirsiniz."}
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault() }} className="space-y-6">
         <BasicInfoSection
           name={form.name}
-          logoPreview={form.logoPreview}
+          logoPreview={form.logoPreview || existingLogoUrl}
           colors={form.colors}
           newColor={form.newColor}
           website={form.website}
@@ -315,7 +336,7 @@ export default function PublicFormPage() {
           onWebsiteChange={(v) => setField("website", v)}
           onLateProfileIdChange={(v) => setField("lateProfileId", v)}
           logoFileName={form.logoFile?.name}
-          showLogoRequiredMark={true}
+          showLogoRequiredMark={!existingLogoUrl}
           hideLateProfileId={true}
         />
 
@@ -422,6 +443,11 @@ export default function PublicFormPage() {
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Gönderiliyor...
+            </>
+          ) : isResubmit ? (
+            <>
+              <Pencil className="w-4 h-4 mr-2" />
+              Değişiklikleri Kaydet ve Gönder
             </>
           ) : (
             <>
