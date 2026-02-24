@@ -192,11 +192,22 @@ export interface GeoRecommendation {
   reason: string;
 }
 
+// GEO Analysis - detailed format (used in reports)
 export interface GeoAnalysis {
   ai_crawler_access: GeoCrawlerAccess;
   content_structure: GeoContentStructure;
   citation_data: GeoCitationData;
   ai_discovery: GeoAiDiscovery;
+  recommendations?: GeoRecommendation[];
+}
+
+// GEO Analysis - flexible format (used in SEO summary, sub-fields can be flat numbers or detailed objects)
+export interface SeoGeoAnalysis {
+  ai_crawler_access: number | GeoCrawlerAccess;
+  content_structure: number | GeoContentStructure;
+  citation_data: number | GeoCitationData;
+  ai_discovery: number | GeoAiDiscovery;
+  geo_readiness_score?: number;
   recommendations?: GeoRecommendation[];
 }
 
@@ -217,19 +228,19 @@ export interface ScoreBreakdown {
 
 // SEO Summary (businesses/{businessId}/seo/summary)
 export interface SeoSummary {
-  overall_score: number;        // 0-100, genel SEO skoru
-  business_seo_score: number;   // 0-100, işletme sitesinin skoru
-  top_keywords: string[];       // En önemli 10 anahtar kelime
-  main_issues: string[];        // Düzeltilmesi gereken sorunlar (max 5)
-  competitor_count: number;     // Analiz edilen rakip sayısı
-  competitor_avg_score: number; // Rakiplerin ort. SEO skoru
-  last_report_id: string | null; // "seo-20260131-abc123" (reports/ referansı)
-  last_analysis_date: string;   // ISO datetime
-  updated_at: string;           // ISO datetime
-  serp_visibility_score?: number | null; // 0-100, SERP görünürlük skoru
-  geo_readiness_score?: number | null;   // 0-100, GEO hazırlık skoru
-  geo_analysis?: GeoAnalysis | null;     // 4 kategorili GEO analiz detayı
-  score_breakdown?: ScoreBreakdown | null; // Skor kırılımı ve öneriler
+  overall_score: number;
+  business_seo_score: number;
+  top_keywords: string[];
+  main_issues: string[];
+  competitor_count: number;
+  competitor_avg_score: number;
+  last_report_id: string | null;
+  last_analysis_date: string;
+  updated_at?: string;
+  serp_visibility_score?: number | null;
+  geo_readiness_score?: number | null;
+  geo_analysis?: SeoGeoAnalysis | null;
+  score_breakdown?: ScoreBreakdown | Record<string, number> | null;
 }
 
 // SEO Keywords (businesses/{businessId}/seo/keywords)

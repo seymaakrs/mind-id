@@ -46,7 +46,7 @@ import {
   MinusCircle,
 } from "lucide-react";
 import { useSeo } from "@/hooks";
-import type { SeoKeywordCategory, SeoKeywordPriority, SeoKeywordItem, GeoRecommendation, ScoreBreakdownRecommendation } from "@/types/firebase";
+import type { SeoKeywordCategory, SeoKeywordPriority, SeoKeywordItem, GeoRecommendation, ScoreBreakdownRecommendation, ScoreBreakdown, SeoGeoAnalysis } from "@/types/firebase";
 import { exportSeoPdf } from "@/lib/pdf/seo-pdf";
 
 interface SeoTabProps {
@@ -74,6 +74,7 @@ const INTENT_LABELS: Record<string, string> = {
   informational: "Bilgi",
   transactional: "Islem",
   navigational: "Navigasyon",
+  commercial: "Ticari",
 };
 
 // Priority badge variants
@@ -129,6 +130,44 @@ function getScoreBgColor(score: number): string {
   if (score >= 40) return "bg-orange-500/10";
   return "bg-red-500/10";
 }
+
+// Helpers to check if score_breakdown is structured (has nested breakdown) or flat
+function isStructuredBreakdown(sb: ScoreBreakdown | Record<string, number>): sb is ScoreBreakdown {
+  return "breakdown" in sb && typeof (sb as ScoreBreakdown).breakdown === "object";
+}
+
+// Get breakdown entries from score_breakdown (handles both flat and structured)
+function getBreakdownEntries(sb: ScoreBreakdown | Record<string, number>): [string, number][] {
+  if (isStructuredBreakdown(sb)) {
+    return Object.entries(sb.breakdown).map(([k, v]) => [k, typeof v === "number" ? v : 0]);
+  }
+  // Flat format: all numeric keys are breakdown categories
+  return Object.entries(sb)
+    .filter(([, v]) => typeof v === "number")
+    .map(([k, v]) => [k, v as number]);
+}
+
+// Check if a GEO sub-field is detailed (object) or flat (number)
+function isDetailedGeoField(val: unknown): val is Record<string, unknown> {
+  return typeof val === "object" && val !== null;
+}
+
+// Get effective geo_readiness_score (can be at summary root or inside geo_analysis)
+function getGeoReadinessScore(summary: { geo_readiness_score?: number | null; geo_analysis?: SeoGeoAnalysis | null }): number | null {
+  if (summary.geo_readiness_score != null) return summary.geo_readiness_score;
+  if (summary.geo_analysis?.geo_readiness_score != null) return summary.geo_analysis.geo_readiness_score;
+  return null;
+}
+
+// Score breakdown category labels (Turkish)
+const BREAKDOWN_LABELS: Record<string, string> = {
+  technical_seo: "Teknik SEO",
+  on_page_seo: "Sayfa Ici SEO",
+  content_quality: "Icerik Kalitesi",
+  mobile_performance: "Mobil Performans",
+  authority_signals: "Otorite Sinyalleri",
+  schema_structured_data: "Schema / Yapisal Veri",
+};
 
 const PRIORITY_BORDER_COLORS: Record<string, string> = {
   high: "border-l-red-500",
@@ -372,21 +411,21 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                 )}
 
                 {/* GEO Readiness Score */}
-                {summary.geo_readiness_score != null && (
-                  <Card className={getScoreBgColor(summary.geo_readiness_score)}>
+                {getGeoReadinessScore(summary) != null && (
+                  <Card className={getScoreBgColor(getGeoReadinessScore(summary)!)}>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">
                             GEO Hazirlik Skoru
                           </p>
-                          <p className={`text-3xl font-bold ${getScoreColor(summary.geo_readiness_score)}`}>
-                            {summary.geo_readiness_score}
+                          <p className={`text-3xl font-bold ${getScoreColor(getGeoReadinessScore(summary)!)}`}>
+                            {getGeoReadinessScore(summary)}
                             <span className="text-lg text-muted-foreground">/100</span>
                           </p>
                         </div>
-                        <div className={`p-3 rounded-full ${getScoreBgColor(summary.geo_readiness_score)}`}>
-                          <Bot className={`w-6 h-6 ${getScoreColor(summary.geo_readiness_score)}`} />
+                        <div className={`p-3 rounded-full ${getScoreBgColor(getGeoReadinessScore(summary)!)}`}>
+                          <Bot className={`w-6 h-6 ${getScoreColor(getGeoReadinessScore(summary)!)}`} />
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
@@ -412,7 +451,8 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* AI Crawler Access */}
-                      {summary.geo_analysis.ai_crawler_access && (
+                      {summary.geo_analysis.ai_crawler_access != null && (
+                        isDetailedGeoField(summary.geo_analysis.ai_crawler_access) ? (
                       <div className="p-4 rounded-lg border bg-card space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -420,16 +460,16 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             AI Bot Erisimi
                           </h5>
                           <Badge variant="outline" className={getScoreColor(
-                            (summary.geo_analysis.ai_crawler_access.score / summary.geo_analysis.ai_crawler_access.max) * 100
+                            ((summary.geo_analysis.ai_crawler_access as Record<string, unknown>).score as number / ((summary.geo_analysis.ai_crawler_access as Record<string, unknown>).max as number)) * 100
                           )}>
-                            {summary.geo_analysis.ai_crawler_access.score}/{summary.geo_analysis.ai_crawler_access.max}
+                            {(summary.geo_analysis.ai_crawler_access as Record<string, unknown>).score as number}/{(summary.geo_analysis.ai_crawler_access as Record<string, unknown>).max as number}
                           </Badge>
                         </div>
-                        {(summary.geo_analysis.ai_crawler_access.bots_allowed?.length ?? 0) > 0 && (
+                        {(((summary.geo_analysis.ai_crawler_access as Record<string, unknown>).bots_allowed as string[])?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Izin Verilen:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {summary.geo_analysis.ai_crawler_access.bots_allowed.map((bot, i) => (
+                              {((summary.geo_analysis.ai_crawler_access as Record<string, unknown>).bots_allowed as string[]).map((bot, i) => (
                                 <Badge key={i} variant="secondary" className="text-xs bg-green-500/10 text-green-500">
                                   <CheckCircle2 className="w-3 h-3 mr-1" />
                                   {bot}
@@ -438,11 +478,11 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             </div>
                           </div>
                         )}
-                        {(summary.geo_analysis.ai_crawler_access.bots_blocked?.length ?? 0) > 0 && (
+                        {(((summary.geo_analysis.ai_crawler_access as Record<string, unknown>).bots_blocked as string[])?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Engellenen:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {summary.geo_analysis.ai_crawler_access.bots_blocked.map((bot, i) => (
+                              {((summary.geo_analysis.ai_crawler_access as Record<string, unknown>).bots_blocked as string[]).map((bot, i) => (
                                 <Badge key={i} variant="secondary" className="text-xs bg-red-500/10 text-red-500">
                                   <XCircle className="w-3 h-3 mr-1" />
                                   {bot}
@@ -451,11 +491,11 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             </div>
                           </div>
                         )}
-                        {(summary.geo_analysis.ai_crawler_access.bots_not_mentioned?.length ?? 0) > 0 && (
+                        {(((summary.geo_analysis.ai_crawler_access as Record<string, unknown>).bots_not_mentioned as string[])?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Belirtilmemis:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {summary.geo_analysis.ai_crawler_access.bots_not_mentioned.map((bot, i) => (
+                              {((summary.geo_analysis.ai_crawler_access as Record<string, unknown>).bots_not_mentioned as string[]).map((bot, i) => (
                                 <Badge key={i} variant="outline" className="text-xs">
                                   {bot}
                                 </Badge>
@@ -464,10 +504,24 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                           </div>
                         )}
                       </div>
+                        ) : (
+                      <div className="p-4 rounded-lg border bg-card space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-semibold flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-blue-500" />
+                            AI Bot Erisimi
+                          </h5>
+                          <span className={`text-lg font-bold ${getScoreColor((summary.geo_analysis.ai_crawler_access as number / 30) * 100)}`}>
+                            {summary.geo_analysis.ai_crawler_access as number}
+                          </span>
+                        </div>
+                      </div>
+                        )
                       )}
 
                       {/* Content Structure */}
-                      {summary.geo_analysis.content_structure && (
+                      {summary.geo_analysis.content_structure != null && (
+                        isDetailedGeoField(summary.geo_analysis.content_structure) ? (
                       <div className="p-4 rounded-lg border bg-card space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -475,38 +529,52 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             Icerik Yapisi
                           </h5>
                           <Badge variant="outline" className={getScoreColor(
-                            (summary.geo_analysis.content_structure.score / summary.geo_analysis.content_structure.max) * 100
+                            ((summary.geo_analysis.content_structure as Record<string, unknown>).score as number / ((summary.geo_analysis.content_structure as Record<string, unknown>).max as number)) * 100
                           )}>
-                            {summary.geo_analysis.content_structure.score}/{summary.geo_analysis.content_structure.max}
+                            {(summary.geo_analysis.content_structure as Record<string, unknown>).score as number}/{(summary.geo_analysis.content_structure as Record<string, unknown>).max as number}
                           </Badge>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">FAQ Bolumu:</span>
-                            <span>{summary.geo_analysis.content_structure.has_faq_section ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}</span>
+                            <span>{(summary.geo_analysis.content_structure as Record<string, unknown>).has_faq_section ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">FAQ Schema:</span>
-                            <span>{summary.geo_analysis.content_structure.faq_schema ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}</span>
+                            <span>{(summary.geo_analysis.content_structure as Record<string, unknown>).faq_schema ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Tablo Sayisi:</span>
-                            <span>{summary.geo_analysis.content_structure.tables_count}</span>
+                            <span>{(summary.geo_analysis.content_structure as Record<string, unknown>).tables_count as number}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Liste Sayisi:</span>
-                            <span>{summary.geo_analysis.content_structure.lists_count}</span>
+                            <span>{(summary.geo_analysis.content_structure as Record<string, unknown>).lists_count as number}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Soru Basliklari:</span>
-                            <span>{summary.geo_analysis.content_structure.question_headings_count}</span>
+                            <span>{(summary.geo_analysis.content_structure as Record<string, unknown>).question_headings_count as number}</span>
                           </div>
                         </div>
                       </div>
+                        ) : (
+                      <div className="p-4 rounded-lg border bg-card space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-semibold flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-purple-500" />
+                            Icerik Yapisi
+                          </h5>
+                          <span className={`text-lg font-bold ${getScoreColor((summary.geo_analysis.content_structure as number / 15) * 100)}`}>
+                            {summary.geo_analysis.content_structure as number}
+                          </span>
+                        </div>
+                      </div>
+                        )
                       )}
 
                       {/* Citation Data */}
-                      {summary.geo_analysis.citation_data && (
+                      {summary.geo_analysis.citation_data != null && (
+                        isDetailedGeoField(summary.geo_analysis.citation_data) ? (
                       <div className="p-4 rounded-lg border bg-card space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -514,34 +582,48 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             Alinti Verileri
                           </h5>
                           <Badge variant="outline" className={getScoreColor(
-                            (summary.geo_analysis.citation_data.score / summary.geo_analysis.citation_data.max) * 100
+                            ((summary.geo_analysis.citation_data as Record<string, unknown>).score as number / ((summary.geo_analysis.citation_data as Record<string, unknown>).max as number)) * 100
                           )}>
-                            {summary.geo_analysis.citation_data.score}/{summary.geo_analysis.citation_data.max}
+                            {(summary.geo_analysis.citation_data as Record<string, unknown>).score as number}/{(summary.geo_analysis.citation_data as Record<string, unknown>).max as number}
                           </Badge>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Dis Alinti:</span>
-                            <span>{summary.geo_analysis.citation_data.external_citations}</span>
+                            <span>{(summary.geo_analysis.citation_data as Record<string, unknown>).external_citations as number}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Alinti Yogunlugu (1K):</span>
-                            <span>{summary.geo_analysis.citation_data.citation_density_per_1k?.toFixed(1) ?? 0}</span>
+                            <span>{((summary.geo_analysis.citation_data as Record<string, unknown>).citation_density_per_1k as number)?.toFixed(1) ?? 0}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Istatistik Sayisi:</span>
-                            <span>{summary.geo_analysis.citation_data.statistics_count}</span>
+                            <span>{(summary.geo_analysis.citation_data as Record<string, unknown>).statistics_count as number}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Istatistik Yogunlugu (1K):</span>
-                            <span>{summary.geo_analysis.citation_data.statistics_density_per_1k?.toFixed(1) ?? 0}</span>
+                            <span>{((summary.geo_analysis.citation_data as Record<string, unknown>).statistics_density_per_1k as number)?.toFixed(1) ?? 0}</span>
                           </div>
                         </div>
                       </div>
+                        ) : (
+                      <div className="p-4 rounded-lg border bg-card space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-semibold flex items-center gap-2">
+                            <Quote className="w-4 h-4 text-orange-500" />
+                            Alinti Verileri
+                          </h5>
+                          <span className={`text-lg font-bold ${getScoreColor((summary.geo_analysis.citation_data as number / 20) * 100)}`}>
+                            {summary.geo_analysis.citation_data as number}
+                          </span>
+                        </div>
+                      </div>
+                        )
                       )}
 
                       {/* AI Discovery */}
-                      {summary.geo_analysis.ai_discovery && (
+                      {summary.geo_analysis.ai_discovery != null && (
+                        isDetailedGeoField(summary.geo_analysis.ai_discovery) ? (
                       <div className="p-4 rounded-lg border bg-card space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="text-sm font-semibold flex items-center gap-2">
@@ -549,22 +631,22 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             AI Kesfedilebilirlik
                           </h5>
                           <Badge variant="outline" className={getScoreColor(
-                            (summary.geo_analysis.ai_discovery.score / summary.geo_analysis.ai_discovery.max) * 100
+                            ((summary.geo_analysis.ai_discovery as Record<string, unknown>).score as number / ((summary.geo_analysis.ai_discovery as Record<string, unknown>).max as number)) * 100
                           )}>
-                            {summary.geo_analysis.ai_discovery.score}/{summary.geo_analysis.ai_discovery.max}
+                            {(summary.geo_analysis.ai_discovery as Record<string, unknown>).score as number}/{(summary.geo_analysis.ai_discovery as Record<string, unknown>).max as number}
                           </Badge>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">llms.txt:</span>
-                            <span>{summary.geo_analysis.ai_discovery.has_llms_txt ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}</span>
+                            <span>{(summary.geo_analysis.ai_discovery as Record<string, unknown>).has_llms_txt ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-500" />}</span>
                           </div>
                         </div>
-                        {(summary.geo_analysis.ai_discovery.geo_schema_types_present?.length ?? 0) > 0 && (
+                        {(((summary.geo_analysis.ai_discovery as Record<string, unknown>).geo_schema_types_present as string[])?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Mevcut Schema:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {summary.geo_analysis.ai_discovery.geo_schema_types_present.map((t, i) => (
+                              {((summary.geo_analysis.ai_discovery as Record<string, unknown>).geo_schema_types_present as string[]).map((t, i) => (
                                 <Badge key={i} variant="secondary" className="text-xs bg-green-500/10 text-green-500">
                                   {t}
                                 </Badge>
@@ -572,11 +654,11 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             </div>
                           </div>
                         )}
-                        {(summary.geo_analysis.ai_discovery.geo_schema_types_missing?.length ?? 0) > 0 && (
+                        {(((summary.geo_analysis.ai_discovery as Record<string, unknown>).geo_schema_types_missing as string[])?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Eksik Schema:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {summary.geo_analysis.ai_discovery.geo_schema_types_missing.map((t, i) => (
+                              {((summary.geo_analysis.ai_discovery as Record<string, unknown>).geo_schema_types_missing as string[]).map((t, i) => (
                                 <Badge key={i} variant="outline" className="text-xs text-yellow-500 border-yellow-500/30">
                                   {t}
                                 </Badge>
@@ -584,11 +666,11 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                             </div>
                           </div>
                         )}
-                        {(summary.geo_analysis.ai_discovery.freshness_signals?.length ?? 0) > 0 && (
+                        {(((summary.geo_analysis.ai_discovery as Record<string, unknown>).freshness_signals as string[])?.length ?? 0) > 0 && (
                           <div>
                             <span className="text-xs text-muted-foreground">Guncellik Sinyalleri:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {summary.geo_analysis.ai_discovery.freshness_signals.map((s, i) => (
+                              {((summary.geo_analysis.ai_discovery as Record<string, unknown>).freshness_signals as string[]).map((s, i) => (
                                 <Badge key={i} variant="secondary" className="text-xs">
                                   {s}
                                 </Badge>
@@ -597,6 +679,19 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                           </div>
                         )}
                       </div>
+                        ) : (
+                      <div className="p-4 rounded-lg border bg-card space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-semibold flex items-center gap-2">
+                            <Radar className="w-4 h-4 text-cyan-500" />
+                            AI Kesfedilebilirlik
+                          </h5>
+                          <span className={`text-lg font-bold ${getScoreColor((summary.geo_analysis.ai_discovery as number / 10) * 100)}`}>
+                            {summary.geo_analysis.ai_discovery as number}
+                          </span>
+                        </div>
+                      </div>
+                        )
                       )}
                     </div>
 
@@ -627,48 +722,54 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                       <BarChart3 className="w-4 h-4" />
                       Skor Kirilimi
                     </CardTitle>
-                    <CardDescription>
-                      Ham skor: {summary.score_breakdown.raw_score} / Toplam skor: {summary.score_breakdown.total_score}
-                    </CardDescription>
+                    {isStructuredBreakdown(summary.score_breakdown as ScoreBreakdown | Record<string, number>) && (
+                      <CardDescription>
+                        Ham skor: {(summary.score_breakdown as ScoreBreakdown).raw_score} / Toplam skor: {(summary.score_breakdown as ScoreBreakdown).total_score}
+                      </CardDescription>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Breakdown Categories */}
-                    {summary.score_breakdown.breakdown && Object.keys(summary.score_breakdown.breakdown).length > 0 && (
+                    {(() => {
+                      const entries = getBreakdownEntries(summary.score_breakdown as ScoreBreakdown | Record<string, number>);
+                      const totalScore = entries.reduce((sum, [, v]) => sum + v, 0);
+                      return entries.length > 0 && (
                       <div className="space-y-2">
-                        <h5 className="text-sm font-semibold text-muted-foreground">Kategori Puanlari</h5>
+                        <h5 className="text-sm font-semibold text-muted-foreground">
+                          Kategori Puanlari
+                          {!isStructuredBreakdown(summary.score_breakdown as ScoreBreakdown | Record<string, number>) && (
+                            <span className="ml-2 text-xs font-normal">
+                              (Toplam: {totalScore})
+                            </span>
+                          )}
+                        </h5>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {Object.entries(summary.score_breakdown.breakdown).map(([key, val]) => {
-                            const value = val as Record<string, unknown> | number;
-                            const score = typeof value === "number" ? value : (value as Record<string, unknown>)?.score as number | undefined;
-                            const max = typeof value === "object" ? (value as Record<string, unknown>)?.max as number | undefined : undefined;
-                            const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+                          {entries.map(([key, score]) => {
+                            const label = BREAKDOWN_LABELS[key] || key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
                             return (
                               <div key={key} className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
                                 <span className="text-sm truncate mr-2">{label}</span>
-                                {score != null ? (
-                                  <span className={`text-sm font-bold ${getScoreColor(max ? (score / max) * 100 : score)}`}>
-                                    {score}{max ? `/${max}` : ""}
-                                  </span>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">{JSON.stringify(val)}</span>
-                                )}
+                                <span className={`text-sm font-bold ${getScoreColor(score)}`}>
+                                  {score}
+                                </span>
                               </div>
                             );
                           })}
                         </div>
                       </div>
-                    )}
+                    );
+                    })()}
 
-                    {/* Penalties */}
-                    {(summary.score_breakdown.penalties?.length ?? 0) > 0 && (
+                    {/* Penalties (only in structured format) */}
+                    {isStructuredBreakdown(summary.score_breakdown as ScoreBreakdown | Record<string, number>) && ((summary.score_breakdown as ScoreBreakdown).penalties?.length ?? 0) > 0 && (
                       <div className="space-y-2">
                         <h5 className="text-sm font-semibold flex items-center gap-1.5 text-red-500">
                           <MinusCircle className="w-3.5 h-3.5" />
                           Ceza Puanlari
                         </h5>
                         <div className="space-y-1.5">
-                          {summary.score_breakdown.penalties.map((penalty, i) => {
+                          {(summary.score_breakdown as ScoreBreakdown).penalties.map((penalty, i) => {
                             const p = penalty as Record<string, unknown>;
                             const reason = p?.reason as string | undefined;
                             const points = p?.points as number | undefined;
@@ -687,16 +788,16 @@ export function SeoTab({ businessId, businessName }: SeoTabProps) {
                       </div>
                     )}
 
-                    {/* Recommendations */}
-                    {(summary.score_breakdown.recommendations?.length ?? 0) > 0 && (
+                    {/* Recommendations (only in structured format) */}
+                    {isStructuredBreakdown(summary.score_breakdown as ScoreBreakdown | Record<string, number>) && ((summary.score_breakdown as ScoreBreakdown).recommendations?.length ?? 0) > 0 && (
                       <div className="space-y-2">
                         <h5 className="text-sm font-semibold flex items-center gap-1.5 text-yellow-500">
                           <Lightbulb className="w-3.5 h-3.5" />
                           SEO Iyilestirme Onerileri
-                          <Badge variant="secondary" className="text-xs">{summary.score_breakdown.recommendations!.length}</Badge>
+                          <Badge variant="secondary" className="text-xs">{(summary.score_breakdown as ScoreBreakdown).recommendations!.length}</Badge>
                         </h5>
                         <div className="grid gap-2">
-                          {summary.score_breakdown.recommendations!.map((rec, i) => (
+                          {(summary.score_breakdown as ScoreBreakdown).recommendations!.map((rec, i) => (
                             <RecommendationCard key={i} rec={rec} />
                           ))}
                         </div>
