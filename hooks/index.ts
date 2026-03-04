@@ -13,3 +13,6 @@ export { useApiStatistics, useAllApiStatistics } from "./useApiStatistics";
 export { useSeo } from "./useSeo";
 export { useInstagramStatistics } from "./useInstagramStatistics";
 export { useActiveTasks } from "@/contexts/ActiveTasksContext";
+export { useChatThread } from "./useChatThread";
+export { useMediaJobs } from "./useMediaJobs";
+export { useAgentInstructions } from "./useAgentInstructions";

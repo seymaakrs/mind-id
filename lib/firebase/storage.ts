@@ -36,6 +36,22 @@ export async function uploadBusinessLogo(
   return uploadFile(file, path);
 }
 
+// Upload media job file (image, video, or audio for chat media jobs)
+export async function uploadMediaJobFile(
+  file: File,
+  threadId: string,
+  type: 'image' | 'video' | 'audio'
+): Promise<{ url: string; storagePath: string }> {
+  const timestamp = Date.now();
+  const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const fileName = `${timestamp}-${originalName}`;
+  const storagePath = `chat-media/${threadId}/${fileName}`;
+
+  const url = await uploadFile(file, storagePath);
+
+  return { url, storagePath };
+}
+
 // Upload business media (image or video)
 export async function uploadBusinessMedia(
   file: File,

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useSettings } from "@/hooks";
 import { SETTINGS_LABELS, SETTINGS_DESCRIPTIONS } from "@/types/settings";
 import type { AppSettings } from "@/types/settings";
+import AgentSettings from "./agent-settings";
 
 type SettingFieldProps = {
   settingKey: keyof AppSettings;
@@ -165,6 +166,9 @@ export default function SettingsPanel() {
           />
         </CardContent>
       </Card>
+
+      {/* Agent Settings */}
+      <AgentSettings />
     </div>
   );
 }
