@@ -198,9 +198,24 @@ export function TaskStreamProvider({
       let finalError: string | null = null;
       let receivedAnyData = false;
 
+      // Helper: read with timeout (90 seconds between chunks)
+      const STREAM_READ_TIMEOUT = 90_000;
+      const readWithTimeout = (): Promise<ReadableStreamReadResult<Uint8Array>> => {
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            reject(new Error("Stream read timeout: sunucudan 90 saniyedir veri gelmiyor."));
+          }, STREAM_READ_TIMEOUT);
+
+          reader.read().then(
+            (result) => { clearTimeout(timer); resolve(result); },
+            (err) => { clearTimeout(timer); reject(err); }
+          );
+        });
+      };
+
       try {
         while (true) {
-          const { done, value } = await reader.read();
+          const { done, value } = await readWithTimeout();
 
           if (done) {
             break;
@@ -276,10 +291,16 @@ export function TaskStreamProvider({
         }
       } catch (streamError) {
         console.error("Stream read error:", streamError);
+        // Cancel the reader to release the connection
+        try { reader.cancel(); } catch { /* ignore */ }
+
         if (!finalOutput && !finalError) {
-          finalError = receivedAnyData
-            ? "Baglanti kesildi. Gorev arka planda devam ediyor olabilir."
-            : "Sunucu baglantisi kurulamadi.";
+          const isTimeout = streamError instanceof Error && streamError.message.includes("timeout");
+          finalError = isTimeout
+            ? "Sunucudan yanit zaman asimina ugradi. Gorev arka planda devam ediyor olabilir."
+            : receivedAnyData
+              ? "Baglanti kesildi. Gorev arka planda devam ediyor olabilir."
+              : "Sunucu baglantisi kurulamadi.";
           updateTask(taskId, {
             status: "failed",
             error: finalError,

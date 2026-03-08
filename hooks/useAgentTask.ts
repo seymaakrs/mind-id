@@ -80,8 +80,13 @@ export function useAgentTask(): UseAgentTaskReturn {
           // Set the task ID immediately
           setCurrentTaskId(result.taskId);
 
-          // Wait for the result (backward compatibility)
-          return await result.resultPromise;
+          // Don't await resultPromise - let stream process in background
+          // This prevents UI from blocking while waiting for stream to complete
+          result.resultPromise.catch((err) => {
+            console.error("Background task stream error:", err);
+          });
+
+          return result.taskId;
         }
 
         return null;
