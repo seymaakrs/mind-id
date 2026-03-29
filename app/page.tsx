@@ -42,6 +42,7 @@ export default function AdminPanel() {
   const [expandedMenu, setExpandedMenu] = useState<MainMenuType | null>(null)
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Body scroll lock when mobile menu is open
   useEffect(() => {
@@ -119,6 +120,11 @@ export default function AdminPanel() {
   const handleMenuClick = (menuId: MainMenuType) => {
     const menu = menuItems.find((m) => m.id === menuId)
 
+    // Restore sidebar when navigating away from agent
+    if (menuId !== "agent" && sidebarCollapsed) {
+      setSidebarCollapsed(false)
+    }
+
     if (!menu || menu.subItems.length === 0) {
       setActiveMenu(menuId)
       setExpandedMenu(null)
@@ -178,11 +184,13 @@ export default function AdminPanel() {
         />
 
         {/* Desktop Sidebar - Hidden on mobile */}
-        <aside className="hidden md:flex md:w-64 lg:w-72 h-full bg-sidebar border-r border-sidebar-border flex-col overflow-hidden">
-          <div className="p-6 border-b border-sidebar-border">
-            <h1 className="text-xl font-bold text-sidebar-foreground">MindID</h1>
+        <aside className={`hidden md:flex h-full bg-sidebar border-r border-sidebar-border flex-col overflow-hidden transition-all duration-300 ${sidebarCollapsed ? "md:w-16" : "md:w-64 lg:w-72"}`}>
+          <div className={`border-b border-sidebar-border shrink-0 ${sidebarCollapsed ? "p-4 flex items-center justify-center" : "p-6"}`}>
+            <h1 className={`font-bold text-sidebar-foreground transition-all duration-300 ${sidebarCollapsed ? "text-sm" : "text-xl"}`}>
+              {sidebarCollapsed ? "M" : "MindID"}
+            </h1>
           </div>
-        <nav className="p-4 flex-1 overflow-y-auto">
+        <nav className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "p-2" : "p-4"}`}>
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon
@@ -195,17 +203,20 @@ export default function AdminPanel() {
                   {/* Ana Menü */}
                   <button
                     onClick={() => handleMenuClick(item.id)}
-                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    className={`w-full flex items-center rounded-lg transition-colors ${
+                      sidebarCollapsed ? "justify-center px-2 py-3" : "justify-between gap-3 px-4 py-3"
+                    } ${
                       isActive
                         ? "bg-sidebar-accent text-sidebar-accent-foreground"
                         : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                     }`}
+                    title={sidebarCollapsed ? item.label : undefined}
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5" />
-                      <span className="font-medium">{item.label}</span>
+                    <div className={`flex items-center ${sidebarCollapsed ? "" : "gap-3"}`}>
+                      <Icon className="w-5 h-5 shrink-0" />
+                      {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                     </div>
-                    {hasSubItems ? (
+                    {!sidebarCollapsed && hasSubItems ? (
                       isExpanded ? (
                         <ChevronDown className="w-4 h-4" />
                       ) : (
@@ -215,7 +226,7 @@ export default function AdminPanel() {
                   </button>
 
                   {/* Alt Menü */}
-                  {hasSubItems && isExpanded && (
+                  {!sidebarCollapsed && hasSubItems && isExpanded && (
                     <ul className="mt-1 ml-4 space-y-1">
                       {item.subItems.map((subItem) => (
                         <li key={subItem.id}>
@@ -239,15 +250,15 @@ export default function AdminPanel() {
           </ul>
         </nav>
           {/* Logout Button - Alt kisim */}
-          <div className="mt-auto p-4 border-t border-sidebar-border">
+          <div className={`mt-auto border-t border-sidebar-border ${sidebarCollapsed ? "p-2" : "p-4"}`}>
             <LogoutButton />
           </div>
         </aside>
 
       {/* Main Content Area - Responsive */}
-      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden">
+      <main className={`flex-1 min-h-0 overflow-x-hidden flex flex-col ${activeMenu === "agent" ? "overflow-hidden" : "overflow-y-auto h-full"}`}>
         {/* Top Header Bar */}
-        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 md:px-8 md:py-3 bg-background/80 backdrop-blur-sm border-b border-border">
+        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 md:px-8 md:py-3 bg-background/80 backdrop-blur-sm border-b border-border shrink-0">
           {/* Mobile menu toggle (left) */}
           <div className="md:hidden">
             <MobileMenuButton
@@ -270,13 +281,16 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        <div className="p-4 md:p-8 max-w-full">
+        <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
             <WelcomeDashboard onNavigate={handleWelcomeNavigate} />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
-            <AgentGorevComponent />
+            <AgentGorevComponent
+              sidebarCollapsed={sidebarCollapsed}
+              onSidebarCollapse={setSidebarCollapsed}
+            />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />
           ) : activeMenu === "istatistikler" ? (

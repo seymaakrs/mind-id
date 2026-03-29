@@ -14,6 +14,8 @@ import { getAuthToken } from "@/lib/api-client";
 // Progress event types
 export type ProgressEvent =
   | "agent_start"
+  | "llm_start"
+  | "llm_end"
   | "tool_start"
   | "tool_end"
   | "tool_error"
@@ -34,6 +36,34 @@ type StreamMessage =
       event: ProgressEvent;
       message: string;
       timestamp?: string;
+      // Full event fields from STREAM_EVENTS_SPEC.md
+      agent_id?: string;
+      parent_agent_id?: string | null;
+      agent_name?: string;
+      status?: string;
+      model?: string;
+      tools_available?: string[];
+      tool?: string;
+      is_agent_call?: boolean;
+      input_prompt?: string;
+      input_preview?: Record<string, string>;
+      output_preview?: string;
+      edge_label?: string;
+      duration_ms?: number;
+      error_code?: string;
+      retryable?: boolean;
+      user_message_tr?: string;
+      service?: string;
+      tool_calls_planned?: Array<{
+        call_id: string;
+        tool: string;
+        is_agent_call: boolean;
+      }>;
+      total_input_tokens?: number;
+      total_output_tokens?: number;
+      from_agent_id?: string;
+      from_agent_name?: string;
+      to_agent_name?: string;
       data?: Record<string, unknown>;
     }
   | { type: "result"; success: true; output: string; log_path?: string }
@@ -240,11 +270,13 @@ export function TaskStreamProvider({
                   break;
 
                 case "progress": {
+                  // Store the full event object for workflow visualization
+                  const { type: _type, ...eventData } = data;
                   const progressMsg: ProgressMessage = {
                     event: data.event,
                     message: data.message,
                     timestamp: data.timestamp || new Date().toISOString(),
-                    data: data.data,
+                    data: eventData as Record<string, unknown>,
                   };
 
                   setActiveTasks((prev) =>

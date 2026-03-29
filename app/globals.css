@@ -152,4 +152,46 @@
     background: var(--muted);
     border-radius: 2px;
   }
+
+  /* Workflow animations */
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+
+  .workflow-edge-animated path {
+    animation: workflow-flow 1s linear infinite;
+  }
+}
+
+/* Workflow keyframes */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+@keyframes workflow-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+/* React Flow dark theme overrides */
+.react-flow__node {
+  cursor: default !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+.react-flow__minimap {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow__controls button {
+  border-radius: 4px;
+}
+
+.react-flow__panel {
+  margin: 8px;
 }
