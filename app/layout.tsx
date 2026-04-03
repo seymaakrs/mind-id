@@ -8,6 +8,7 @@ import { ErrorNotificationProvider } from "@/contexts/ErrorNotificationContext"
 import { TaskStreamProvider } from "@/contexts/TaskStreamContext"
 import { ActiveTasksProvider } from "@/contexts/ActiveTasksContext"
 import { TaskTrackerWidget } from "@/components/shared/TaskTrackerWidget"
+import { ReferenceQueueProvider } from "@/contexts/ReferenceQueueContext"
 import "./globals.css"
 
 const _inter = Inter({ subsets: ["latin"] })
@@ -31,8 +32,10 @@ export default function RootLayout({
           <ErrorNotificationProvider>
             <ActiveTasksProvider>
               <TaskStreamProvider>
-                {children}
-                <TaskTrackerWidget />
+                <ReferenceQueueProvider>
+                  {children}
+                  <TaskTrackerWidget />
+                </ReferenceQueueProvider>
               </TaskStreamProvider>
             </ActiveTasksProvider>
           </ErrorNotificationProvider>

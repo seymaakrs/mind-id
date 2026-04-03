@@ -15,28 +15,24 @@ import {
   X,
   Bot,
 } from "lucide-react";
-import { useBusinessMedia, useAgentTask, useJobs } from "@/hooks";
-import { useAuth } from "@/contexts/AuthContext";
+import { useBusinessMedia } from "@/hooks";
+import { useReferenceQueue } from "@/contexts/ReferenceQueueContext";
 import {
   MediaCard,
   MediaDetailModal,
   MediaUploadModal,
-  AgentModal,
 } from "@/components/business/media";
 import type { BusinessMedia } from "@/types/firebase";
-import type { JobType } from "@/types/jobs";
+import { mediaToReference } from "@/types/references";
 
 interface BusinessMediaTabProps {
   businessId: string;
+  onNavigateToAgent?: () => void;
 }
 
-export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
-  const { user } = useAuth();
+export function BusinessMediaTab({ businessId, onNavigateToAgent }: BusinessMediaTabProps) {
   const [selectedMedia, setSelectedMedia] = useState<BusinessMedia | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [agentModalOpen, setAgentModalOpen] = useState(false);
-  const [agentMedia, setAgentMedia] = useState<BusinessMedia | null>(null);
-  const [agentTaskInput, setAgentTaskInput] = useState("");
 
   // Bulk selection state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -54,19 +50,7 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
     uploadMedia,
   } = useBusinessMedia();
 
-  const {
-    response: agentResponse,
-    loading: agentLoading,
-    error: agentError,
-    progressMessages,
-    sendTask,
-    reset: resetAgent,
-  } = useAgentTask();
-
-  const {
-    createJob,
-    fetchJobs,
-  } = useJobs();
+  const { addReference, addReferences } = useReferenceQueue();
 
   useEffect(() => {
     if (businessId) {
@@ -83,63 +67,8 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
 
   const openAgentModal = (media: BusinessMedia, e: React.MouseEvent) => {
     e.stopPropagation();
-    setAgentMedia(media);
-    setAgentTaskInput("");
-    resetAgent();
-    setAgentModalOpen(true);
-  };
-
-  const handleSendToAgent = async (jobType: JobType, scheduledAt?: Date) => {
-    if (!businessId) return;
-
-    // Check if bulk or single
-    const mediaItems = selectedItems.length > 0 ? selectedItems : agentMedia ? [agentMedia] : [];
-    if (mediaItems.length === 0 || !agentTaskInput.trim()) return;
-
-    const taskData = {
-      task: agentTaskInput.trim(),
-      businessId: businessId,
-      createdBy: user?.displayName || user?.email || undefined,
-      extras: {
-        source_media: mediaItems.map((m) => ({
-          id: m.id,
-          type: m.type,
-          public_url: m.public_url,
-          storage_path: m.storage_path,
-          file_name: m.file_name,
-          prompt_summary: m.prompt_summary,
-        })),
-      },
-    };
-
-    if (jobType === "immediate") {
-      // Send immediately
-      await sendTask(taskData);
-
-      // Also save to jobs collection for logging
-      await createJob(businessId, {
-        type: "immediate",
-        task: agentTaskInput.trim(),
-      });
-    } else if (jobType === "planned" && scheduledAt) {
-      // Save to jobs collection for scheduled execution
-      const jobId = await createJob(businessId, {
-        type: "planned",
-        task: agentTaskInput.trim(),
-        scheduledAt,
-      });
-
-      if (jobId) {
-        await fetchJobs(businessId);
-        // Close modal and clear selection
-        setAgentModalOpen(false);
-        if (selectedItems.length > 0) {
-          setSelectionMode(false);
-          setSelectedItems([]);
-        }
-        alert("Görev başarıyla planlandı.");
-      }
-    }
+    addReference(mediaToReference(media, businessId));
+    onNavigateToAgent?.();
   };
 
   // Bulk selection handlers
@@ -173,18 +102,10 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
 
   const openBulkAgentModal = () => {
     if (selectedItems.length === 0) return;
-    setAgentMedia(null);
-    setAgentTaskInput("");
-    resetAgent();
-    setAgentModalOpen(true);
-  };
-
-  const handleCloseAgentModal = () => {
-    setAgentModalOpen(false);
-    if (agentResponse && selectedItems.length > 0) {
-      setSelectionMode(false);
-      setSelectedItems([]);
-    }
+    addReferences(selectedItems.map((m) => mediaToReference(m, businessId)));
+    setSelectionMode(false);
+    setSelectedItems([]);
+    onNavigateToAgent?.();
   };
 
   const totalMediaCount = imageCount + videoCount;
@@ -287,6 +208,7 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
                 <MediaCard
                   key={media.id}
                   media={media}
+                  businessId={businessId}
                   onClick={() => setSelectedMedia(media)}
                   onSendToAgent={(e) => openAgentModal(media, e)}
                   selectionMode={selectionMode}
@@ -308,19 +230,6 @@ export function BusinessMediaTab({ businessId }: BusinessMediaTabProps) {
         onUpload={handleUpload}
       />
 
-      <AgentModal
-        open={agentModalOpen}
-        media={agentMedia}
-        mediaList={selectedItems.length > 0 ? selectedItems : undefined}
-        taskInput={agentTaskInput}
-        response={agentResponse}
-        loading={agentLoading}
-        error={agentError}
-        progressMessages={progressMessages}
-        onClose={handleCloseAgentModal}
-        onTaskInputChange={setAgentTaskInput}
-        onSend={handleSendToAgent}
-      />
     </div>
   );
 }

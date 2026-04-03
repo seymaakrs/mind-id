@@ -3,11 +3,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Video, Bot, Check } from "lucide-react";
+import { Calendar, Video, Bot, Check, Paperclip } from "lucide-react";
 import type { BusinessMedia } from "@/types/firebase";
+import { useReferenceQueue } from "@/contexts/ReferenceQueueContext";
+import { mediaToReference } from "@/types/references";
 
 type Props = {
   media: BusinessMedia;
+  businessId: string;
   onClick: () => void;
   onSendToAgent: (e: React.MouseEvent) => void;
   selectionMode?: boolean;
@@ -29,12 +32,24 @@ const formatDate = (dateStr: string) => {
   }
 };
 
-export function MediaCard({ media, onClick, onSendToAgent, selectionMode, isSelected, onSelect }: Props) {
+export function MediaCard({ media, businessId, onClick, onSendToAgent, selectionMode, isSelected, onSelect }: Props) {
+  const { hasReference, addReference, removeReference } = useReferenceQueue();
+  const inQueue = hasReference("media", media.id);
+
   const handleClick = () => {
     if (selectionMode && onSelect) {
       onSelect(media);
     } else {
       onClick();
+    }
+  };
+
+  const handleReferenceToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (inQueue) {
+      removeReference("media", media.id);
+    } else {
+      addReference(mediaToReference(media, businessId));
     }
   };
 
@@ -98,15 +113,26 @@ export function MediaCard({ media, onClick, onSendToAgent, selectionMode, isSele
             {formatDate(media.created_at)}
           </div>
           {!selectionMode && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-2"
-              onClick={onSendToAgent}
-            >
-              <Bot className="w-4 h-4 mr-2" />
-              Ajana Gönder
-            </Button>
+            <div className="flex gap-1.5 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={onSendToAgent}
+              >
+                <Bot className="w-4 h-4 mr-2" />
+                Ajana Gönder
+              </Button>
+              <Button
+                variant={inQueue ? "secondary" : "outline"}
+                size="sm"
+                className={`px-2 shrink-0 ${inQueue ? "text-primary" : ""}`}
+                onClick={handleReferenceToggle}
+                title={inQueue ? "Referanstan kaldir" : "Referans olarak ekle"}
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

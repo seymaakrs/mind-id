@@ -165,7 +165,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gecersiz veri formati." }, { status: 400 });
   }
 
-  const { task, business_id, task_id, extras } = body as { task?: unknown; business_id?: unknown; task_id?: unknown; extras?: unknown };
+  const { task, business_id, task_id, thread_id, extras, references } = body as { task?: unknown; business_id?: unknown; task_id?: unknown; thread_id?: unknown; extras?: unknown; references?: unknown };
 
   if (typeof task !== "string" || task.trim().length === 0) {
     return NextResponse.json({ error: "`task` alani zorunludur." }, { status: 400 });
@@ -180,8 +180,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "`extras` alani bir obje olmalidir." }, { status: 400 });
   }
 
+  // references opsiyonel, ama varsa array olmali
+  if (references !== undefined && !Array.isArray(references)) {
+    return NextResponse.json({ error: "`references` alani bir dizi olmalidir." }, { status: 400 });
+  }
+
   try {
-    const requestBody: { task: string; business_id: string; task_id?: string; extras?: Record<string, unknown> } = {
+    const requestBody: { task: string; business_id: string; task_id?: string; thread_id?: string; extras?: Record<string, unknown>; references?: unknown[] } = {
       task: task.trim(),
       business_id,
     };
@@ -189,6 +194,11 @@ export async function POST(request: Request) {
     // task_id varsa ekle
     if (task_id && typeof task_id === "string") {
       requestBody.task_id = task_id;
+    }
+
+    // thread_id varsa ekle (konuşma sürekliliği için)
+    if (thread_id && typeof thread_id === "string") {
+      requestBody.thread_id = thread_id;
     }
 
     // extras varsa işle
@@ -214,6 +224,11 @@ export async function POST(request: Request) {
       }
 
       requestBody.extras = processedExtras;
+    }
+
+    // references varsa ekle
+    if (references && Array.isArray(references) && references.length > 0) {
+      requestBody.references = references;
     }
 
     // Get dynamic endpoint from settings

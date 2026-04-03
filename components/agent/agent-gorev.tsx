@@ -34,6 +34,9 @@ import {
   Settings2,
   Workflow,
   MessageSquare,
+  History,
+  RotateCcw,
+  Paperclip,
 } from "lucide-react";
 import {
   Panel,
@@ -43,6 +46,13 @@ import {
 import { useBusinesses, useAgentTask, useServerHealth, useJobs } from "@/hooks";
 import { WorkflowVisualization } from "@/components/workflow/WorkflowVisualization";
 import { useAuth } from "@/contexts/AuthContext";
+import { getBusinessTasks } from "@/lib/firebase/firestore";
+import { useReferenceQueue } from "@/contexts/ReferenceQueueContext";
+import { ReferenceTray } from "@/components/agent/ReferenceTray";
+import { ReferencePickerDialog } from "@/components/agent/ReferencePickerDialog";
+import { CapabilitiesPanel } from "@/components/agent/CapabilitiesPanel";
+import type { ReferenceType } from "@/types/references";
+import type { Task } from "@/types/tasks";
 import type { JobType, IntervalType, Job, PlannedJob, RoutineJob } from "@/types/jobs";
 import {
   JOB_TYPE_LABELS,
@@ -60,6 +70,7 @@ type ChatMessage = {
   isError?: boolean;
   jobType?: JobType;
   jobSchedule?: string;
+  attachedRefs?: Array<{ type: string; label: string | null }>;
 };
 
 type ViewMode = "chat-only" | "split" | "workflow-only";
@@ -67,20 +78,29 @@ type ViewMode = "chat-only" | "split" | "workflow-only";
 interface AgentGorevProps {
   sidebarCollapsed?: boolean;
   onSidebarCollapse?: (collapsed: boolean) => void;
+  initialBusinessId?: string;
+  initialTask?: string;
 }
 
 export default function AgentGorevComponent({
   sidebarCollapsed,
   onSidebarCollapse,
+  initialBusinessId,
+  initialTask,
 }: AgentGorevProps) {
-  const [gorev, setGorev] = useState("");
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
+  const [gorev, setGorev] = useState(initialTask ?? "");
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string>(initialBusinessId ?? "");
   const [jobType, setJobType] = useState<JobType>("immediate");
   const [showScheduleOptions, setShowScheduleOptions] = useState(false);
   const [showJobsList, setShowJobsList] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyTasks, setHistoryTasks] = useState<Task[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("chat-only");
   const [mobileTab, setMobileTab] = useState<"chat" | "workflow">("chat");
+  const [conversationThreadId, setConversationThreadId] = useState<string | null>(null);
 
   // Planned job fields
   const [scheduledDate, setScheduledDate] = useState("");
@@ -95,6 +115,7 @@ export default function AgentGorevComponent({
   const [weeklyDay, setWeeklyDay] = useState(1);
 
   const { user } = useAuth();
+  const { removeReference, clearBusinessReferences, getBusinessReferences } = useReferenceQueue();
   const { businesses, loading: loadingBusinesses } = useBusinesses();
   const {
     response,
@@ -105,6 +126,7 @@ export default function AgentGorevComponent({
     cancelTask,
     reset,
     currentTaskId,
+    threadId,
   } = useAgentTask();
   const { status: serverStatus, serverUrl, checkHealth } = useServerHealth();
   const {
@@ -134,8 +156,18 @@ export default function AgentGorevComponent({
   useEffect(() => {
     if (selectedBusinessId) {
       fetchJobs(selectedBusinessId);
+      // Reset conversation thread when switching businesses
+      setConversationThreadId(null);
     }
   }, [selectedBusinessId, fetchJobs]);
+
+  // Fetch history when panel opens or business changes
+  useEffect(() => {
+    if (showHistory && selectedBusinessId) {
+      fetchHistory(selectedBusinessId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHistory, selectedBusinessId]);
 
   // Auto-switch to split view when task starts streaming (desktop only)
   useEffect(() => {
@@ -170,6 +202,13 @@ export default function AgentGorevComponent({
     }
   }, [response]);
 
+  // Update conversation thread ID when task completes
+  useEffect(() => {
+    if (threadId) {
+      setConversationThreadId(threadId);
+    }
+  }, [threadId]);
+
   // Add error to chat
   useEffect(() => {
     if (error) {
@@ -193,12 +232,16 @@ export default function AgentGorevComponent({
     if (!trimmedGorev || !selectedBusinessId) return;
 
     // Add user message to chat
+    const currentRefs = getBusinessReferences(selectedBusinessId);
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       role: "user",
       content: trimmedGorev,
       timestamp: new Date(),
       jobType,
+      attachedRefs: currentRefs.length > 0
+        ? currentRefs.map((r) => ({ type: r.type, label: r.label ?? null }))
+        : undefined,
     };
 
     if (jobType === "planned") {
@@ -218,11 +261,19 @@ export default function AgentGorevComponent({
 
     if (jobType === "immediate") {
       reset();
+      const currentRefs = getBusinessReferences(selectedBusinessId);
       await sendTask({
         task: trimmedGorev,
         businessId: selectedBusinessId,
         createdBy: user?.displayName || user?.email || undefined,
+        threadId: conversationThreadId || undefined,
+        references: currentRefs.length > 0
+          ? currentRefs.map((r) => ({ type: r.type, id: r.id, url: r.url, label: r.label }))
+          : undefined,
       });
+      if (currentRefs.length > 0) {
+        clearBusinessReferences(selectedBusinessId);
+      }
 
       await createJob(selectedBusinessId, {
         type: "immediate",
@@ -330,6 +381,45 @@ export default function AgentGorevComponent({
 
   const handleToggleRoutine = async (jobId: string, currentActive: boolean) => {
     await toggleRoutineJob(selectedBusinessId, jobId, !currentActive);
+  };
+
+  const fetchHistory = async (businessId: string) => {
+    if (!businessId) return;
+    setLoadingHistory(true);
+    try {
+      const tasks = await getBusinessTasks(businessId);
+      const sorted = tasks
+        .filter((t) => t.status === "completed" || t.status === "failed")
+        .sort((a, b) => {
+          const aTime = toDateSafe(a.createdAt)?.getTime() ?? 0;
+          const bTime = toDateSafe(b.createdAt)?.getTime() ?? 0;
+          return bTime - aTime;
+        });
+      setHistoryTasks(sorted);
+    } catch {
+      setHistoryTasks([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const loadHistoryItem = (task: Task) => {
+    const userMsg: ChatMessage = {
+      id: `hist-user-${task.id}`,
+      role: "user",
+      content: task.task,
+      timestamp: toDateSafe(task.createdAt) ?? new Date(),
+      jobType: task.type,
+    };
+    const botMsg: ChatMessage = {
+      id: `hist-bot-${task.id}`,
+      role: "bot",
+      content: task.result || task.error || "Sonuc bulunamadi.",
+      timestamp: toDateSafe(task.completedAt ?? task.createdAt) ?? new Date(),
+      isError: task.status === "failed",
+    };
+    setMessages([userMsg, botMsg]);
+    setShowHistory(false);
   };
 
   const formatIntervalLabel = () => {
@@ -445,8 +535,8 @@ export default function AgentGorevComponent({
             {/* Welcome message when empty */}
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                <div className="w-24 h-24 mb-4 rounded-full bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 flex items-center justify-center overflow-hidden">
-                  <Image src="/mindbot.png" alt="MindBot" width={80} height={80} className="object-contain" />
+                <div className="w-24 h-24 mb-4 flex items-center justify-center overflow-hidden">
+                  <Image src="/mindbot.png" alt="MindBot" width={96} height={96} className="object-contain" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Merhaba! Ben MindBot</h3>
                 <p className="text-muted-foreground text-sm max-w-md">
@@ -501,8 +591,8 @@ export default function AgentGorevComponent({
                       <User className="w-4 h-4 text-primary" />
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center overflow-hidden">
-                      <Image src="/mindbot.png" alt="MindBot" width={28} height={28} className="object-contain" />
+                    <div className="w-10 h-10 flex items-center justify-center overflow-hidden shrink-0">
+                      <Image src="/mindbot.png" alt="MindBot" width={40} height={40} className="object-contain" />
                     </div>
                   )}
                 </div>
@@ -535,6 +625,20 @@ export default function AgentGorevComponent({
                     </div>
                   )}
                   <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
+                  {/* Attached references */}
+                  {msg.role === "user" && msg.attachedRefs && msg.attachedRefs.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {msg.attachedRefs.map((ref, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary-foreground/20 text-primary-foreground text-[10px]"
+                        >
+                          <Paperclip className="w-2.5 h-2.5" />
+                          {ref.label ?? ref.type}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p className={`text-[10px] mt-1 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                     {msg.timestamp.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                   </p>
@@ -545,8 +649,8 @@ export default function AgentGorevComponent({
             {/* Typing indicator - shown while task is running */}
             {isSubmitting && (
               <div className="flex gap-3 px-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center overflow-hidden shrink-0">
-                  <Image src="/mindbot.png" alt="MindBot" width={28} height={28} className="object-contain" />
+                <div className="w-10 h-10 flex items-center justify-center overflow-hidden shrink-0">
+                  <Image src="/mindbot.png" alt="MindBot" width={40} height={40} className="object-contain" />
                 </div>
                 <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -724,6 +828,16 @@ export default function AgentGorevComponent({
               </div>
             )}
 
+            {/* Reference Tray */}
+            {selectedBusinessId && (getBusinessReferences(selectedBusinessId).length > 0 || !isSubmitting) && (
+              <ReferenceTray
+                references={getBusinessReferences(selectedBusinessId)}
+                onRemove={(type: ReferenceType, id: string) => removeReference(type, id)}
+                onAddClick={() => setPickerOpen(true)}
+                disabled={isSubmitting}
+              />
+            )}
+
             {/* Text Input + Send */}
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="flex items-end gap-2 px-1">
               <div className="flex-1 relative">
@@ -777,6 +891,84 @@ export default function AgentGorevComponent({
             </p>
           </div>
         </div>
+
+        {/* History Side Panel */}
+        {showHistory && selectedBusinessId && (
+          <div className="w-80 border-l border-border ml-0 pl-4 overflow-y-auto shrink-0 hidden md:block">
+            <div className="flex items-center justify-between py-2 mb-3">
+              <h3 className="text-sm font-semibold">Gecmis Sohbetler</h3>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchHistory(selectedBusinessId)}
+                  disabled={loadingHistory}
+                  className="h-7 w-7 p-0"
+                  title="Yenile"
+                >
+                  <RefreshCw className={`w-3 h-3 ${loadingHistory ? "animate-spin" : ""}`} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory(false)}
+                  className="h-7 w-7 p-0"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+
+            {loadingHistory ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : historyTasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">
+                Henuz tamamlanmis gorev yok.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {historyTasks.map((task) => {
+                  const createdDate = toDateSafe(task.createdAt);
+                  return (
+                    <div
+                      key={task.id}
+                      className="p-3 rounded-lg border border-border text-sm hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Badge
+                          variant={task.status === "completed" ? "outline" : "destructive"}
+                          className={`text-[10px] h-5 ${task.status === "completed" ? "text-green-500 border-green-500/30" : ""}`}
+                        >
+                          {task.status === "completed" ? "Tamamlandi" : "Basarisiz"}
+                        </Badge>
+                        {createdDate && (
+                          <span className="text-[10px] text-muted-foreground ml-auto">
+                            {createdDate.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-medium line-clamp-2 mb-1">{task.task}</p>
+                      {task.result && (
+                        <p className="text-[10px] text-muted-foreground line-clamp-2 mb-2">{task.result}</p>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 w-full justify-start gap-1"
+                        onClick={() => loadHistoryItem(task)}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Sohbete yukle
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Scheduled Jobs Side Panel */}
         {showJobsList && selectedBusinessId && (
@@ -885,10 +1077,10 @@ export default function AgentGorevComponent({
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full px-4 md:px-6 py-3">
       {/* Chat Header */}
-      <div className="flex items-center justify-between gap-3 pb-4 border-b border-border shrink-0">
+      <div className="flex items-center justify-between gap-3 pb-4 border-b border-border shrink-0 relative">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center shrink-0 overflow-hidden">
-            <Image src="/mindbot.png" alt="MindBot" width={36} height={36} className="object-contain" />
+          <div className="w-10 h-10 flex items-center justify-center shrink-0 overflow-hidden">
+            <Image src="/mindbot.png" alt="MindBot" width={40} height={40} className="object-contain" />
           </div>
           <div className="min-w-0">
             <h2 className="text-lg font-semibold leading-tight">MindBot</h2>
@@ -902,6 +1094,12 @@ export default function AgentGorevComponent({
               )}
             </div>
           </div>
+          <CapabilitiesPanel
+            onExampleClick={(example) => {
+              setGorev(example);
+              textareaRef.current?.focus();
+            }}
+          />
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -960,7 +1158,7 @@ export default function AgentGorevComponent({
               variant={showJobsList ? "secondary" : "ghost"}
               size="sm"
               className="h-9 relative"
-              onClick={() => setShowJobsList(!showJobsList)}
+              onClick={() => { setShowJobsList(!showJobsList); setShowHistory(false); }}
               title="Zamanlanmis gorevler"
             >
               <ListTodo className="w-4 h-4" />
@@ -969,6 +1167,20 @@ export default function AgentGorevComponent({
                   {scheduledJobs.length}
                 </span>
               )}
+            </Button>
+          )}
+
+          {/* History Toggle */}
+          {selectedBusinessId && (
+            <Button
+              variant={showHistory ? "secondary" : "ghost"}
+              size="sm"
+              className="h-9"
+              onClick={() => { setShowHistory(!showHistory); setShowJobsList(false); }}
+              title="Gecmis sohbetler"
+            >
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1 text-xs">Gecmis</span>
             </Button>
           )}
         </div>
@@ -1126,6 +1338,89 @@ export default function AgentGorevComponent({
             </div>
           )}
         </div>
+      )}
+
+      {/* Mobile History Panel (bottom sheet) */}
+      {showHistory && selectedBusinessId && (
+        <div className="md:hidden fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border rounded-t-2xl max-h-[70vh] overflow-y-auto p-4 shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Gecmis Sohbetler</h3>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchHistory(selectedBusinessId)}
+                disabled={loadingHistory}
+                className="h-7 w-7 p-0"
+              >
+                <RefreshCw className={`w-3 h-3 ${loadingHistory ? "animate-spin" : ""}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHistory(false)}
+                className="h-7 w-7 p-0"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+
+          {loadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : historyTasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">
+              Henuz tamamlanmis gorev yok.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {historyTasks.map((task) => {
+                const createdDate = toDateSafe(task.createdAt);
+                return (
+                  <div key={task.id} className="p-3 rounded-lg border border-border text-sm">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Badge
+                        variant={task.status === "completed" ? "outline" : "destructive"}
+                        className={`text-[10px] h-5 ${task.status === "completed" ? "text-green-500 border-green-500/30" : ""}`}
+                      >
+                        {task.status === "completed" ? "Tamamlandi" : "Basarisiz"}
+                      </Badge>
+                      {createdDate && (
+                        <span className="text-[10px] text-muted-foreground ml-auto">
+                          {createdDate.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium line-clamp-2 mb-1">{task.task}</p>
+                    {task.result && (
+                      <p className="text-[10px] text-muted-foreground line-clamp-2 mb-2">{task.result}</p>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 w-full justify-start gap-1"
+                      onClick={() => loadHistoryItem(task)}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Sohbete yukle
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Reference Picker Dialog */}
+      {selectedBusinessId && (
+        <ReferencePickerDialog
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          businessId={selectedBusinessId}
+        />
       )}
     </div>
   );

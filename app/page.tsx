@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
+import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
 import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
@@ -41,8 +42,10 @@ export default function AdminPanel() {
   const [activeSubMenu, setActiveSubMenu] = useState<SubMenuType | null>(null)
   const [expandedMenu, setExpandedMenu] = useState<MainMenuType | null>(null)
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
+  const [agentInitialTask, setAgentInitialTask] = useState<string | undefined>(undefined)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const { referenceCount } = useReferenceQueue()
 
   // Body scroll lock when mobile menu is open
   useEffect(() => {
@@ -212,8 +215,14 @@ export default function AdminPanel() {
                     }`}
                     title={sidebarCollapsed ? item.label : undefined}
                   >
-                    <div className={`flex items-center ${sidebarCollapsed ? "" : "gap-3"}`}>
+                    <div className={`flex items-center ${sidebarCollapsed ? "relative" : "gap-3"}`}>
                       <Icon className="w-5 h-5 shrink-0" />
+                      {/* Reference queue badge on Agent item */}
+                      {item.id === "agent" && referenceCount > 0 && (
+                        <span className={`${sidebarCollapsed ? "absolute -top-1 -right-1" : "ml-0"} w-4 h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center font-medium shrink-0`}>
+                          {referenceCount > 9 ? "9+" : referenceCount}
+                        </span>
+                      )}
                       {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                     </div>
                     {!sidebarCollapsed && hasSubItems ? (
@@ -283,13 +292,29 @@ export default function AdminPanel() {
 
         <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <WelcomeDashboard onNavigate={handleWelcomeNavigate} />
+            <WelcomeDashboard
+              onNavigate={handleWelcomeNavigate}
+              onBusinessDashboard={(businessId) => {
+                setSelectedBusinessId(businessId)
+                setActiveMenu("isletmeler")
+                setExpandedMenu("isletmeler")
+                setActiveSubMenu("isletme-dashboard")
+              }}
+              onStartWithAgent={(businessId, task) => {
+                setSelectedBusinessId(businessId)
+                setAgentInitialTask(task || undefined)
+                setActiveMenu("agent")
+                setExpandedMenu(null)
+              }}
+            />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
             <AgentGorevComponent
               sidebarCollapsed={sidebarCollapsed}
               onSidebarCollapse={setSidebarCollapsed}
+              initialBusinessId={selectedBusinessId || undefined}
+              initialTask={agentInitialTask}
             />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />
@@ -315,6 +340,7 @@ export default function AdminPanel() {
                 <BusinessDashboard
                   initialBusinessId={selectedBusinessId}
                   onBusinessChange={(b) => b && setSelectedBusinessId(b.id)}
+                  onNavigateToAgent={() => setActiveMenu("agent")}
                 />
               )}
               {activeSubMenu === "davet-linkleri" && <InviteLinksComponent />}

@@ -52,6 +52,7 @@ import type { Business } from "@/types/firebase";
 interface BusinessDashboardProps {
   initialBusinessId?: string;
   onBusinessChange?: (business: Business | null) => void;
+  onNavigateToAgent?: () => void;
 }
 
 type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "tasks" | "stats" | "instagram" | "reports" | "seo";
@@ -59,6 +60,7 @@ type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "tasks" | "s
 export default function BusinessDashboard({
   initialBusinessId,
   onBusinessChange,
+  onNavigateToAgent,
 }: BusinessDashboardProps) {
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>(initialBusinessId || "");
   const [activeTab, setActiveTab] = useState<TabValue>("details");
@@ -384,7 +386,7 @@ export default function BusinessDashboard({
             </TabsContent>
 
             <TabsContent value="media" className="m-0">
-              <BusinessMediaTab businessId={selectedBusinessId} />
+              <BusinessMediaTab businessId={selectedBusinessId} onNavigateToAgent={onNavigateToAgent} />
             </TabsContent>
 
             <TabsContent value="plans" className="m-0">

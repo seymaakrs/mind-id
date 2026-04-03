@@ -309,6 +309,7 @@ export default function BusinessMediaComponent() {
                     <MediaCard
                       key={media.id}
                       media={media}
+                      businessId={selectedBusinessId}
                       onClick={() => setSelectedMedia(media)}
                       onSendToAgent={(e) => openAgentModal(media, e)}
                       selectionMode={selectionMode}

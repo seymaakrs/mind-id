@@ -66,8 +66,8 @@ type StreamMessage =
       to_agent_name?: string;
       data?: Record<string, unknown>;
     }
-  | { type: "result"; success: true; output: string; log_path?: string }
-  | { type: "result"; success: false; error: string };
+  | { type: "result"; success: true; output: string; log_path?: string; thread_id?: string }
+  | { type: "result"; success: false; error: string; thread_id?: string };
 
 export type TaskStatus = "pending" | "running" | "completed" | "failed";
 
@@ -83,6 +83,7 @@ export interface ActiveTask {
   error?: string;
   createdAt: Date;
   logPath?: string;
+  threadId?: string;
 }
 
 export type SendTaskParams = {
@@ -91,12 +92,15 @@ export type SendTaskParams = {
   businessName?: string;
   createdBy?: string;
   extras?: Record<string, unknown>;
+  references?: Array<{ type: string; id: string; url?: string | null; label?: string | null }>;
+  threadId?: string;
 };
 
 interface SendTaskResult {
   taskId: string;
   // Promise that resolves when the task completes (for backward compatibility)
   resultPromise: Promise<string | null>;
+  threadId?: string;
 }
 
 interface TaskStreamContextType {
@@ -305,6 +309,7 @@ export function TaskStreamProvider({
                       response: data.output,
                       currentProgress: undefined,
                       logPath: data.log_path,
+                      threadId: data.thread_id,
                     });
                   } else {
                     finalError = data.error || "Bilinmeyen hata.";
@@ -312,6 +317,7 @@ export function TaskStreamProvider({
                       status: "failed",
                       error: finalError,
                       currentProgress: undefined,
+                      threadId: data.thread_id,
                     });
                   }
                   break;
@@ -352,6 +358,7 @@ export function TaskStreamProvider({
                 response: data.output,
                 currentProgress: undefined,
                 logPath: data.log_path,
+                threadId: data.thread_id,
               });
             } else {
               finalError = data.error || "Bilinmeyen hata.";
@@ -359,6 +366,7 @@ export function TaskStreamProvider({
                 status: "failed",
                 error: finalError,
                 currentProgress: undefined,
+                threadId: data.thread_id,
               });
             }
           }
@@ -397,6 +405,8 @@ export function TaskStreamProvider({
       businessName,
       createdBy,
       extras,
+      references,
+      threadId,
     }: SendTaskParams): Promise<SendTaskResult | null> => {
       if (!task.trim() || !businessId) {
         return null;
@@ -424,6 +434,11 @@ export function TaskStreamProvider({
 
         if (extras && Object.keys(extras).length > 0) {
           taskData.extras = extras;
+        }
+
+        // Store references in extras for history reconstruction
+        if (references && references.length > 0) {
+          taskData.extras = { ...(taskData.extras ?? {}), references };
         }
 
         const taskId = await createTask(businessId, taskData);
@@ -479,7 +494,9 @@ export function TaskStreamProvider({
                 task: task.trim(),
                 business_id: businessId,
                 task_id: taskId,
+                ...(threadId ? { thread_id: threadId } : {}),
                 ...(extras && Object.keys(extras).length > 0 ? { extras } : {}),
+                ...(references && references.length > 0 ? { references } : {}),
               }),
               signal: abortController.signal,
               keepalive: false,

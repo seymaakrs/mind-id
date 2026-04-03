@@ -58,6 +58,9 @@ components/
 ├── blog/             # Blog features
 ├── heygen/           # Video creation
 └── agent/            # AI agent
+    ├── agent-gorev.tsx          # Main agent chat component
+    ├── ReferenceTray.tsx        # Reference chip tray (above chat input)
+    └── ReferencePickerDialog.tsx # Browse & select references (modal)
 
 hooks/
 ├── index.ts               # Export all hooks
@@ -68,7 +71,9 @@ hooks/
 └── useAgentTask.ts        # Agent API calls + task tracking
 
 contexts/
-└── AuthContext.tsx   # Global auth state (user, isAdmin, loading)
+├── AuthContext.tsx            # Global auth state (user, isAdmin, loading)
+├── TaskStreamContext.tsx      # Agent task streaming + active tasks
+└── ReferenceQueueContext.tsx  # Global reference queue for agent chat
 
 lib/
 ├── utils.ts          # clsx + tailwind-merge helper
@@ -81,7 +86,8 @@ lib/
 types/
 ├── firebase.ts       # TypeScript interfaces (Business, AdminUser, ActivityLog)
 ├── jobs.ts           # Job types (ImmediateJob, PlannedJob, RoutineJob)
-└── tasks.ts          # Task tracking types (Task, TaskStatus, CreateTaskData)
+├── tasks.ts          # Task tracking types (Task, TaskStatus, CreateTaskData)
+└── references.ts     # Reference types + entity→Reference conversion helpers
 ```
 
 ## Key Commands
@@ -133,6 +139,7 @@ Defined in `types/firebase.ts`:
 - All `/api/*` routes are proxy endpoints to external services
 - Max duration: 26 seconds for agent-task
 - Error handling: Parse both JSON and plain text responses
+- `/api/agent-task` accepts optional `references: Reference[]` top-level field (separate from `extras`)
 
 ### Styling
 - Tailwind CSS v4 with utility classes
@@ -192,10 +199,40 @@ interface Task {
 }
 ```
 
+## Agent References Feature
+
+Kullanıcılar Firestore'daki herhangi bir veriyi (medya, rapor, içerik planı, geçmiş görev sonuçları) agent chat'e referans olarak ekleyebilir.
+
+### Akış
+1. **Referans ekleme:** `ReferenceTray`'deki "+ Referans Ekle" butonu → `ReferencePickerDialog` açılır (Medya / Raporlar / İçerik Planları / Geçmiş Görevler sekmeleri)
+2. **Cross-page ekleme:** `MediaCard`'daki Paperclip butonu ile herhangi bir medya referans queue'ya eklenir; `app/page.tsx` sidebar'da Agent nav item'ında bekleyen referans sayısı badge'i gösterilir
+3. **Gönderim:** `handleSubmit` çağrıldığında `getBusinessReferences(businessId)` ile alınır, `sendTask({ references: [...] })` ile gönderilir, ardından `clearBusinessReferences` ile temizlenir
+4. **API:** `TaskStreamContext` → `fetch /api/agent-task` body'sine `references` eklenir → backend'e iletilir
+
+### Tip Yapısı (`types/references.ts`)
+```typescript
+interface Reference {
+  type: "media" | "instagram_post" | "content_plan" | "report" | "task_result";
+  id: string;
+  url?: string | null;
+  label?: string | null;
+}
+interface ReferenceItem extends Reference {
+  businessId: string;   // global queue filtreleme için
+  thumbnail?: string | null;
+}
+```
+
+### Global State
+`ReferenceQueueContext` — `app/layout.tsx`'te `TaskStreamProvider` içine sarılmış. `useReferenceQueue()` hook'u ile erişilir. Max 20 referans, deduplication `type + id` ile.
+
+### Eski `source_media` ile İlişki
+`extras.source_media` (business-media-tab akışı) ve yeni `references` array'i **birbirinden bağımsız** ve **aynı anda** kullanılabilir. Geriye dönük uyumluluk korundu.
+
 ## Architecture Notes
 - **Proxy Pattern:** Frontend API routes forward to N8N webhooks
 - **Auth Pattern:** Firebase Auth + Firestore admin collection for RBAC
-- **State:** AuthContext for global auth, local useState for component state
+- **State:** AuthContext for global auth, ReferenceQueueContext for agent references, local useState for component state
 - **No Testing:** No unit/integration tests configured
 - **Localization:** Turkish only (no i18n framework)
 - **Graceful Degradation:** App works without Firebase config (shows warning)

@@ -13,6 +13,8 @@ type AgentTaskRequest = {
   businessName?: string;
   createdBy?: string;
   extras?: AgentTaskExtras;
+  references?: Array<{ type: string; id: string; url?: string | null; label?: string | null }>;
+  threadId?: string;
 };
 
 type UseAgentTaskReturn = {
@@ -22,6 +24,7 @@ type UseAgentTaskReturn = {
   progressMessages: ProgressMessage[];
   currentProgress: string | null;
   logPath: string | null;
+  threadId: string | null;
   sendTask: (request: AgentTaskRequest) => Promise<string | null>;
   cancelTask: () => void;
   reset: () => void;
@@ -55,6 +58,7 @@ export function useAgentTask(): UseAgentTaskReturn {
   const progressMessages = currentTask?.progressMessages || [];
   const currentProgress = currentTask?.currentProgress || null;
   const logPath = currentTask?.logPath || null;
+  const threadId = currentTask?.threadId || null;
 
   const sendTask = useCallback(
     async ({
@@ -63,6 +67,8 @@ export function useAgentTask(): UseAgentTaskReturn {
       businessName,
       createdBy,
       extras,
+      references,
+      threadId: requestThreadId,
     }: AgentTaskRequest): Promise<string | null> => {
       // Reset current task
       setCurrentTaskId(null);
@@ -74,6 +80,8 @@ export function useAgentTask(): UseAgentTaskReturn {
           businessName,
           createdBy,
           extras,
+          references,
+          threadId: requestThreadId,
         });
 
         if (result) {
@@ -115,6 +123,7 @@ export function useAgentTask(): UseAgentTaskReturn {
     progressMessages,
     currentProgress,
     logPath,
+    threadId,
     sendTask,
     cancelTask,
     reset,
