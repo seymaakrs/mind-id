@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Loader2, Image as ImageIcon, FileText, Calendar, CheckCircle, Check } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Loader2, Image as ImageIcon, FileText, Calendar, CheckCircle, Check, Upload, X as XIcon, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useBusinessMedia, useReports, useContentPlans } from "@/hooks";
-import { getBusinessTasks } from "@/lib/firebase/firestore";
+import { getBusinessTasks, addBusinessMedia } from "@/lib/firebase/firestore";
+import { uploadBusinessMedia } from "@/lib/firebase/storage";
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext";
 import {
   mediaToReference,
@@ -32,13 +33,23 @@ interface ReferencePickerDialogProps {
   businessId: string;
 }
 
-type TabType = "media" | "reports" | "content_plans" | "tasks";
+type TabType = "media" | "reports" | "content_plans" | "tasks" | "upload";
+
+interface UploadFile {
+  id: string;
+  file: File;
+  status: "pending" | "uploading" | "done" | "error";
+  error?: string;
+  reference?: ReferenceItem;
+}
 
 export function ReferencePickerDialog({ open, onOpenChange, businessId }: ReferencePickerDialogProps) {
   const [activeTab, setActiveTab] = useState<TabType>("media");
   const [selectedInDialog, setSelectedInDialog] = useState<ReferenceItem[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { hasReference, addReferences } = useReferenceQueue();
   const { filteredMedia, loading: loadingMedia, loadMedia } = useBusinessMedia();
@@ -70,10 +81,71 @@ export function ReferencePickerDialog({ open, onOpenChange, businessId }: Refere
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeTab, businessId]);
 
-  // Reset selection when dialog opens
+  // Reset selection and uploads when dialog opens
   useEffect(() => {
-    if (open) setSelectedInDialog([]);
+    if (open) {
+      setSelectedInDialog([]);
+      setUploadFiles([]);
+    }
   }, [open]);
+
+  const handleFilesSelected = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const newEntries: UploadFile[] = Array.from(files).map((file) => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file,
+      status: "pending" as const,
+    }));
+
+    setUploadFiles((prev) => [...prev, ...newEntries]);
+
+    for (const entry of newEntries) {
+      const fileType: "image" | "video" = entry.file.type.startsWith("video/") ? "video" : "image";
+
+      setUploadFiles((prev) =>
+        prev.map((f) => f.id === entry.id ? { ...f, status: "uploading" } : f)
+      );
+
+      try {
+        const { url, storagePath, fileName } = await uploadBusinessMedia(entry.file, businessId, fileType);
+
+        const now = new Date().toISOString();
+        const mediaDoc = {
+          type: fileType,
+          storage_path: storagePath,
+          public_url: url,
+          file_name: fileName,
+          created_at: now,
+          prompt_summary: "",
+          metadata: {},
+        };
+        const docId = await addBusinessMedia(businessId, mediaDoc);
+
+        const reference: ReferenceItem = {
+          type: "media",
+          id: docId,
+          url,
+          label: fileName,
+          businessId,
+          thumbnail: fileType === "image" ? url : null,
+        };
+
+        setUploadFiles((prev) =>
+          prev.map((f) => f.id === entry.id ? { ...f, status: "done", reference } : f)
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Yuklenemedi";
+        setUploadFiles((prev) =>
+          prev.map((f) => f.id === entry.id ? { ...f, status: "error", error: msg } : f)
+        );
+      }
+    }
+  }, [businessId]);
+
+  const removeUploadFile = (id: string) => {
+    setUploadFiles((prev) => prev.filter((f) => f.id !== id));
+  };
 
   const isSelectedInDialog = (type: string, id: string) =>
     selectedInDialog.some((r) => r.type === type && r.id === id);
@@ -90,17 +162,25 @@ export function ReferencePickerDialog({ open, onOpenChange, businessId }: Refere
   }, [hasReference]);
 
   const handleAdd = () => {
-    if (selectedInDialog.length > 0) {
-      addReferences(selectedInDialog);
-    }
+    const toAdd: ReferenceItem[] = [...selectedInDialog];
+    // Add successfully uploaded files that aren't already in queue
+    uploadFiles
+      .filter((f) => f.status === "done" && f.reference && !hasReference("media", f.reference.id))
+      .forEach((f) => { if (f.reference) toAdd.push(f.reference); });
+
+    if (toAdd.length > 0) addReferences(toAdd);
     onOpenChange(false);
   };
+
+  const uploadDoneCount = uploadFiles.filter((f) => f.status === "done").length;
+  const totalSelectable = selectedInDialog.length + uploadDoneCount;
 
   const tabLabels: Record<TabType, string> = {
     media: REFERENCE_TYPE_LABELS.media,
     reports: REFERENCE_TYPE_LABELS.report,
     content_plans: REFERENCE_TYPE_LABELS.content_plan,
     tasks: REFERENCE_TYPE_LABELS.task_result,
+    upload: "Dosya Yukle",
   };
 
   return (
@@ -263,22 +343,103 @@ export function ReferencePickerDialog({ open, onOpenChange, businessId }: Refere
                 </div>
               )}
             </TabsContent>
+
+            {/* Dosya Yükle */}
+            <TabsContent value="upload" className="mt-0">
+              <div className="space-y-4">
+                {/* Dropzone */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-muted/30 transition-colors py-10 flex flex-col items-center gap-2 text-muted-foreground"
+                >
+                  <Upload className="w-8 h-8" />
+                  <span className="text-sm font-medium">Dosya seçin veya tıklayın</span>
+                  <span className="text-xs">Resim ve video dosyaları desteklenir</span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFilesSelected(e.target.files)}
+                  onClick={(e) => { (e.target as HTMLInputElement).value = ""; }}
+                />
+
+                {/* File list */}
+                {uploadFiles.length > 0 && (
+                  <div className="space-y-2">
+                    {uploadFiles.map((f) => (
+                      <div
+                        key={f.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border text-xs ${
+                          f.status === "done"
+                            ? "border-primary/40 bg-primary/5"
+                            : f.status === "error"
+                              ? "border-destructive/40 bg-destructive/5"
+                              : "border-border"
+                        }`}
+                      >
+                        {/* Thumbnail or icon */}
+                        {f.status === "done" && f.reference?.thumbnail ? (
+                          <img src={f.reference.thumbnail} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-muted flex items-center justify-center shrink-0">
+                            <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-medium">{f.file.name}</p>
+                          {f.status === "uploading" && (
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <Loader2 className="w-3 h-3 animate-spin" /> Yukleniyor...
+                            </span>
+                          )}
+                          {f.status === "done" && (
+                            <span className="text-primary flex items-center gap-1">
+                              <Check className="w-3 h-3" /> Yuklendi
+                            </span>
+                          )}
+                          {f.status === "error" && (
+                            <span className="text-destructive flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> {f.error}
+                            </span>
+                          )}
+                        </div>
+
+                        {f.status !== "uploading" && (
+                          <button
+                            type="button"
+                            onClick={() => removeUploadFile(f.id)}
+                            className="shrink-0 rounded-full p-1 hover:bg-muted transition-colors"
+                          >
+                            <XIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
           </div>
         </Tabs>
 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-border flex items-center justify-between shrink-0">
           <span className="text-xs text-muted-foreground">
-            {selectedInDialog.length > 0
-              ? `${selectedInDialog.length} oge secildi`
+            {totalSelectable > 0
+              ? `${totalSelectable} oge secildi`
               : "Eklemek istediginiz ogeleri secin"}
           </span>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
               Iptal
             </Button>
-            <Button size="sm" onClick={handleAdd} disabled={selectedInDialog.length === 0}>
-              Ekle {selectedInDialog.length > 0 && `(${selectedInDialog.length})`}
+            <Button size="sm" onClick={handleAdd} disabled={totalSelectable === 0}>
+              Ekle {totalSelectable > 0 && `(${totalSelectable})`}
             </Button>
           </div>
         </div>
