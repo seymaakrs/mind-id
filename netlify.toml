@@ -4,3 +4,6 @@
 
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "FIREBASE_PROJECT_ID"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
