@@ -12,7 +12,7 @@ import {
 import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
-import { WelcomeDashboard } from "@/components/dashboard/welcome-dashboard"
+import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
@@ -128,20 +128,6 @@ export default function AdminPanel() {
   const handleBusinessSelectFromList = (business: { id: string }) => {
     setSelectedBusinessId(business.id)
     setActiveSubMenu("isletme-dashboard")
-  }
-
-  // Handler for welcome dashboard navigation
-  const handleWelcomeNavigate = (menu: MainMenuType, subMenu?: SubMenuType | null) => {
-    setActiveMenu(menu)
-    setExpandedMenu(menu)
-    if (subMenu) {
-      setActiveSubMenu(subMenu)
-    } else {
-      const menuItem = menuItems.find(m => m.id === menu)
-      if (menuItem && menuItem.subItems.length > 0) {
-        setActiveSubMenu(menuItem.subItems[0].id)
-      }
-    }
   }
 
   return (
@@ -265,21 +251,7 @@ export default function AdminPanel() {
 
         <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <WelcomeDashboard
-              onNavigate={handleWelcomeNavigate}
-              onBusinessDashboard={(businessId) => {
-                setSelectedBusinessId(businessId)
-                setActiveMenu("isletmeler")
-                setExpandedMenu("isletmeler")
-                setActiveSubMenu("isletme-dashboard")
-              }}
-              onStartWithAgent={(businessId, task) => {
-                setSelectedBusinessId(businessId)
-                setAgentInitialTask(task || undefined)
-                setActiveMenu("agent")
-                setExpandedMenu(null)
-              }}
-            />
+            <CommandCenterCanvas />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
