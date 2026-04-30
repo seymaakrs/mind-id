@@ -13,6 +13,7 @@ import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
 import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
+import { TeamHierarchyCanvas } from "@/components/canvas/team-hierarchy-canvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
@@ -34,6 +35,7 @@ export default function AdminPanel() {
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [anasayfaView, setAnasayfaView] = useState<"komuta" | "ekip">("komuta")
   const { referenceCount } = useReferenceQueue()
 
   // Body scroll lock when mobile menu is open
@@ -250,7 +252,33 @@ export default function AdminPanel() {
 
         <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <CommandCenterCanvas />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAnasayfaView("komuta")}
+                  className={`px-3 py-1.5 text-sm rounded-md border transition ${
+                    anasayfaView === "komuta"
+                      ? "bg-indigo-600 text-white border-indigo-500"
+                      : "bg-card text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  🎯 Komuta Merkezi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnasayfaView("ekip")}
+                  className={`px-3 py-1.5 text-sm rounded-md border transition ${
+                    anasayfaView === "ekip"
+                      ? "bg-indigo-600 text-white border-indigo-500"
+                      : "bg-card text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  👑 Ekip Hiyerarşisi
+                </button>
+              </div>
+              {anasayfaView === "komuta" ? <CommandCenterCanvas /> : <TeamHierarchyCanvas />}
+            </div>
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
