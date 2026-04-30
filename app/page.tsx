@@ -32,7 +32,6 @@ export default function AdminPanel() {
   const [activeSubMenu, setActiveSubMenu] = useState<SubMenuType | null>(null)
   const [expandedMenu, setExpandedMenu] = useState<MainMenuType | null>(null)
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
-  const [agentInitialTask, setAgentInitialTask] = useState<string | undefined>(undefined)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const { referenceCount } = useReferenceQueue()
@@ -259,7 +258,6 @@ export default function AdminPanel() {
               sidebarCollapsed={sidebarCollapsed}
               onSidebarCollapse={setSidebarCollapsed}
               initialBusinessId={selectedBusinessId || undefined}
-              initialTask={agentInitialTask}
             />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />
