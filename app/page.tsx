@@ -13,6 +13,7 @@ import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
 import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
+import { TeamHierarchyCanvas } from "@/components/canvas/team-hierarchy-canvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
@@ -34,6 +35,7 @@ export default function AdminPanel() {
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [anasayfaView, setAnasayfaView] = useState<"komuta" | "ekip">("komuta")
   const { referenceCount } = useReferenceQueue()
 
   // Body scroll lock when mobile menu is open
@@ -250,7 +252,33 @@ export default function AdminPanel() {
 
         <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <CommandCenterCanvas />
+            <div className="relative">
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-card/90 backdrop-blur p-1 rounded-lg border border-border shadow">
+                <button
+                  type="button"
+                  onClick={() => setAnasayfaView("komuta")}
+                  className={`px-3 py-1 text-xs rounded-md transition ${
+                    anasayfaView === "komuta"
+                      ? "bg-indigo-600 text-white"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  🎯 Komuta Merkezi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnasayfaView("ekip")}
+                  className={`px-3 py-1 text-xs rounded-md transition ${
+                    anasayfaView === "ekip"
+                      ? "bg-indigo-600 text-white"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  👑 Ekip Hiyerarşisi
+                </button>
+              </div>
+              {anasayfaView === "komuta" ? <CommandCenterCanvas /> : <TeamHierarchyCanvas />}
+            </div>
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
