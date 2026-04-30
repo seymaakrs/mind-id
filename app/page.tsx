@@ -252,15 +252,15 @@ export default function AdminPanel() {
 
         <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
+            <div className="relative">
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-card/90 backdrop-blur p-1 rounded-lg border border-border shadow">
                 <button
                   type="button"
                   onClick={() => setAnasayfaView("komuta")}
-                  className={`px-3 py-1.5 text-sm rounded-md border transition ${
+                  className={`px-3 py-1 text-xs rounded-md transition ${
                     anasayfaView === "komuta"
-                      ? "bg-indigo-600 text-white border-indigo-500"
-                      : "bg-card text-muted-foreground border-border hover:bg-muted"
+                      ? "bg-indigo-600 text-white"
+                      : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   🎯 Komuta Merkezi
@@ -268,10 +268,10 @@ export default function AdminPanel() {
                 <button
                   type="button"
                   onClick={() => setAnasayfaView("ekip")}
-                  className={`px-3 py-1.5 text-sm rounded-md border transition ${
+                  className={`px-3 py-1 text-xs rounded-md transition ${
                     anasayfaView === "ekip"
-                      ? "bg-indigo-600 text-white border-indigo-500"
-                      : "bg-card text-muted-foreground border-border hover:bg-muted"
+                      ? "bg-indigo-600 text-white"
+                      : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   👑 Ekip Hiyerarşisi
