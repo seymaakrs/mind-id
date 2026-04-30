@@ -1,7 +1,59 @@
 # MindID Admin Panel - Claude Code Guide
 
+## 👤 Kurucu Notu (ÖNEMLİ — Her oturumda oku)
+
+**Kurucu: Seyma.** Seyma kod bilmiyor; projeye **iş/ürün penceresinden** bakıyor.
+
+Bu yüzden:
+- **Açıklamalar her zaman sade dilde** olmalı (15 yaşında birine anlatır gibi). Teknik terim kullanman gerekiyorsa parantez içinde Türkçe karşılığını ver.
+- **Kod parçacıkları sadece gerekirse** göster; varsayılan iletişim metafor + tablo + emoji renkleriyle.
+- Karar isteyen sorularda **A/B seçenekleri** sun, "hangisi?" diye sor — açık uçlu teknik sorular sorma.
+- Hata raporlarken **kullanıcıya etkisi ne** onu söyle ("şu buton çalışmıyor"), kod satırı değil.
+- Seyma "ordinaryus yazılım mühendisim" diyerek tüm mimari kararları sana emanet ediyor — proaktif ol, ama büyük değişiklik öncesi onay al.
+
+## 🎯 Büyük Vizyon: 4 Repo → 1 Komuta Merkezi
+
+Bu repo (`mind-id`) Seyma'nın yönettiği ekosistemin **yüzü** (Netlify: https://mindid.netlify.app/). Arkasında 3 repo daha var:
+
+| Repo | Rolü | Restoran metaforu |
+|---|---|---|
+| **mind-id** (bu repo) | Next.js admin paneli — Seyma'nın baktığı pencere | Salon + garson |
+| **mind-agent** | Python FastAPI + 5 ajan (orchestrator, image, video, marketing, analysis) | Mutfak |
+| **mindid-nocodb** | NocoDB fork — CRM + lead veritabanı | Depo + defter |
+| **customer_agent** | n8n + 6 satış ajanı (LinkedIn/Meta/IG/Clay) — şu an çoğu doküman | Pazarlama ekibi |
+
+### Canvas Hedefi (Anasayfa)
+**Anasayfa = Komuta Merkezi (sürükle-bırak canvas / zihin haritası).**
+Seyma sidebar'a tıklamadan tek ekranda görmek istiyor:
+- Hangi ajan çalışıyor / eğitiliyor / boşta? (canlı sayım)
+- Hangi görevler aktif? Hangi aşamada?
+- Nerede hata var? (kırmızı düğümler)
+- 4 projenin durumu tek harita üstünde
+- Her düğüm = bir varlık (işletme, ajan, görev, hata, metrik). Tıklayınca yan panel açılıyor (eski sayfalar drawer olarak korunuyor).
+
+**Renk kodu (sade tutulacak):**
+- 🟢 Yeşil = çalışıyor / başarılı
+- 🟡 Sarı = devam ediyor / eğitiliyor
+- 🔴 Kırmızı = hata / pasif
+- 🔵 Mavi = metrik / bilgi
+
+### Sidebar (Seyma onayıyla sadeleşti)
+**Kalan:** Anasayfa, Agent, Aktif Görevler, İşletmeler, İstatistikler, Ayarlar
+**Çıkarıldı:** Instagram, Blog (component dosyaları repo'da duruyor — gelecekte canvas düğümlerinden açılabilir)
+
+## 🤝 Çoklu Repo Çalışma Kuralı
+
+Bu 4 repo bir aile. Birinde değişiklik diğerini etkiliyor:
+- mind-id frontend → mind-agent'in `/task` endpoint'ine POST atıyor
+- mind-id → Firestore üzerinden mind-agent'in yazdığı sonuçları okuyor
+- customer_agent (n8n) → NocoDB'ye lead yazıyor → mind-id NocoDB'den okuyor (planlanan)
+
+Bir repo'da iş yaparken **diğer üçünü de hatırla.** Karışıklık çıkarsa Seyma'ya yansır.
+
+---
+
 ## Project Overview
-Next.js 16 admin panel for managing Instagram, Blog, HeyGen video, AI Agent integrations, and business management. Turkish-language UI with dark theme. Features Firebase authentication with admin role-based access control.
+Next.js 16 admin panel for managing AI Agent integrations and business management. Turkish-language UI with dark theme. Features Firebase authentication with admin role-based access control.
 
 ## Tech Stack
 - **Framework:** Next.js 16.0.10 (App Router)
@@ -54,8 +106,8 @@ components/
 │   ├── business-list.tsx     # Business grid list
 │   ├── business-detail.tsx   # Business detail view/edit/delete
 │   └── business-media.tsx    # Business media management
-├── instagram/        # Instagram features
-├── blog/             # Blog features
+├── instagram/        # Instagram features (sidebar'dan kaldırıldı, canvas için duruyor)
+├── blog/             # Blog features (sidebar'dan kaldırıldı, canvas için duruyor)
 ├── heygen/           # Video creation
 └── agent/            # AI agent
     ├── agent-gorev.tsx          # Main agent chat component

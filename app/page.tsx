@@ -1,13 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
+import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
-import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
-import IcerikUretComponent from "@/components/instagram/icerik-uret"
-import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
-import YorumKazancComponent from "@/components/instagram/yorum-kazanc"
-import BlogPaylasComponent from "@/components/blog/blog-paylas"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
   AddBusinessComponent,
@@ -17,7 +12,7 @@ import {
 import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
-import { WelcomeDashboard } from "@/components/dashboard/welcome-dashboard"
+import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
@@ -25,13 +20,8 @@ import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell
 import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
 import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
 
-type MainMenuType = "anasayfa" | "instagram" | "blog" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
 type SubMenuType =
-  | "kaynak-ekle"
-  | "icerik-uret"
-  | "gonderi-paylas"
-  | "yorum-kazanc"
-  | "blog-paylas"
   | "isletme-ekle"
   | "isletme-listele"
   | "isletme-dashboard"
@@ -42,7 +32,6 @@ export default function AdminPanel() {
   const [activeSubMenu, setActiveSubMenu] = useState<SubMenuType | null>(null)
   const [expandedMenu, setExpandedMenu] = useState<MainMenuType | null>(null)
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("")
-  const [agentInitialTask, setAgentInitialTask] = useState<string | undefined>(undefined)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const { referenceCount } = useReferenceQueue()
@@ -65,23 +54,6 @@ export default function AdminPanel() {
       label: "Anasayfa",
       icon: Home,
       subItems: [],
-    },
-    {
-      id: "instagram" as MainMenuType,
-      label: "Instagram",
-      icon: Instagram,
-      subItems: [
-        { id: "kaynak-ekle" as SubMenuType, label: "Kaynak Ekle" },
-        { id: "icerik-uret" as SubMenuType, label: "Icerik Uret" },
-        { id: "gonderi-paylas" as SubMenuType, label: "Gonderi Paylas" },
-        { id: "yorum-kazanc" as SubMenuType, label: "Yorum Kazanclari" },
-      ],
-    },
-    {
-      id: "blog" as MainMenuType,
-      label: "Blog",
-      icon: FileText,
-      subItems: [{ id: "blog-paylas" as SubMenuType, label: "Blog Paylaş" }],
     },
     {
       id: "agent" as MainMenuType,
@@ -155,20 +127,6 @@ export default function AdminPanel() {
   const handleBusinessSelectFromList = (business: { id: string }) => {
     setSelectedBusinessId(business.id)
     setActiveSubMenu("isletme-dashboard")
-  }
-
-  // Handler for welcome dashboard navigation
-  const handleWelcomeNavigate = (menu: MainMenuType, subMenu?: SubMenuType | null) => {
-    setActiveMenu(menu)
-    setExpandedMenu(menu)
-    if (subMenu) {
-      setActiveSubMenu(subMenu)
-    } else {
-      const menuItem = menuItems.find(m => m.id === menu)
-      if (menuItem && menuItem.subItems.length > 0) {
-        setActiveSubMenu(menuItem.subItems[0].id)
-      }
-    }
   }
 
   return (
@@ -292,21 +250,7 @@ export default function AdminPanel() {
 
         <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <WelcomeDashboard
-              onNavigate={handleWelcomeNavigate}
-              onBusinessDashboard={(businessId) => {
-                setSelectedBusinessId(businessId)
-                setActiveMenu("isletmeler")
-                setExpandedMenu("isletmeler")
-                setActiveSubMenu("isletme-dashboard")
-              }}
-              onStartWithAgent={(businessId, task) => {
-                setSelectedBusinessId(businessId)
-                setAgentInitialTask(task || undefined)
-                setActiveMenu("agent")
-                setExpandedMenu(null)
-              }}
-            />
+            <CommandCenterCanvas />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
@@ -314,7 +258,6 @@ export default function AdminPanel() {
               sidebarCollapsed={sidebarCollapsed}
               onSidebarCollapse={setSidebarCollapsed}
               initialBusinessId={selectedBusinessId || undefined}
-              initialTask={agentInitialTask}
             />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />
@@ -322,15 +265,6 @@ export default function AdminPanel() {
             <ApiStatisticsPanel />
           ) : (
             <>
-              {/* Instagram Sub-menus */}
-              {activeSubMenu === "kaynak-ekle" && <KaynakEkleComponent />}
-              {activeSubMenu === "icerik-uret" && <IcerikUretComponent />}
-              {activeSubMenu === "gonderi-paylas" && <GonderiPaylasComponent />}
-              {activeSubMenu === "yorum-kazanc" && <YorumKazancComponent />}
-
-              {/* Blog Sub-menus */}
-              {activeSubMenu === "blog-paylas" && <BlogPaylasComponent />}
-
               {/* İşletmeler Sub-menus */}
               {activeSubMenu === "isletme-listele" && (
                 <BusinessListComponent onBusinessSelect={handleBusinessSelectFromList} />
