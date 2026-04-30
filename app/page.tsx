@@ -1,13 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
+import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
-import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
-import IcerikUretComponent from "@/components/instagram/icerik-uret"
-import GonderiPaylasComponent from "@/components/instagram/gonderi-paylas"
-import YorumKazancComponent from "@/components/instagram/yorum-kazanc"
-import BlogPaylasComponent from "@/components/blog/blog-paylas"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
   AddBusinessComponent,
@@ -25,13 +20,8 @@ import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell
 import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
 import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
 
-type MainMenuType = "anasayfa" | "instagram" | "blog" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
 type SubMenuType =
-  | "kaynak-ekle"
-  | "icerik-uret"
-  | "gonderi-paylas"
-  | "yorum-kazanc"
-  | "blog-paylas"
   | "isletme-ekle"
   | "isletme-listele"
   | "isletme-dashboard"
@@ -65,23 +55,6 @@ export default function AdminPanel() {
       label: "Anasayfa",
       icon: Home,
       subItems: [],
-    },
-    {
-      id: "instagram" as MainMenuType,
-      label: "Instagram",
-      icon: Instagram,
-      subItems: [
-        { id: "kaynak-ekle" as SubMenuType, label: "Kaynak Ekle" },
-        { id: "icerik-uret" as SubMenuType, label: "Icerik Uret" },
-        { id: "gonderi-paylas" as SubMenuType, label: "Gonderi Paylas" },
-        { id: "yorum-kazanc" as SubMenuType, label: "Yorum Kazanclari" },
-      ],
-    },
-    {
-      id: "blog" as MainMenuType,
-      label: "Blog",
-      icon: FileText,
-      subItems: [{ id: "blog-paylas" as SubMenuType, label: "Blog Paylaş" }],
     },
     {
       id: "agent" as MainMenuType,
@@ -322,15 +295,6 @@ export default function AdminPanel() {
             <ApiStatisticsPanel />
           ) : (
             <>
-              {/* Instagram Sub-menus */}
-              {activeSubMenu === "kaynak-ekle" && <KaynakEkleComponent />}
-              {activeSubMenu === "icerik-uret" && <IcerikUretComponent />}
-              {activeSubMenu === "gonderi-paylas" && <GonderiPaylasComponent />}
-              {activeSubMenu === "yorum-kazanc" && <YorumKazancComponent />}
-
-              {/* Blog Sub-menus */}
-              {activeSubMenu === "blog-paylas" && <BlogPaylasComponent />}
-
               {/* İşletmeler Sub-menus */}
               {activeSubMenu === "isletme-listele" && (
                 <BusinessListComponent onBusinessSelect={handleBusinessSelectFromList} />
