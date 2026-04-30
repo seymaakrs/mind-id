@@ -72,7 +72,7 @@ export interface Business extends BaseDocument {
   website?: string; // İşletme web sitesi
   late_profile_id?: string; // Late Profile ID
   profile: BusinessProfile; // İşletme profil bilgileri
-  status?: 'pending' | 'approved'; // undefined = approved (backward compat)
+  status?: 'pending' | 'approved' | 'archived'; // undefined = approved (backward compat)
   submitted_via?: string; // invite token ID (for public form submissions)
   // Platform IDs (synced from Late API)
   instagram_id?: string;
