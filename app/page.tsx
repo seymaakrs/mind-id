@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
+import { Instagram, FileText, Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity, TrendingUp } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
 import KaynakEkleComponent from "@/components/instagram/kaynak-ekle"
 import IcerikUretComponent from "@/components/instagram/icerik-uret"
@@ -24,8 +24,9 @@ import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell"
 import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
 import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
+import SalesDashboard from "@/components/sales/sales-dashboard"
 
-type MainMenuType = "anasayfa" | "instagram" | "blog" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "instagram" | "blog" | "agent" | "satis" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
 type SubMenuType =
   | "kaynak-ekle"
   | "icerik-uret"
@@ -87,6 +88,12 @@ export default function AdminPanel() {
       id: "agent" as MainMenuType,
       label: "Agent",
       icon: Bot,
+      subItems: [],
+    },
+    {
+      id: "satis" as MainMenuType,
+      label: "Satış",
+      icon: TrendingUp,
       subItems: [],
     },
     {
@@ -316,6 +323,8 @@ export default function AdminPanel() {
               initialBusinessId={selectedBusinessId || undefined}
               initialTask={agentInitialTask}
             />
+          ) : activeMenu === "satis" ? (
+            <SalesDashboard />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />
           ) : activeMenu === "istatistikler" ? (
