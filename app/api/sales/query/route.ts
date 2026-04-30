@@ -30,6 +30,10 @@ interface SalesQueryRequestBody {
 }
 
 async function resolveAgentEndpoint(): Promise<string> {
+  // Firebase admin may not be initialized in dev environments; tolerate it.
+  if (!adminDb) {
+    return FALLBACK_ENDPOINT;
+  }
   try {
     const snap = await adminDb
       .collection(SETTINGS_COLLECTION)
@@ -43,7 +47,8 @@ async function resolveAgentEndpoint(): Promise<string> {
       return endpoint.replace(/\/$/, "");
     }
   } catch {
-    // fall through
+    // Fall through to fallback. We don't want a Firestore outage to break
+    // the sales chat — fallback endpoint at least keeps the system reachable.
   }
   return FALLBACK_ENDPOINT;
 }
