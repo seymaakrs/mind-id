@@ -1,0 +1,934 @@
+"use client"
+
+import { useCallback, useMemo, useState, useEffect } from "react"
+import {
+  ReactFlow,
+  ReactFlowProvider,
+  Background,
+  Controls,
+  Handle,
+  Position,
+  type Node,
+  type Edge,
+  useNodesState,
+  useEdgesState,
+} from "@xyflow/react"
+import dagre from "@dagrejs/dagre"
+import "@xyflow/react/dist/style.css"
+import {
+  X,
+  Plus,
+  Edit2,
+  Trash2,
+  Save,
+  Wrench,
+  Users,
+  Database,
+  Workflow,
+  Bot,
+  Crown,
+  RotateCcw,
+} from "lucide-react"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type AgentStatus = "active" | "building" | "planned" | "passive"
+type AgentType = "founder" | "orchestrator" | "agent" | "data" | "workflow" | "integration"
+
+export interface TeamMember {
+  id: string
+  name: string
+  humanRole: string
+  agentRole: string
+  quote: string
+  tools: string[]
+  color: string
+  repo: "mind-agent" | "customer_agent" | "mindid-nocodb" | "mind-id" | "root"
+  reportsTo: string | null
+  status: AgentStatus
+  type: AgentType
+}
+
+// ─── Default Team Data ────────────────────────────────────────────────────────
+
+export const DEFAULT_TEAM: TeamMember[] = [
+  {
+    id: "seyma",
+    name: "Şeyma",
+    humanRole: "Kurucu & CEO",
+    agentRole: "Sistem Sahibi",
+    quote: "Brief verir, onaylar",
+    tools: [],
+    color: "#9d174d",
+    repo: "root",
+    reportsTo: null,
+    status: "active",
+    type: "founder",
+  },
+  {
+    id: "olcay",
+    name: "Olcay",
+    humanRole: "Ajans Müdürü",
+    agentRole: "Orchestrator Agent",
+    quote: "Brief okur, ekibe dağıtır",
+    tools: ["Claude 4", "Prompt Router"],
+    color: "#4338ca",
+    repo: "mind-agent",
+    reportsTo: "seyma",
+    status: "active",
+    type: "orchestrator",
+  },
+  {
+    id: "defne",
+    name: "Defne",
+    humanRole: "Görsel Tasarımcı",
+    agentRole: "Image Agent",
+    quote: "Çizim stüdyosu",
+    tools: ["Gemini 2.5 Flash", "fal.ai"],
+    color: "#065f46",
+    repo: "mind-agent",
+    reportsTo: "olcay",
+    status: "active",
+    type: "agent",
+  },
+  {
+    id: "toprak",
+    name: "Toprak",
+    humanRole: "Motion Designer",
+    agentRole: "Video Agent",
+    quote: "Hareket & ses üretir",
+    tools: ["Veo", "Kling", "HeyGen", "MMAudio"],
+    color: "#065f46",
+    repo: "mind-agent",
+    reportsTo: "olcay",
+    status: "active",
+    type: "agent",
+  },
+  {
+    id: "selin",
+    name: "Selin",
+    humanRole: "Sosyal Medya Sorumlusu",
+    agentRole: "Marketing Agent",
+    quote: "Marka sesi & reklam",
+    tools: ["Late API", "Instagram", "Meta Ads"],
+    color: "#1e40af",
+    repo: "mind-agent",
+    reportsTo: "olcay",
+    status: "active",
+    type: "agent",
+  },
+  {
+    id: "kaan",
+    name: "Kaan",
+    humanRole: "Stratejist & Araştırmacı",
+    agentRole: "Analysis Agent",
+    quote: "Veri okur, rapor çıkarır",
+    tools: ["Serper.dev", "SEO", "Web scraping"],
+    color: "#92400e",
+    repo: "mind-agent",
+    reportsTo: "olcay",
+    status: "active",
+    type: "agent",
+  },
+  {
+    id: "mert",
+    name: "Mert",
+    humanRole: "Satış Akış Yöneticisi",
+    agentRole: "n8n Orchestrator",
+    quote: "Satış pipeline'ı yürütür",
+    tools: ["n8n", "Webhook", "API Bridge"],
+    color: "#6d28d9",
+    repo: "customer_agent",
+    reportsTo: "seyma",
+    status: "building",
+    type: "workflow",
+  },
+  {
+    id: "zeynep",
+    name: "Zeynep",
+    humanRole: "Reklam Takipçisi",
+    agentRole: "Meta Lead Agent",
+    quote: "Facebook & IG lead toplar",
+    tools: ["Meta Ads API", "Webhook"],
+    color: "#374151",
+    repo: "customer_agent",
+    reportsTo: "mert",
+    status: "passive",
+    type: "agent",
+  },
+  {
+    id: "emre",
+    name: "Emre",
+    humanRole: "Profesyonel Ağ Avcısı",
+    agentRole: "LinkedIn Agent",
+    quote: "B2B lead arar",
+    tools: ["LinkedIn API"],
+    color: "#374151",
+    repo: "customer_agent",
+    reportsTo: "mert",
+    status: "planned",
+    type: "agent",
+  },
+  {
+    id: "ayse",
+    name: "Ayşe",
+    humanRole: "Veri Zenginleştirme",
+    agentRole: "Clay Local Agent",
+    quote: "Müşteri profilini doldurur",
+    tools: ["Clay", "Clearbit"],
+    color: "#374151",
+    repo: "customer_agent",
+    reportsTo: "mert",
+    status: "planned",
+    type: "agent",
+  },
+  {
+    id: "berk",
+    name: "Berk",
+    humanRole: "Mesaj Otomasyonu",
+    agentRole: "Instagram DM Agent",
+    quote: "IG DM'leri yanıtlar",
+    tools: ["Instagram Graph API"],
+    color: "#374151",
+    repo: "customer_agent",
+    reportsTo: "mert",
+    status: "planned",
+    type: "agent",
+  },
+  {
+    id: "firebase",
+    name: "Firebase",
+    humanRole: "Şirket Arşivi",
+    agentRole: "Veri Katmanı",
+    quote: "Her dosya, her geçmiş burada",
+    tools: ["Firestore", "Auth", "Storage"],
+    color: "#b45309",
+    repo: "mindid-nocodb",
+    reportsTo: null,
+    status: "active",
+    type: "data",
+  },
+]
+
+const STATUS_CONFIG: Record<AgentStatus, { label: string; dot: string; badge: string }> = {
+  active: {
+    label: "Aktif",
+    dot: "bg-emerald-400",
+    badge: "bg-emerald-900/40 text-emerald-300 border-emerald-700/40",
+  },
+  building: {
+    label: "Geliştiriliyor",
+    dot: "bg-amber-400 animate-pulse",
+    badge: "bg-amber-900/40 text-amber-300 border-amber-700/40",
+  },
+  planned: {
+    label: "Planlandı",
+    dot: "bg-slate-400",
+    badge: "bg-slate-800/60 text-slate-400 border-slate-600/40",
+  },
+  passive: {
+    label: "Pasif",
+    dot: "bg-slate-500",
+    badge: "bg-slate-800/60 text-slate-500 border-slate-600/40",
+  },
+}
+
+const TYPE_ICON: Record<AgentType, typeof Bot> = {
+  founder: Crown,
+  orchestrator: Users,
+  agent: Bot,
+  data: Database,
+  workflow: Workflow,
+  integration: Wrench,
+}
+
+const REPO_COLORS: Record<string, string> = {
+  root: "#6366f1",
+  "mind-agent": "#8b5cf6",
+  customer_agent: "#f97316",
+  "mindid-nocodb": "#14b8a6",
+  "mind-id": "#0ea5e9",
+}
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
+
+function buildDagreLayout(members: TeamMember[]): { nodes: Node[]; edges: Edge[] } {
+  const g = new dagre.graphlib.Graph()
+  g.setDefaultEdgeLabel(() => ({}))
+  g.setGraph({ rankdir: "TB", nodesep: 50, ranksep: 120, marginx: 40, marginy: 40 })
+
+  members.forEach((m) => g.setNode(m.id, { width: 190, height: 170 }))
+
+  // Report-to hierarchy edges for layout
+  members.forEach((m) => {
+    if (m.reportsTo && members.find((x) => x.id === m.reportsTo)) {
+      g.setEdge(m.reportsTo, m.id)
+    }
+  })
+
+  // Data nodes sit below leaf agents
+  const dataIds = members.filter((m) => m.type === "data").map((m) => m.id)
+  const leafIds = members
+    .filter((m) => m.type !== "data" && m.type !== "founder" && m.reportsTo !== null)
+    .map((m) => m.id)
+  dataIds.forEach((did) => {
+    leafIds.slice(0, 3).forEach((lid) => {
+      if (!g.hasEdge(lid, did)) g.setEdge(lid, did)
+    })
+  })
+
+  dagre.layout(g)
+
+  const nodes: Node[] = members.map((m) => {
+    const pos = g.node(m.id)
+    return {
+      id: m.id,
+      type: "teamMember",
+      position: pos ? { x: pos.x - 95, y: pos.y - 85 } : { x: 0, y: 0 },
+      data: { member: m },
+      draggable: true,
+    }
+  })
+
+  const edges: Edge[] = []
+
+  // Hierarchy solid edges
+  members.forEach((m) => {
+    if (m.reportsTo && members.find((x) => x.id === m.reportsTo)) {
+      edges.push({
+        id: `e-${m.reportsTo}-${m.id}`,
+        source: m.reportsTo,
+        target: m.id,
+        type: "smoothstep",
+        style: { stroke: REPO_COLORS[m.repo] ?? "#6366f1", strokeWidth: 2 },
+      })
+    }
+  })
+
+  // Cross-repo collaboration dashed edges
+  const crossEdges: Array<[string, string, string]> = [
+    ["selin", "defne", "işbirliği"],
+    ["selin", "toprak", "işbirliği"],
+    ["mert", "olcay", "SDK köprüsü"],
+  ]
+  crossEdges.forEach(([src, tgt, label]) => {
+    if (members.find((m) => m.id === src) && members.find((m) => m.id === tgt)) {
+      edges.push({
+        id: `collab-${src}-${tgt}`,
+        source: src,
+        target: tgt,
+        type: "straight",
+        style: { stroke: "#64748b", strokeWidth: 1.5, strokeDasharray: "5 5", opacity: 0.55 },
+        label,
+        labelStyle: { fill: "#94a3b8", fontSize: 10 },
+      })
+    }
+  })
+
+  // Data layer dashed edges from all non-founder/non-data nodes
+  dataIds.forEach((did) => {
+    members
+      .filter((m) => m.type !== "data" && m.type !== "founder")
+      .forEach((m) => {
+        edges.push({
+          id: `data-${m.id}-${did}`,
+          source: m.id,
+          target: did,
+          type: "straight",
+          style: { stroke: "#475569", strokeWidth: 1, strokeDasharray: "3 6", opacity: 0.25 },
+        })
+      })
+  })
+
+  return { nodes, edges }
+}
+
+// ─── Person Avatar ────────────────────────────────────────────────────────────
+
+function PersonAvatar({ color, size = 52 }: { color: string; size?: number }) {
+  const headSize = size * 0.42
+  const bodyW = size * 0.72
+  const bodyH = size * 0.46
+  return (
+    <div className="flex flex-col items-center" style={{ gap: 0 }}>
+      <div
+        className="rounded-full border-2 border-white/20 shadow-inner"
+        style={{ width: headSize, height: headSize, background: color }}
+      />
+      <div
+        className="rounded-t-full border-2 border-b-0 border-white/20 shadow-inner"
+        style={{ width: bodyW, height: bodyH, background: color, marginTop: 2 }}
+      />
+    </div>
+  )
+}
+
+// ─── Team Member Node ─────────────────────────────────────────────────────────
+
+interface NodeData extends Record<string, unknown> {
+  member: TeamMember
+  editMode: boolean
+  onEdit: (id: string) => void
+  onDelete: (id: string) => void
+}
+
+function TeamMemberNode({ data }: { data: NodeData }) {
+  const { member: m, editMode, onEdit, onDelete } = data
+  const status = STATUS_CONFIG[m.status]
+  const isData = m.type === "data"
+  const isFounder = m.type === "founder"
+
+  return (
+    <div
+      className={`relative flex flex-col items-center select-none transition-transform ${
+        isFounder ? "scale-110" : ""
+      }`}
+      style={{ width: 190 }}
+    >
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!bg-slate-600 !border-slate-800 !w-2 !h-2 !opacity-60"
+      />
+
+      {/* Avatar area */}
+      <div className="relative mb-1.5">
+        {isData ? (
+          <div
+            className="w-14 h-14 rounded-xl border-2 border-white/20 flex items-center justify-center shadow"
+            style={{ background: m.color }}
+          >
+            <Database className="w-7 h-7 text-white/90" />
+          </div>
+        ) : (
+          <PersonAvatar color={m.color} size={54} />
+        )}
+
+        {/* Status dot */}
+        <span
+          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background shadow ${status.dot}`}
+        />
+
+        {/* Edit controls (only in edit mode) */}
+        {editMode && (
+          <div className="absolute -top-2 -right-2 flex gap-1">
+            <button
+              className="w-5 h-5 bg-blue-600 hover:bg-blue-500 rounded-full flex items-center justify-center shadow transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit(m.id)
+              }}
+              title="Düzenle"
+            >
+              <Edit2 className="w-2.5 h-2.5 text-white" />
+            </button>
+            {m.id !== "seyma" && (
+              <button
+                className="w-5 h-5 bg-rose-600 hover:bg-rose-500 rounded-full flex items-center justify-center shadow transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(m.id)
+                }}
+                title="Sil"
+              >
+                <Trash2 className="w-2.5 h-2.5 text-white" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Text info */}
+      <div className="text-center px-1.5">
+        <div className="font-bold text-sm text-white leading-tight tracking-tight">{m.name}</div>
+        <div className="text-[11px] text-slate-300 leading-snug mt-0.5">{m.humanRole}</div>
+        <div className="text-[10px] text-slate-500 leading-snug">({m.agentRole})</div>
+        {m.quote && (
+          <div className="text-[10px] text-slate-500 italic mt-0.5 leading-tight">"{m.quote}"</div>
+        )}
+      </div>
+
+      {/* Tools chip */}
+      {m.tools.length > 0 && (
+        <div
+          className="mt-1.5 px-2 py-1 rounded-lg border text-[10px] text-center leading-relaxed max-w-[175px]"
+          style={{
+            background: `${m.color}15`,
+            borderColor: `${m.color}30`,
+            color: "#94a3b8",
+          }}
+        >
+          {m.tools.join(" · ")}
+        </div>
+      )}
+
+      {/* Status badge */}
+      <div
+        className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-semibold border uppercase tracking-wide ${status.badge}`}
+      >
+        {status.label}
+      </div>
+
+      {/* Repo label */}
+      <div
+        className="mt-0.5 text-[9px] font-mono opacity-40"
+        style={{ color: REPO_COLORS[m.repo] ?? "#6366f1" }}
+      >
+        {m.repo}
+      </div>
+
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!bg-slate-600 !border-slate-800 !w-2 !h-2 !opacity-60"
+      />
+    </div>
+  )
+}
+
+// ─── Edit / Add Modal ─────────────────────────────────────────────────────────
+
+const EMPTY_MEMBER: Omit<TeamMember, "id"> = {
+  name: "",
+  humanRole: "",
+  agentRole: "",
+  quote: "",
+  tools: [],
+  color: "#6366f1",
+  repo: "mind-agent",
+  reportsTo: "olcay",
+  status: "planned",
+  type: "agent",
+}
+
+function MemberModal({
+  title,
+  initial,
+  allMembers,
+  onSave,
+  onClose,
+}: {
+  title: string
+  initial: Omit<TeamMember, "id">
+  allMembers: TeamMember[]
+  onSave: (data: Omit<TeamMember, "id">) => void
+  onClose: () => void
+}) {
+  const [form, setForm] = useState<Omit<TeamMember, "id">>(initial)
+  const [toolsStr, setToolsStr] = useState(initial.tools.join(", "))
+
+  const set = <K extends keyof Omit<TeamMember, "id">>(k: K, v: Omit<TeamMember, "id">[K]) =>
+    setForm((f) => ({ ...f, [k]: v }))
+
+  const handleSave = () => {
+    if (!form.name.trim()) return
+    onSave({ ...form, tools: toolsStr.split(",").map((t) => t.trim()).filter(Boolean) })
+  }
+
+  const inputCls =
+    "w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+  const labelCls = "block text-[11px] text-muted-foreground mb-1 uppercase tracking-wide font-medium"
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card z-10">
+          <h3 className="font-bold text-base">{title}</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>İsim *</label>
+              <input
+                className={inputCls}
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Defne"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Avatar Rengi</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={form.color}
+                  onChange={(e) => set("color", e.target.value)}
+                  className="w-10 h-9 rounded-lg cursor-pointer border border-border bg-muted p-0.5"
+                />
+                <span className="text-xs text-muted-foreground font-mono">{form.color}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>İnsan Rolü</label>
+            <input
+              className={inputCls}
+              value={form.humanRole}
+              onChange={(e) => set("humanRole", e.target.value)}
+              placeholder="Görsel Tasarımcı"
+            />
+          </div>
+
+          <div>
+            <label className={labelCls}>Ajan Rolü</label>
+            <input
+              className={inputCls}
+              value={form.agentRole}
+              onChange={(e) => set("agentRole", e.target.value)}
+              placeholder="Image Agent"
+            />
+          </div>
+
+          <div>
+            <label className={labelCls}>Alıntı / Motto</label>
+            <input
+              className={inputCls}
+              value={form.quote}
+              onChange={(e) => set("quote", e.target.value)}
+              placeholder="Kısa bir motto..."
+            />
+          </div>
+
+          <div>
+            <label className={labelCls}>Araçlar (virgülle ayır)</label>
+            <input
+              className={inputCls}
+              value={toolsStr}
+              onChange={(e) => setToolsStr(e.target.value)}
+              placeholder="Gemini, fal.ai, DALL-E"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Repo</label>
+              <select
+                className={inputCls}
+                value={form.repo}
+                onChange={(e) => set("repo", e.target.value as TeamMember["repo"])}
+              >
+                <option value="mind-agent">mind-agent</option>
+                <option value="customer_agent">customer_agent</option>
+                <option value="mindid-nocodb">mindid-nocodb</option>
+                <option value="mind-id">mind-id</option>
+                <option value="root">root</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Tür</label>
+              <select
+                className={inputCls}
+                value={form.type}
+                onChange={(e) => set("type", e.target.value as AgentType)}
+              >
+                <option value="agent">agent</option>
+                <option value="orchestrator">orchestrator</option>
+                <option value="workflow">workflow</option>
+                <option value="data">data</option>
+                <option value="integration">integration</option>
+                <option value="founder">founder</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Raporladığı</label>
+              <select
+                className={inputCls}
+                value={form.reportsTo ?? ""}
+                onChange={(e) => set("reportsTo", e.target.value || null)}
+              >
+                <option value="">— Bağımsız —</option>
+                {allMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Durum</label>
+              <select
+                className={inputCls}
+                value={form.status}
+                onChange={(e) => set("status", e.target.value as AgentStatus)}
+              >
+                <option value="active">Aktif</option>
+                <option value="building">Geliştiriliyor</option>
+                <option value="planned">Planlandı</option>
+                <option value="passive">Pasif</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 p-4 border-t border-border sticky bottom-0 bg-card">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
+          >
+            İptal
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            Kaydet
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Status Legend ────────────────────────────────────────────────────────────
+
+function Legend() {
+  return (
+    <div className="absolute bottom-3 left-3 z-10 bg-card/90 backdrop-blur border border-border rounded-xl p-3 text-[11px] space-y-1.5 shadow-lg">
+      <div className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px] mb-1">
+        Durum
+      </div>
+      {(Object.entries(STATUS_CONFIG) as [AgentStatus, (typeof STATUS_CONFIG)[AgentStatus]][]).map(
+        ([, cfg]) => (
+          <div key={cfg.label} className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${cfg.dot}`} />
+            <span className="text-muted-foreground">{cfg.label}</span>
+          </div>
+        )
+      )}
+      <div className="border-t border-border pt-1.5 mt-0.5 font-semibold text-muted-foreground uppercase tracking-wide text-[10px]">
+        Repo
+      </div>
+      {Object.entries(REPO_COLORS).map(([repo, color]) => (
+        <div key={repo} className="flex items-center gap-2">
+          <span className="w-2.5 h-2 rounded-sm shrink-0" style={{ background: color }} />
+          <span className="text-muted-foreground font-mono">{repo}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Main Canvas Inner ────────────────────────────────────────────────────────
+
+const LS_KEY = "team-hierarchy-members-v1"
+
+function TeamCanvasInner() {
+  const [members, setMembers] = useState<TeamMember[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_TEAM
+    try {
+      const saved = localStorage.getItem(LS_KEY)
+      return saved ? (JSON.parse(saved) as TeamMember[]) : DEFAULT_TEAM
+    } catch {
+      return DEFAULT_TEAM
+    }
+  })
+
+  const [editMode, setEditMode] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [addingNew, setAddingNew] = useState(false)
+  const [saveFlash, setSaveFlash] = useState(false)
+
+  // Stable callbacks
+  const handleEdit = useCallback((id: string) => setEditingId(id), [])
+  const handleDelete = useCallback((id: string) => {
+    setMembers((prev) => prev.filter((m) => m.id !== id))
+  }, [])
+
+  // Build layout when members change
+  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(
+    () => buildDagreLayout(members),
+    [members]
+  )
+
+  // Inject editMode + callbacks into node data
+  const nodesWithCb = useMemo(
+    () =>
+      layoutNodes.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          editMode,
+          onEdit: handleEdit,
+          onDelete: handleDelete,
+        },
+      })),
+    [layoutNodes, editMode, handleEdit, handleDelete]
+  )
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithCb)
+  const [edges, , onEdgesChange] = useEdgesState(layoutEdges)
+
+  useEffect(() => {
+    setNodes(nodesWithCb)
+  }, [nodesWithCb, setNodes])
+
+  useEffect(() => {
+    // Reset edges when members change
+  }, [layoutEdges])
+
+  const nodeTypes = useMemo(() => ({ teamMember: TeamMemberNode }), [])
+
+  function handleSaveEdit(data: Omit<TeamMember, "id">) {
+    if (!editingId) return
+    setMembers((prev) => prev.map((m) => (m.id === editingId ? { ...m, ...data } : m)))
+    setEditingId(null)
+  }
+
+  function handleAddMember(data: Omit<TeamMember, "id">) {
+    const id = `member-${Date.now()}`
+    setMembers((prev) => [...prev, { id, ...data }])
+    setAddingNew(false)
+  }
+
+  function handleSaveToStorage() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(members))
+      setSaveFlash(true)
+      setTimeout(() => setSaveFlash(false), 2000)
+    } catch {}
+  }
+
+  function handleReset() {
+    if (!confirm("Ekip düzenini varsayılana sıfırlamak istediğinize emin misiniz?")) return
+    localStorage.removeItem(LS_KEY)
+    setMembers(DEFAULT_TEAM)
+  }
+
+  const editingMember = members.find((m) => m.id === editingId)
+  const activeCount = members.filter((m) => m.status === "active").length
+  const buildingCount = members.filter((m) => m.status === "building" || m.status === "planned").length
+
+  return (
+    <div className="relative w-full h-[calc(100vh-7rem)] bg-background rounded-lg border border-border overflow-hidden">
+      {/* Top toolbar */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-card/90 backdrop-blur border border-border rounded-xl px-3 py-2 shadow-lg">
+        <span className="text-sm font-bold text-foreground">Slowdays AI Ekibi</span>
+        <span className="text-muted-foreground text-xs">·</span>
+        <span className="text-xs text-emerald-400 font-medium">{activeCount} aktif</span>
+        <span className="text-muted-foreground text-xs">·</span>
+        <span className="text-xs text-amber-400 font-medium">{buildingCount} geliştiriliyor</span>
+
+        <div className="w-px h-4 bg-border mx-1" />
+
+        <button
+          onClick={() => setEditMode((v) => !v)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+            editMode
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/70"
+          }`}
+        >
+          <Edit2 className="w-3.5 h-3.5" />
+          {editMode ? "Düzenleniyor" : "Düzenle"}
+        </button>
+
+        {editMode && (
+          <>
+            <button
+              onClick={() => setAddingNew(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-900/50 text-emerald-300 hover:bg-emerald-800/60 border border-emerald-700/40 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Üye Ekle
+            </button>
+            <button
+              onClick={handleSaveToStorage}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${
+                saveFlash
+                  ? "bg-emerald-600 text-white border-emerald-500"
+                  : "bg-muted text-muted-foreground border-border hover:bg-muted/70"
+              }`}
+            >
+              <Save className="w-3.5 h-3.5" />
+              {saveFlash ? "Kaydedildi!" : "Kaydet"}
+            </button>
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted text-muted-foreground border border-border hover:bg-rose-900/40 hover:text-rose-300 hover:border-rose-700/40 transition-colors"
+              title="Varsayılana sıfırla"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Sıfırla
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Subtitle */}
+      <div className="absolute top-[3.25rem] left-1/2 -translate-x-1/2 z-10 text-[11px] text-muted-foreground italic whitespace-nowrap">
+        Eğer her agent bir insan olsaydı — bağlantılarıyla birlikte
+      </div>
+
+      {/* Edit mode hint */}
+      {editMode && (
+        <div className="absolute top-[4.5rem] left-1/2 -translate-x-1/2 z-10 text-[10px] text-amber-400/80 bg-amber-900/20 border border-amber-700/30 rounded-full px-3 py-0.5 whitespace-nowrap">
+          Düzenleme modu: Sürükle • Düzenle • Sil • Kaydet
+        </div>
+      )}
+
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodesDraggable={editMode}
+        nodesConnectable={false}
+        elementsSelectable={editMode}
+        fitView
+        fitViewOptions={{ padding: 0.1 }}
+        minZoom={0.12}
+        maxZoom={2}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background gap={24} size={1} color="#1e293b" />
+        <Controls className="!bg-card !border-border" />
+      </ReactFlow>
+
+      <Legend />
+
+      {/* Edit modal */}
+      {editingId && editingMember && (
+        <MemberModal
+          title={`Düzenle: ${editingMember.name}`}
+          initial={editingMember}
+          allMembers={members.filter((m) => m.id !== editingId)}
+          onSave={handleSaveEdit}
+          onClose={() => setEditingId(null)}
+        />
+      )}
+
+      {/* Add modal */}
+      {addingNew && (
+        <MemberModal
+          title="Yeni Ekip Üyesi Ekle"
+          initial={EMPTY_MEMBER}
+          allMembers={members}
+          onSave={handleAddMember}
+          onClose={() => setAddingNew(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Exported Component ───────────────────────────────────────────────────────
+
+export function TeamHierarchyCanvas() {
+  return (
+    <ReactFlowProvider>
+      <TeamCanvasInner />
+    </ReactFlowProvider>
+  )
+}
+
+export default TeamHierarchyCanvas
