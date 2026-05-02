@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity, Users, Network } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
@@ -13,13 +14,24 @@ import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
 import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
-import { TeamHierarchyCanvas } from "@/components/canvas/team-hierarchy-canvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell"
 import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
 import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
+
+const TeamHierarchyCanvas = dynamic(
+  () => import("@/components/canvas/team-hierarchy-canvas").then((m) => ({ default: m.TeamHierarchyCanvas })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[calc(100vh-7rem)] bg-background rounded-lg border border-border flex items-center justify-center text-muted-foreground text-sm">
+        Ekip haritası yükleniyor...
+      </div>
+    ),
+  }
+)
 
 type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
 type SubMenuType =
