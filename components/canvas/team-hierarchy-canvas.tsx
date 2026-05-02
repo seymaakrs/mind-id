@@ -21,11 +21,7 @@ import {
   Edit2,
   Trash2,
   Save,
-  Wrench,
-  Users,
   Database,
-  Workflow,
-  Bot,
   Crown,
   RotateCcw,
 } from "lucide-react"
@@ -135,7 +131,7 @@ export const DEFAULT_TEAM: TeamMember[] = [
     name: "Mert",
     humanRole: "Satış Akış Yöneticisi",
     agentRole: "n8n Orchestrator",
-    quote: "Satış pipeline'ı yürütür",
+    quote: "Satış pipeline&#39;ı yürütür",
     tools: ["n8n", "Webhook", "API Bridge"],
     color: "#6d28d9",
     repo: "customer_agent",
@@ -187,7 +183,7 @@ export const DEFAULT_TEAM: TeamMember[] = [
     name: "Berk",
     humanRole: "Mesaj Otomasyonu",
     agentRole: "Instagram DM Agent",
-    quote: "IG DM'leri yanıtlar",
+    quote: "IG DM&#39;leri yanıtlar",
     tools: ["Instagram Graph API"],
     color: "#374151",
     repo: "customer_agent",
@@ -231,18 +227,6 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; dot: string; badge: st
     dot: "bg-slate-500",
     badge: "bg-slate-800/60 text-slate-500 border-slate-600/40",
   },
-}
-
-// lucide icons share the same component type
-type LucideIconType = typeof Bot
-
-const TYPE_ICON: Record<AgentType, LucideIconType> = {
-  founder: Crown as LucideIconType,
-  orchestrator: Users as LucideIconType,
-  agent: Bot,
-  data: Database as LucideIconType,
-  workflow: Workflow as LucideIconType,
-  integration: Wrench as LucideIconType,
 }
 
 const REPO_COLORS: Record<string, string> = {
@@ -397,6 +381,14 @@ function TeamMemberNode({ data }: { data: NodeData }) {
           >
             <Database className="w-7 h-7 text-white/90" />
           </div>
+        ) : isFounder ? (
+          <div className="relative">
+            <PersonAvatar color={m.color} size={54} />
+            <Crown
+              className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4"
+              style={{ color: "#fbbf24" }}
+            />
+          </div>
         ) : (
           <PersonAvatar color={m.color} size={54} />
         )}
@@ -512,7 +504,6 @@ function MemberModal({
   const [form, setForm] = useState<MemberFormData>(initial)
   const [toolsStr, setToolsStr] = useState(initial.tools.join(", "))
 
-  // Using a typed setter to avoid generic arrow function in TSX
   function setField(k: keyof MemberFormData, v: MemberFormData[keyof MemberFormData]) {
     setForm((f) => ({ ...f, [k]: v }))
   }
@@ -790,7 +781,7 @@ function TeamCanvasInner() {
       setSaveFlash(true)
       setTimeout(() => setSaveFlash(false), 2000)
     } catch {
-      // localStorage may be unavailable
+      // localStorage unavailable
     }
   }
 
