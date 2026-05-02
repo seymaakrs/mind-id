@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
+import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity, Users, Network } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
@@ -13,6 +13,7 @@ import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
 import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
+import { TeamHierarchyCanvas } from "@/components/canvas/team-hierarchy-canvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
@@ -26,6 +27,48 @@ type SubMenuType =
   | "isletme-listele"
   | "isletme-dashboard"
   | "davet-linkleri"
+
+type CanvasView = "team" | "system"
+
+// ─── Homepage Canvas Wrapper ──────────────────────────────────────────────────
+
+function HomepageCanvas() {
+  const [view, setView] = useState<CanvasView>("team")
+
+  return (
+    <div className="relative">
+      {/* View toggle */}
+      <div className="flex items-center gap-1 mb-3 p-1 bg-muted rounded-xl w-fit">
+        <button
+          onClick={() => setView("team")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            view === "team"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Ekip Haritası
+        </button>
+        <button
+          onClick={() => setView("system")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            view === "system"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Network className="w-4 h-4" />
+          Sistem Haritası
+        </button>
+      </div>
+
+      {view === "team" ? <TeamHierarchyCanvas /> : <CommandCenterCanvas />}
+    </div>
+  )
+}
+
+// ─── Admin Panel ──────────────────────────────────────────────────────────────
 
 export default function AdminPanel() {
   const [activeMenu, setActiveMenu] = useState<MainMenuType>("anasayfa")
@@ -250,7 +293,7 @@ export default function AdminPanel() {
 
         <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <CommandCenterCanvas />
+            <HomepageCanvas />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
