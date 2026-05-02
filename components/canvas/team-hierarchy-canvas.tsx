@@ -233,13 +233,16 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; dot: string; badge: st
   },
 }
 
-const TYPE_ICON: Record<AgentType, typeof Bot> = {
-  founder: Crown,
-  orchestrator: Users,
+// lucide icons share the same component type
+type LucideIconType = typeof Bot
+
+const TYPE_ICON: Record<AgentType, LucideIconType> = {
+  founder: Crown as LucideIconType,
+  orchestrator: Users as LucideIconType,
   agent: Bot,
-  data: Database,
-  workflow: Workflow,
-  integration: Wrench,
+  data: Database as LucideIconType,
+  workflow: Workflow as LucideIconType,
+  integration: Wrench as LucideIconType,
 }
 
 const REPO_COLORS: Record<string, string> = {
@@ -259,14 +262,12 @@ function buildDagreLayout(members: TeamMember[]): { nodes: Node[]; edges: Edge[]
 
   members.forEach((m) => g.setNode(m.id, { width: 190, height: 170 }))
 
-  // Report-to hierarchy edges for layout
   members.forEach((m) => {
     if (m.reportsTo && members.find((x) => x.id === m.reportsTo)) {
       g.setEdge(m.reportsTo, m.id)
     }
   })
 
-  // Data nodes sit below leaf agents
   const dataIds = members.filter((m) => m.type === "data").map((m) => m.id)
   const leafIds = members
     .filter((m) => m.type !== "data" && m.type !== "founder" && m.reportsTo !== null)
@@ -292,7 +293,6 @@ function buildDagreLayout(members: TeamMember[]): { nodes: Node[]; edges: Edge[]
 
   const edges: Edge[] = []
 
-  // Hierarchy solid edges
   members.forEach((m) => {
     if (m.reportsTo && members.find((x) => x.id === m.reportsTo)) {
       edges.push({
@@ -305,7 +305,6 @@ function buildDagreLayout(members: TeamMember[]): { nodes: Node[]; edges: Edge[]
     }
   })
 
-  // Cross-repo collaboration dashed edges
   const crossEdges: Array<[string, string, string]> = [
     ["selin", "defne", "işbirliği"],
     ["selin", "toprak", "işbirliği"],
@@ -325,7 +324,6 @@ function buildDagreLayout(members: TeamMember[]): { nodes: Node[]; edges: Edge[]
     }
   })
 
-  // Data layer dashed edges from all non-founder/non-data nodes
   dataIds.forEach((did) => {
     members
       .filter((m) => m.type !== "data" && m.type !== "founder")
@@ -391,7 +389,6 @@ function TeamMemberNode({ data }: { data: NodeData }) {
         className="!bg-slate-600 !border-slate-800 !w-2 !h-2 !opacity-60"
       />
 
-      {/* Avatar area */}
       <div className="relative mb-1.5">
         {isData ? (
           <div
@@ -404,12 +401,10 @@ function TeamMemberNode({ data }: { data: NodeData }) {
           <PersonAvatar color={m.color} size={54} />
         )}
 
-        {/* Status dot */}
         <span
           className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background shadow ${status.dot}`}
         />
 
-        {/* Edit controls (only in edit mode) */}
         {editMode && (
           <div className="absolute -top-2 -right-2 flex gap-1">
             <button
@@ -438,17 +433,17 @@ function TeamMemberNode({ data }: { data: NodeData }) {
         )}
       </div>
 
-      {/* Text info */}
       <div className="text-center px-1.5">
         <div className="font-bold text-sm text-white leading-tight tracking-tight">{m.name}</div>
         <div className="text-[11px] text-slate-300 leading-snug mt-0.5">{m.humanRole}</div>
         <div className="text-[10px] text-slate-500 leading-snug">({m.agentRole})</div>
         {m.quote && (
-          <div className="text-[10px] text-slate-500 italic mt-0.5 leading-tight">"{m.quote}"</div>
+          <div className="text-[10px] text-slate-500 italic mt-0.5 leading-tight">
+            &ldquo;{m.quote}&rdquo;
+          </div>
         )}
       </div>
 
-      {/* Tools chip */}
       {m.tools.length > 0 && (
         <div
           className="mt-1.5 px-2 py-1 rounded-lg border text-[10px] text-center leading-relaxed max-w-[175px]"
@@ -462,14 +457,12 @@ function TeamMemberNode({ data }: { data: NodeData }) {
         </div>
       )}
 
-      {/* Status badge */}
       <div
         className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-semibold border uppercase tracking-wide ${status.badge}`}
       >
         {status.label}
       </div>
 
-      {/* Repo label */}
       <div
         className="mt-0.5 text-[9px] font-mono opacity-40"
         style={{ color: REPO_COLORS[m.repo] ?? "#6366f1" }}
@@ -501,6 +494,8 @@ const EMPTY_MEMBER: Omit<TeamMember, "id"> = {
   type: "agent",
 }
 
+type MemberFormData = Omit<TeamMember, "id">
+
 function MemberModal({
   title,
   initial,
@@ -509,16 +504,18 @@ function MemberModal({
   onClose,
 }: {
   title: string
-  initial: Omit<TeamMember, "id">
+  initial: MemberFormData
   allMembers: TeamMember[]
-  onSave: (data: Omit<TeamMember, "id">) => void
+  onSave: (data: MemberFormData) => void
   onClose: () => void
 }) {
-  const [form, setForm] = useState<Omit<TeamMember, "id">>(initial)
+  const [form, setForm] = useState<MemberFormData>(initial)
   const [toolsStr, setToolsStr] = useState(initial.tools.join(", "))
 
-  const set = <K extends keyof Omit<TeamMember, "id">>(k: K, v: Omit<TeamMember, "id">[K]) =>
+  // Using a typed setter to avoid generic arrow function in TSX
+  function setField(k: keyof MemberFormData, v: MemberFormData[keyof MemberFormData]) {
     setForm((f) => ({ ...f, [k]: v }))
+  }
 
   const handleSave = () => {
     if (!form.name.trim()) return
@@ -527,7 +524,8 @@ function MemberModal({
 
   const inputCls =
     "w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
-  const labelCls = "block text-[11px] text-muted-foreground mb-1 uppercase tracking-wide font-medium"
+  const labelCls =
+    "block text-[11px] text-muted-foreground mb-1 uppercase tracking-wide font-medium"
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -546,7 +544,7 @@ function MemberModal({
               <input
                 className={inputCls}
                 value={form.name}
-                onChange={(e) => set("name", e.target.value)}
+                onChange={(e) => setField("name", e.target.value)}
                 placeholder="Defne"
               />
             </div>
@@ -556,7 +554,7 @@ function MemberModal({
                 <input
                   type="color"
                   value={form.color}
-                  onChange={(e) => set("color", e.target.value)}
+                  onChange={(e) => setField("color", e.target.value)}
                   className="w-10 h-9 rounded-lg cursor-pointer border border-border bg-muted p-0.5"
                 />
                 <span className="text-xs text-muted-foreground font-mono">{form.color}</span>
@@ -569,7 +567,7 @@ function MemberModal({
             <input
               className={inputCls}
               value={form.humanRole}
-              onChange={(e) => set("humanRole", e.target.value)}
+              onChange={(e) => setField("humanRole", e.target.value)}
               placeholder="Görsel Tasarımcı"
             />
           </div>
@@ -579,7 +577,7 @@ function MemberModal({
             <input
               className={inputCls}
               value={form.agentRole}
-              onChange={(e) => set("agentRole", e.target.value)}
+              onChange={(e) => setField("agentRole", e.target.value)}
               placeholder="Image Agent"
             />
           </div>
@@ -589,7 +587,7 @@ function MemberModal({
             <input
               className={inputCls}
               value={form.quote}
-              onChange={(e) => set("quote", e.target.value)}
+              onChange={(e) => setField("quote", e.target.value)}
               placeholder="Kısa bir motto..."
             />
           </div>
@@ -610,7 +608,7 @@ function MemberModal({
               <select
                 className={inputCls}
                 value={form.repo}
-                onChange={(e) => set("repo", e.target.value as TeamMember["repo"])}
+                onChange={(e) => setField("repo", e.target.value as TeamMember["repo"])}
               >
                 <option value="mind-agent">mind-agent</option>
                 <option value="customer_agent">customer_agent</option>
@@ -624,7 +622,7 @@ function MemberModal({
               <select
                 className={inputCls}
                 value={form.type}
-                onChange={(e) => set("type", e.target.value as AgentType)}
+                onChange={(e) => setField("type", e.target.value as AgentType)}
               >
                 <option value="agent">agent</option>
                 <option value="orchestrator">orchestrator</option>
@@ -642,7 +640,7 @@ function MemberModal({
               <select
                 className={inputCls}
                 value={form.reportsTo ?? ""}
-                onChange={(e) => set("reportsTo", e.target.value || null)}
+                onChange={(e) => setField("reportsTo", e.target.value || null)}
               >
                 <option value="">— Bağımsız —</option>
                 {allMembers.map((m) => (
@@ -657,7 +655,7 @@ function MemberModal({
               <select
                 className={inputCls}
                 value={form.status}
-                onChange={(e) => set("status", e.target.value as AgentStatus)}
+                onChange={(e) => setField("status", e.target.value as AgentStatus)}
               >
                 <option value="active">Aktif</option>
                 <option value="building">Geliştiriliyor</option>
@@ -737,19 +735,16 @@ function TeamCanvasInner() {
   const [addingNew, setAddingNew] = useState(false)
   const [saveFlash, setSaveFlash] = useState(false)
 
-  // Stable callbacks
   const handleEdit = useCallback((id: string) => setEditingId(id), [])
   const handleDelete = useCallback((id: string) => {
     setMembers((prev) => prev.filter((m) => m.id !== id))
   }, [])
 
-  // Build layout when members change
   const { nodes: layoutNodes, edges: layoutEdges } = useMemo(
     () => buildDagreLayout(members),
     [members]
   )
 
-  // Inject editMode + callbacks into node data
   const nodesWithCb = useMemo(
     () =>
       layoutNodes.map((n) => ({
@@ -765,25 +760,25 @@ function TeamCanvasInner() {
   )
 
   const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithCb)
-  const [edges, , onEdgesChange] = useEdgesState(layoutEdges)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges)
 
   useEffect(() => {
     setNodes(nodesWithCb)
   }, [nodesWithCb, setNodes])
 
   useEffect(() => {
-    // Reset edges when members change
-  }, [layoutEdges])
+    setEdges(layoutEdges)
+  }, [layoutEdges, setEdges])
 
   const nodeTypes = useMemo(() => ({ teamMember: TeamMemberNode }), [])
 
-  function handleSaveEdit(data: Omit<TeamMember, "id">) {
+  function handleSaveEdit(data: MemberFormData) {
     if (!editingId) return
     setMembers((prev) => prev.map((m) => (m.id === editingId ? { ...m, ...data } : m)))
     setEditingId(null)
   }
 
-  function handleAddMember(data: Omit<TeamMember, "id">) {
+  function handleAddMember(data: MemberFormData) {
     const id = `member-${Date.now()}`
     setMembers((prev) => [...prev, { id, ...data }])
     setAddingNew(false)
@@ -794,7 +789,9 @@ function TeamCanvasInner() {
       localStorage.setItem(LS_KEY, JSON.stringify(members))
       setSaveFlash(true)
       setTimeout(() => setSaveFlash(false), 2000)
-    } catch {}
+    } catch {
+      // localStorage may be unavailable
+    }
   }
 
   function handleReset() {
@@ -805,7 +802,9 @@ function TeamCanvasInner() {
 
   const editingMember = members.find((m) => m.id === editingId)
   const activeCount = members.filter((m) => m.status === "active").length
-  const buildingCount = members.filter((m) => m.status === "building" || m.status === "planned").length
+  const buildingCount = members.filter(
+    (m) => m.status === "building" || m.status === "planned"
+  ).length
 
   return (
     <div className="relative w-full h-[calc(100vh-7rem)] bg-background rounded-lg border border-border overflow-hidden">
@@ -868,10 +867,9 @@ function TeamCanvasInner() {
         Eğer her agent bir insan olsaydı — bağlantılarıyla birlikte
       </div>
 
-      {/* Edit mode hint */}
       {editMode && (
         <div className="absolute top-[4.5rem] left-1/2 -translate-x-1/2 z-10 text-[10px] text-amber-400/80 bg-amber-900/20 border border-amber-700/30 rounded-full px-3 py-0.5 whitespace-nowrap">
-          Düzenleme modu: Sürükle • Düzenle • Sil • Kaydet
+          Düzenleme modu: Sürükle · Düzenle · Sil · Kaydet
         </div>
       )}
 
@@ -896,7 +894,6 @@ function TeamCanvasInner() {
 
       <Legend />
 
-      {/* Edit modal */}
       {editingId && editingMember && (
         <MemberModal
           title={`Düzenle: ${editingMember.name}`}
@@ -907,7 +904,6 @@ function TeamCanvasInner() {
         />
       )}
 
-      {/* Add modal */}
       {addingNew && (
         <MemberModal
           title="Yeni Ekip Üyesi Ekle"
