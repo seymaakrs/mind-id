@@ -12,7 +12,6 @@ import {
   type Edge,
   type NodeProps,
   type OnNodesChange,
-  applyNodeChanges,
 } from "@xyflow/react"
 import dagre from "@dagrejs/dagre"
 import "@xyflow/react/dist/style.css"
@@ -541,7 +540,6 @@ function TeamCanvasInner() {
     [members, editMode, handleEdit, handleDelete]
   )
 
-  // Apply saved position overrides
   const nodes: Node<NodeData>[] = useMemo(
     () => layoutNodes.map((n) => nodePositions[n.id] ? { ...n, position: nodePositions[n.id] } : n),
     [layoutNodes, nodePositions]
