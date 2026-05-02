@@ -19,6 +19,7 @@ import {
   Globe,
 } from "lucide-react";
 import { useBusinesses, useBusinessForm } from "@/hooks";
+import { getBusiness } from "@/lib/firebase/firestore";
 import {
   BasicInfoSection,
   IdentitySection,
@@ -186,10 +187,18 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
 
   const platformIds = getPlatformIds();
 
-  const handleSyncComplete = () => {
-    // Reload the business data by triggering onUpdated
-    // The parent component should refetch the data
-    window.location.reload();
+  const handleSyncComplete = async () => {
+    // Fetch updated business doc (now contains synced platform IDs)
+    // and update local state without reloading the page.
+    try {
+      const updated = await getBusiness(currentBusiness.id);
+      if (updated) {
+        setCurrentBusiness(updated);
+        onUpdated?.(updated);
+      }
+    } catch (err) {
+      console.error("Sync sonrasi business yenilenemedi:", err);
+    }
   };
 
   return (
