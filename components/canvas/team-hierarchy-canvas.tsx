@@ -44,8 +44,6 @@ interface NodeData extends Record<string, unknown> {
   onDelete: (id: string) => void
 }
 
-type TeamNode = Node<NodeData>
-
 // ─── Default Team Data ────────────────────────────────────────────────────────
 
 export const DEFAULT_TEAM: TeamMember[] = [
@@ -93,7 +91,7 @@ export const DEFAULT_TEAM: TeamMember[] = [
     name: "Toprak",
     humanRole: "Motion Designer",
     agentRole: "Video Agent",
-    quote: "Hareket & ses üretir",
+    quote: "Hareket ve ses üretir",
     tools: ["Veo", "Kling", "HeyGen", "MMAudio"],
     color: "#065f46",
     repo: "mind-agent",
@@ -106,7 +104,7 @@ export const DEFAULT_TEAM: TeamMember[] = [
     name: "Selin",
     humanRole: "Sosyal Medya Sorumlusu",
     agentRole: "Marketing Agent",
-    quote: "Marka sesi & reklam",
+    quote: "Marka sesi ve reklam",
     tools: ["Late API", "Instagram", "Meta Ads"],
     color: "#1e40af",
     repo: "mind-agent",
@@ -117,7 +115,7 @@ export const DEFAULT_TEAM: TeamMember[] = [
   {
     id: "kaan",
     name: "Kaan",
-    humanRole: "Stratejist & Araştırmacı",
+    humanRole: "Stratejist ve Araştırmacı",
     agentRole: "Analysis Agent",
     quote: "Veri okur, rapor çıkarır",
     tools: ["Serper.dev", "SEO", "Web scraping"],
@@ -145,7 +143,7 @@ export const DEFAULT_TEAM: TeamMember[] = [
     name: "Zeynep",
     humanRole: "Reklam Takipçisi",
     agentRole: "Meta Lead Agent",
-    quote: "Facebook & IG lead toplar",
+    quote: "Facebook ve IG lead toplar",
     tools: ["Meta Ads API", "Webhook"],
     color: "#374151",
     repo: "customer_agent",
@@ -240,7 +238,7 @@ const REPO_COLORS: Record<string, string> = {
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
-function buildDagreLayout(members: TeamMember[]): { nodes: TeamNode[]; edges: Edge[] } {
+function buildLayout(members: TeamMember[]): { nodes: Node<NodeData>[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph()
   g.setDefaultEdgeLabel(() => ({}))
   g.setGraph({ rankdir: "TB", nodesep: 50, ranksep: 120, marginx: 40, marginy: 40 })
@@ -265,10 +263,9 @@ function buildDagreLayout(members: TeamMember[]): { nodes: TeamNode[]; edges: Ed
 
   dagre.layout(g)
 
-  // Placeholder callbacks — overwritten before rendering via nodesWithCb
-  const noop = () => {}
+  const noop = (_id: string) => { /* placeholder */ }
 
-  const nodes: TeamNode[] = members.map((m) => {
+  const nodes: Node<NodeData>[] = members.map((m) => {
     const pos = g.node(m.id)
     return {
       id: m.id,
@@ -339,20 +336,20 @@ function PersonAvatar({ color, size = 52 }: { color: string; size?: number }) {
   return (
     <div className="flex flex-col items-center" style={{ gap: 0 }}>
       <div
-        className="rounded-full border-2 border-white/20 shadow-inner"
+        className="rounded-full border-2 border-white/20"
         style={{ width: size * 0.42, height: size * 0.42, background: color }}
       />
       <div
-        className="rounded-t-full border-2 border-b-0 border-white/20 shadow-inner"
+        className="rounded-t-full border-2 border-b-0 border-white/20"
         style={{ width: size * 0.72, height: size * 0.46, background: color, marginTop: 2 }}
       />
     </div>
   )
 }
 
-// ─── Team Member Node ─────────────────────────────────────────────────────────
+// ─── Team Member Node — defined at module level like existing canvas ──────────
 
-function TeamMemberNode({ data }: NodeProps<TeamNode>) {
+function TeamMemberNode({ data }: NodeProps<Node<NodeData>>) {
   const { member: m, editMode, onEdit, onDelete } = data
   const status = STATUS_CONFIG[m.status]
   const isData = m.type === "data"
@@ -363,11 +360,7 @@ function TeamMemberNode({ data }: NodeProps<TeamNode>) {
       className={`relative flex flex-col items-center select-none ${isFounder ? "scale-110" : ""}`}
       style={{ width: 190 }}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!bg-slate-600 !border-slate-800 !w-2 !h-2 !opacity-60"
-      />
+      <Handle type="target" position={Position.Top} className="!bg-slate-600 !border-slate-800 !w-2 !h-2 !opacity-60" />
 
       <div className="relative mb-1.5">
         {isData ? (
@@ -386,14 +379,12 @@ function TeamMemberNode({ data }: NodeProps<TeamNode>) {
           <PersonAvatar color={m.color} size={54} />
         )}
 
-        <span
-          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background shadow ${status.dot}`}
-        />
+        <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${status.dot}`} />
 
         {editMode && (
           <div className="absolute -top-2 -right-2 flex gap-1">
             <button
-              className="w-5 h-5 bg-blue-600 hover:bg-blue-500 rounded-full flex items-center justify-center shadow transition-colors"
+              className="w-5 h-5 bg-blue-600 hover:bg-blue-500 rounded-full flex items-center justify-center shadow"
               onClick={(e) => { e.stopPropagation(); onEdit(m.id) }}
               title="Düzenle"
             >
@@ -401,7 +392,7 @@ function TeamMemberNode({ data }: NodeProps<TeamNode>) {
             </button>
             {m.id !== "seyma" && (
               <button
-                className="w-5 h-5 bg-rose-600 hover:bg-rose-500 rounded-full flex items-center justify-center shadow transition-colors"
+                className="w-5 h-5 bg-rose-600 hover:bg-rose-500 rounded-full flex items-center justify-center shadow"
                 onClick={(e) => { e.stopPropagation(); onDelete(m.id) }}
                 title="Sil"
               >
@@ -417,24 +408,20 @@ function TeamMemberNode({ data }: NodeProps<TeamNode>) {
         <div className="text-[11px] text-slate-300 leading-snug mt-0.5">{m.humanRole}</div>
         <div className="text-[10px] text-slate-500 leading-snug">({m.agentRole})</div>
         {m.quote && (
-          <div className="text-[10px] text-slate-500 italic mt-0.5 leading-tight">
-            &ldquo;{m.quote}&rdquo;
-          </div>
+          <div className="text-[10px] text-slate-500 italic mt-0.5">&ldquo;{m.quote}&rdquo;</div>
         )}
       </div>
 
       {m.tools.length > 0 && (
         <div
-          className="mt-1.5 px-2 py-1 rounded-lg border text-[10px] text-center leading-relaxed max-w-[175px]"
+          className="mt-1.5 px-2 py-1 rounded-lg border text-[10px] text-center max-w-[175px]"
           style={{ background: `${m.color}15`, borderColor: `${m.color}30`, color: "#94a3b8" }}
         >
           {m.tools.join(" · ")}
         </div>
       )}
 
-      <div
-        className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-semibold border uppercase tracking-wide ${status.badge}`}
-      >
+      <div className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-semibold border uppercase tracking-wide ${status.badge}`}>
         {status.label}
       </div>
 
@@ -442,14 +429,13 @@ function TeamMemberNode({ data }: NodeProps<TeamNode>) {
         {m.repo}
       </div>
 
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!bg-slate-600 !border-slate-800 !w-2 !h-2 !opacity-60"
-      />
+      <Handle type="source" position={Position.Bottom} className="!bg-slate-600 !border-slate-800 !w-2 !h-2 !opacity-60" />
     </div>
   )
 }
+
+// nodeTypes defined outside component — same pattern as existing canvas
+const nodeTypes = { teamMember: TeamMemberNode }
 
 // ─── Edit / Add Modal ─────────────────────────────────────────────────────────
 
@@ -486,11 +472,6 @@ function MemberModal({
 
   function setField(k: keyof MemberFormData, v: MemberFormData[keyof MemberFormData]) {
     setForm((f) => ({ ...f, [k]: v }))
-  }
-
-  const handleSave = () => {
-    if (!form.name.trim()) return
-    onSave({ ...form, tools: toolsStr.split(",").map((t) => t.trim()).filter(Boolean) })
   }
 
   const cls = "w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -581,7 +562,13 @@ function MemberModal({
 
         <div className="flex gap-2 p-4 border-t border-border sticky bottom-0 bg-card">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted">İptal</button>
-          <button onClick={handleSave} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 flex items-center justify-center gap-2">
+          <button
+            onClick={() => {
+              if (!form.name.trim()) return
+              onSave({ ...form, tools: toolsStr.split(",").map((t) => t.trim()).filter(Boolean) })
+            }}
+            className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 flex items-center justify-center gap-2"
+          >
             <Save className="w-4 h-4" />Kaydet
           </button>
         </div>
@@ -613,7 +600,7 @@ function Legend() {
   )
 }
 
-// ─── Main Canvas ──────────────────────────────────────────────────────────────
+// ─── Canvas Inner ─────────────────────────────────────────────────────────────
 
 const LS_KEY = "team-hierarchy-members-v1"
 
@@ -636,23 +623,26 @@ function TeamCanvasInner() {
   const handleEdit = useCallback((id: string) => setEditingId(id), [])
   const handleDelete = useCallback((id: string) => setMembers((prev) => prev.filter((m) => m.id !== id)), [])
 
-  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => buildDagreLayout(members), [members])
+  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => buildLayout(members), [members])
 
   const nodesWithCb = useMemo(
-    () => layoutNodes.map((n) => ({
-      ...n,
-      data: { ...n.data, editMode, onEdit: handleEdit, onDelete: handleDelete },
-    })),
+    () =>
+      layoutNodes.map((n) => ({
+        ...n,
+        data: { ...n.data, editMode, onEdit: handleEdit, onDelete: handleDelete },
+      })),
     [layoutNodes, editMode, handleEdit, handleDelete]
   )
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<TeamNode>(nodesWithCb)
+  const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithCb)
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges)
 
   useEffect(() => { setNodes(nodesWithCb) }, [nodesWithCb, setNodes])
   useEffect(() => { setEdges(layoutEdges) }, [layoutEdges, setEdges])
 
-  const nodeTypes = useMemo(() => ({ teamMember: TeamMemberNode }), [])
+  const editingMember = members.find((m) => m.id === editingId)
+  const activeCount = members.filter((m) => m.status === "active").length
+  const buildingCount = members.filter((m) => m.status === "building" || m.status === "planned").length
 
   function handleSaveEdit(data: MemberFormData) {
     if (!editingId) return
@@ -679,13 +669,8 @@ function TeamCanvasInner() {
     setMembers(DEFAULT_TEAM)
   }
 
-  const editingMember = members.find((m) => m.id === editingId)
-  const activeCount = members.filter((m) => m.status === "active").length
-  const buildingCount = members.filter((m) => m.status === "building" || m.status === "planned").length
-
   return (
     <div className="relative w-full h-[calc(100vh-7rem)] bg-background rounded-lg border border-border overflow-hidden">
-      {/* Toolbar */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-card/90 backdrop-blur border border-border rounded-xl px-3 py-2 shadow-lg">
         <span className="text-sm font-bold text-foreground">Slowdays AI Ekibi</span>
         <span className="text-muted-foreground text-xs">·</span>
@@ -767,6 +752,8 @@ function TeamCanvasInner() {
     </div>
   )
 }
+
+// ─── Export ───────────────────────────────────────────────────────────────────
 
 export function TeamHierarchyCanvas() {
   return (
