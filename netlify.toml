@@ -11,6 +11,9 @@
   # Pin Node 20 — Node 22 dropped legacy OpenSSL provider support, which crashes
   # firebase-admin / @google-cloud/* runtime AES crypto calls (Assertion failed: errors->Empty()).
   NODE_VERSION = "20"
+  # Force-enable legacy OpenSSL provider in Node 20 runtime so transitive deps that
+  # still call legacy AES variants (some gRPC / google-gax internals) don't crash.
+  NODE_OPTIONS = "--openssl-legacy-provider"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
