@@ -3,13 +3,7 @@
   publish = ".next"
 
 [build.environment]
-  # NEXT_PUBLIC_FIREBASE_* keys are public client-side config by design
-  # (Firebase security is enforced via Firestore Rules, not by hiding the API key).
-  # See: https://firebase.google.com/docs/projects/api-keys
-  SECRETS_SCAN_OMIT_KEYS = "FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_APP_ID,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"
-  # Disable Netlify's smart-detection scanner (false positives on Firebase public API key).
-  # Real secrets (FIREBASE_PRIVATE_KEY, OPENAI_ADMIN_KEY, etc.) are server-only and never bundled.
-  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+  SECRETS_SCAN_OMIT_KEYS = "FIREBASE_PROJECT_ID"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
