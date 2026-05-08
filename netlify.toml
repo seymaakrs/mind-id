@@ -8,6 +8,9 @@
   # Firebase web config is public by design (security via Firestore Rules + App Check).
   # TODO(security): revisit and consider SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES for stricter scoping.
   SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+  # Pin Node 20 — Node 22 dropped legacy OpenSSL provider support, which crashes
+  # firebase-admin / @google-cloud/* runtime AES crypto calls (Assertion failed: errors->Empty()).
+  NODE_VERSION = "20"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
