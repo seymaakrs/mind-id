@@ -12,7 +12,7 @@ import {
 import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
-import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
+import { VillageCanvas } from "@/components/canvas/village-canvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
@@ -36,7 +36,6 @@ export default function AdminPanel() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const { referenceCount } = useReferenceQueue()
 
-  // Body scroll lock when mobile menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.classList.add("menu-open")
@@ -49,24 +48,9 @@ export default function AdminPanel() {
   }, [isMobileMenuOpen])
 
   const menuItems = [
-    {
-      id: "anasayfa" as MainMenuType,
-      label: "Anasayfa",
-      icon: Home,
-      subItems: [],
-    },
-    {
-      id: "agent" as MainMenuType,
-      label: "Agent",
-      icon: Bot,
-      subItems: [],
-    },
-    {
-      id: "aktif-gorevler" as MainMenuType,
-      label: "Aktif Gorevler",
-      icon: Activity,
-      subItems: [],
-    },
+    { id: "anasayfa" as MainMenuType, label: "Anasayfa", icon: Home, subItems: [] },
+    { id: "agent" as MainMenuType, label: "Agent", icon: Bot, subItems: [] },
+    { id: "aktif-gorevler" as MainMenuType, label: "Aktif Gorevler", icon: Activity, subItems: [] },
     {
       id: "isletmeler" as MainMenuType,
       label: "İşletmeler",
@@ -78,40 +62,25 @@ export default function AdminPanel() {
         { id: "davet-linkleri" as SubMenuType, label: "Davet Linkleri" },
       ],
     },
-    {
-      id: "istatistikler" as MainMenuType,
-      label: "İstatistikler",
-      icon: BarChart3,
-      subItems: [],
-    },
-    {
-      id: "settings" as MainMenuType,
-      label: "Ayarlar",
-      icon: Settings,
-      subItems: [],
-    },
+    { id: "istatistikler" as MainMenuType, label: "İstatistikler", icon: BarChart3, subItems: [] },
+    { id: "settings" as MainMenuType, label: "Ayarlar", icon: Settings, subItems: [] },
   ]
 
   const handleMenuClick = (menuId: MainMenuType) => {
     const menu = menuItems.find((m) => m.id === menuId)
-
-    // Restore sidebar when navigating away from agent
     if (menuId !== "agent" && sidebarCollapsed) {
       setSidebarCollapsed(false)
     }
-
     if (!menu || menu.subItems.length === 0) {
       setActiveMenu(menuId)
       setExpandedMenu(null)
       return
     }
-
     if (expandedMenu === menuId) {
       setExpandedMenu(null)
     } else {
       setExpandedMenu(menuId)
       setActiveMenu(menuId)
-      // Set first sub-item as active when opening a menu
       if (menu && menu.subItems.length > 0) {
         setActiveSubMenu(menu.subItems[0].id)
       }
@@ -123,7 +92,6 @@ export default function AdminPanel() {
     setActiveSubMenu(subMenuId)
   }
 
-  // Handler for navigating to dashboard from business list
   const handleBusinessSelectFromList = (business: { id: string }) => {
     setSelectedBusinessId(business.id)
     setActiveSubMenu("isletme-dashboard")
@@ -132,7 +100,6 @@ export default function AdminPanel() {
   return (
     <ProtectedRoute>
       <div className="fixed inset-0 flex bg-background overflow-hidden">
-        {/* Mobile Sidebar */}
         <MobileSidebar
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
@@ -144,7 +111,6 @@ export default function AdminPanel() {
           onSubMenuClick={handleSubMenuClick}
         />
 
-        {/* Desktop Sidebar - Hidden on mobile */}
         <aside className={`hidden md:flex h-full bg-sidebar border-r border-sidebar-border flex-col overflow-hidden transition-all duration-300 ${sidebarCollapsed ? "md:w-16" : "md:w-64 lg:w-72"}`}>
           <div className={`border-b border-sidebar-border shrink-0 ${sidebarCollapsed ? "p-4 flex items-center justify-center" : "p-6"}`}>
             <h1 className={`font-bold text-sidebar-foreground transition-all duration-300 ${sidebarCollapsed ? "text-sm" : "text-xl"}`}>
@@ -158,10 +124,8 @@ export default function AdminPanel() {
               const hasSubItems = item.subItems.length > 0
               const isExpanded = expandedMenu === item.id
               const isActive = activeMenu === item.id
-
               return (
                 <li key={item.id}>
-                  {/* Ana Menü */}
                   <button
                     onClick={() => handleMenuClick(item.id)}
                     className={`w-full flex items-center rounded-lg transition-colors ${
@@ -175,7 +139,6 @@ export default function AdminPanel() {
                   >
                     <div className={`flex items-center ${sidebarCollapsed ? "relative" : "gap-3"}`}>
                       <Icon className="w-5 h-5 shrink-0" />
-                      {/* Reference queue badge on Agent item */}
                       {item.id === "agent" && referenceCount > 0 && (
                         <span className={`${sidebarCollapsed ? "absolute -top-1 -right-1" : "ml-0"} w-4 h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center font-medium shrink-0`}>
                           {referenceCount > 9 ? "9+" : referenceCount}
@@ -192,7 +155,6 @@ export default function AdminPanel() {
                     ) : null}
                   </button>
 
-                  {/* Alt Menü */}
                   {!sidebarCollapsed && hasSubItems && isExpanded && (
                     <ul className="mt-1 ml-4 space-y-1">
                       {item.subItems.map((subItem) => (
@@ -216,27 +178,20 @@ export default function AdminPanel() {
             })}
           </ul>
         </nav>
-          {/* Logout Button - Alt kisim */}
           <div className={`mt-auto border-t border-sidebar-border ${sidebarCollapsed ? "p-2" : "p-4"}`}>
             <LogoutButton />
           </div>
         </aside>
 
-      {/* Main Content Area - Responsive */}
       <main className={`flex-1 min-h-0 overflow-x-hidden flex flex-col ${activeMenu === "agent" ? "overflow-hidden" : "overflow-y-auto h-full"}`}>
-        {/* Top Header Bar */}
         <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 md:px-8 md:py-3 bg-background/80 backdrop-blur-sm border-b border-border shrink-0">
-          {/* Mobile menu toggle (left) */}
           <div className="md:hidden">
             <MobileMenuButton
               isOpen={isMobileMenuOpen}
               onToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             />
           </div>
-          {/* Spacer on desktop where there's no menu button */}
           <div className="hidden md:block" />
-
-          {/* Notification indicators (right) */}
           <div className="flex items-center gap-1">
             <ActiveTasksIndicator
               onNavigate={() => {
@@ -248,9 +203,9 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
+        <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : activeMenu === "anasayfa" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <CommandCenterCanvas />
+            <VillageCanvas />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
@@ -265,7 +220,6 @@ export default function AdminPanel() {
             <ApiStatisticsPanel />
           ) : (
             <>
-              {/* İşletmeler Sub-menus */}
               {activeSubMenu === "isletme-listele" && (
                 <BusinessListComponent onBusinessSelect={handleBusinessSelectFromList} />
               )}
