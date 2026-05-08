@@ -347,7 +347,6 @@ export function VillageCanvas() {
             radial-gradient(ellipse at 80% 0%, #e2f5e8 0%, transparent 60%),
             linear-gradient(180deg, #b9e3ff 0%, #e9f5ff 35%, #dff2dc 70%, #c4e3b9 100%);
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-          overflow: hidden;
         }
         .scenery { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
         .cloud { position: absolute; width: 120px; height: 40px; background: rgba(255,255,255,0.85); border-radius: 40px; filter: blur(0.5px); opacity: 0.7; }
@@ -453,7 +452,8 @@ export function VillageCanvas() {
 
         .vc-hint { text-align: center; color: #4a5a78; font-size: 12px; margin-top: 18px; }
 
-        .drawer { position: absolute; top: 0; right: 0; width: min(380px, 92vw); height: 100%; background: #fff; border-left: 1px solid rgba(47,107,56,0.25); box-shadow: -10px 0 30px rgba(0,0,0,0.12); transform: translateX(100%); transition: transform 0.25s ease; z-index: 50; overflow-y: auto; }
+        .drawer { position: fixed; top: 0; right: 0; width: min(380px, 92vw); height: 100vh; background: #fff; border-left: 1px solid rgba(47,107,56,0.25); box-shadow: -10px 0 30px rgba(0,0,0,0.12); transform: translateX(100%); transition: transform 0.25s ease; z-index: 50; overflow-y: auto; pointer-events: none; }
+        .drawer.open { pointer-events: auto; }
         .drawer.open { transform: translateX(0); }
         .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px; border-bottom: 1px solid rgba(47,107,56,0.25); position: sticky; top: 0; background: #fff; z-index: 1; }
         .drawer-title { font-weight: 700; font-size: 18px; }

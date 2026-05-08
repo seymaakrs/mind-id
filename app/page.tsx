@@ -203,7 +203,7 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : activeMenu === "anasayfa" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
+        <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : activeMenu === "anasayfa" ? "p-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
             <VillageCanvas />
           ) : activeMenu === "aktif-gorevler" ? (
