@@ -336,7 +336,7 @@ export function VillageCanvas() {
 
       <Drawer detail={detail} onClose={() => setOpenKey(null)} />
 
-      <style jsx>{`
+      <style jsx global>{`
         .village-root {
           position: relative;
           min-height: 100%;
