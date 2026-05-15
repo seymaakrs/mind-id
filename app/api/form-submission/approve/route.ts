@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
 import { verifyApiAuth } from "@/lib/auth/verifyApiAuth";
 import { FieldValue } from "firebase-admin/firestore";
+import { buildBrandIdentityFromBusiness } from "@/lib/brandIdentity";
+
+// Onaylanan işletme için kanonik marka kimliği dokümanını
+// (businesses/{id}/brand_identity/v1) formdan eşleyerek yazar.
+// Hata olsa bile onay akışını BOZMAZ (sadece loglar) — additive/güvenli.
+async function writeBrandIdentity(
+  businessId: string,
+  data: Record<string, unknown>,
+  logoUrl: string
+): Promise<void> {
+  try {
+    if (!adminDb) return;
+    const bi = buildBrandIdentityFromBusiness({
+      businessId,
+      name: (data.name as string) || "",
+      logo: logoUrl,
+      colors: data.colors,
+      profile:
+        typeof data.profile === "object" && data.profile !== null
+          ? (data.profile as Record<string, unknown>)
+          : {},
+      source: "manual",
+    });
+    await adminDb
+      .collection("businesses")
+      .doc(businessId)
+      .collection("brand_identity")
+      .doc("v1")
+      .set(bi);
+  } catch (error) {
+    console.error("Brand identity write error (non-critical):", error);
+  }
+}
 
 export async function POST(request: NextRequest) {
   const authResult = await verifyApiAuth(request);
@@ -90,6 +123,8 @@ export async function POST(request: NextRequest) {
             // Non-critical, ignore
           }
 
+          await writeBrandIdentity(newBusinessRef.id, data, logoUrl);
+
           return NextResponse.json({
             success: true,
             businessId: newBusinessRef.id,
@@ -115,6 +150,8 @@ export async function POST(request: NextRequest) {
     };
 
     const businessRef = await adminDb.collection("businesses").add(businessDoc);
+
+    await writeBrandIdentity(businessRef.id, data, logoUrl);
 
     await submissionRef.update({
       status: "approved",

@@ -4,6 +4,7 @@ import {
   getDocs,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   Timestamp,
@@ -164,6 +165,29 @@ export async function deleteContentPlan(businessId: string, planId: string): Pro
   if (!db) throw new Error('Firestore is not configured');
   const docRef = doc(db, 'businesses', businessId, 'content_calendar', planId);
   await deleteDoc(docRef);
+}
+
+// Brand Identity operations (subcollection: businesses/{id}/brand_identity/v1)
+export async function getBrandIdentity(
+  businessId: string
+): Promise<BrandIdentity | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'brand_identity', 'v1');
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? (docSnap.data() as BrandIdentity) : null;
+}
+
+export async function saveBrandIdentity(
+  businessId: string,
+  data: BrandIdentity
+): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'brand_identity', 'v1');
+  await setDoc(
+    docRef,
+    { ...data, business_id: businessId, updated_at: new Date().toISOString() },
+    { merge: true }
+  );
 }
 
 // Agent Memory operations (subcollection)
@@ -451,6 +475,7 @@ export async function getInstagramAvailableWeeks(businessId: string): Promise<In
 import type { Business, BusinessMedia, BusinessProfile, SeoSummary, SeoKeywords } from '@/types/firebase';
 import type { ContentPlan } from '@/types/content-plan';
 import type { AgentMemory } from '@/types/agent-memory';
+import type { BrandIdentity } from '@/lib/brandIdentity';
 import type { Job } from '@/types/jobs';
 import type { Task, TaskStatus, CreateTaskData } from '@/types/tasks';
 import type { Report, CreateReportData } from '@/types/reports';
