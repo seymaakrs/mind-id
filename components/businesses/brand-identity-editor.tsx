@@ -154,9 +154,16 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
       const existing = await getBrandIdentity(id);
       setIdentity(existing ?? emptyBrandIdentity(id, "manual"));
       setDurum("bosta");
-    } catch {
+    } catch (e) {
+      // Okuma başarısız olsa bile boş defterle editörü aç (kullanıcı
+      // yine de doldurup kaydedebilsin); gerçek hatayı görünür yap.
+      setIdentity(emptyBrandIdentity(id, "manual"));
       setDurum("hata");
-      setMesaj("Marka kimliği yüklenemedi.");
+      const detay =
+        e instanceof Error ? e.message : typeof e === "string" ? e : "";
+      setMesaj(
+        `Mevcut marka kimliği okunamadı (boş formla devam edebilirsiniz). Detay: ${detay || "bilinmiyor"}`
+      );
     }
   }, []);
 
@@ -220,6 +227,13 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
       {businessId && durum === "yukleniyor" && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" /> Yükleniyor...
+        </div>
+      )}
+
+      {businessId && durum === "hata" && (
+        <div className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-400">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span className="break-all">{mesaj}</span>
         </div>
       )}
 
