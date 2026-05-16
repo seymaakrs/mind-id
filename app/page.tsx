@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity, Fingerprint } from "lucide-react"
+import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity, Fingerprint, Users } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/businesses"
 import InviteLinksComponent from "@/components/businesses/invite-links"
 import { BrandIdentityEditor } from "@/components/businesses/brand-identity-editor"
+import { SalesDashboard } from "@/components/sales/sales-dashboard"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
 import { VillageCanvas } from "@/components/canvas/village-canvas"
@@ -21,7 +22,7 @@ import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell
 import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
 import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
 
-type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "marka-kimligi" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "marka-kimligi" | "satis" | "istatistikler" | "settings"
 type SubMenuType =
   | "isletme-ekle"
   | "isletme-listele"
@@ -64,6 +65,7 @@ export default function AdminPanel() {
       ],
     },
     { id: "marka-kimligi" as MainMenuType, label: "Marka Kimliği", icon: Fingerprint, subItems: [] },
+    { id: "satis" as MainMenuType, label: "Satış", icon: Users, subItems: [] },
     { id: "istatistikler" as MainMenuType, label: "İstatistikler", icon: BarChart3, subItems: [] },
     { id: "settings" as MainMenuType, label: "Ayarlar", icon: Settings, subItems: [] },
   ]
@@ -221,6 +223,8 @@ export default function AdminPanel() {
               initialBusinessId={selectedBusinessId}
               onBusinessChange={setSelectedBusinessId}
             />
+          ) : activeMenu === "satis" ? (
+            <SalesDashboard />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />
           ) : activeMenu === "istatistikler" ? (
