@@ -10,6 +10,7 @@ Bu yüzden:
 - Karar isteyen sorularda **A/B seçenekleri** sun, "hangisi?" diye sor — açık uçlu teknik sorular sorma.
 - Hata raporlarken **kullanıcıya etkisi ne** onu söyle ("şu buton çalışmıyor"), kod satırı değil.
 - Seyma "ordinaryus yazılım mühendisim" diyerek tüm mimari kararları sana emanet ediyor — proaktif ol, ama büyük değişiklik öncesi onay al.
+- **EKİP NOTU (2026-05-16):** "admin burak" **artık çalışmıyor.** Firestore kurallarındaki `// mal claude ... - admin burak` uyarısı geçersiz; o satırın üstü artık dokunulabilir. Yine de değişiklikler mümkünse additive yapılır (risk düşük tutulur).
 - **ROLLBACK ZORUNLU (kalıcı kural, 2026-05-15):** Canlı/geri-dönülmesi zor HER değişiklikten önce geri dönüş yolu hazır olacak (kod → değişiklik öncesi commit hash'i devir notuna yazılır; tek `git revert` ile eski hale dönülür). Değişiklikler mümkün olduğunca **additive** (mevcut davranışı bozmadan ekleme) yapılır. "Her zaman bu haline geri dönebilelim" şarttır.
 
 ## 🎯 Büyük Vizyon: 4 Repo → 1 Komuta Merkezi
