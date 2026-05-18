@@ -66,6 +66,17 @@ const CTA_OPTIONS = [
   "Arkadaşını etiketle",
 ];
 
+const TONE_OPTIONS = [
+  "Samimi / sıcak",
+  "Resmi / profesyonel",
+  "Eğlenceli / esprili",
+  "İddialı / cesur",
+  "İlham verici",
+  "Bilgilendirici / öğretici",
+  "Lüks / prestijli",
+  "Sade / minimal",
+];
+
 const FONT_OPTIONS = [
   "Inter",
   "Roboto",
@@ -127,6 +138,13 @@ const SECTIONS: { title: string; description: string; fields: FieldDef[] }[] = [
     title: "Marka Sesi",
     description: "İletişim tarzı ve dil",
     fields: [
+      {
+        path: "voice.tone",
+        label: "Ton",
+        kind: "select",
+        options: TONE_OPTIONS,
+        hint: "Markanın genel konuşma tonu (AI içerik üretirken bunu kullanır)",
+      },
       { path: "voice.personality", label: "Kişilik", kind: "list", hint: "Her satıra bir tane" },
       { path: "voice.preferred_words", label: "Tercih edilen kelimeler", kind: "list", hint: "Her satıra bir tane" },
       { path: "voice.avoid_words", label: "Kaçınılacak kelimeler", kind: "list", hint: "Her satıra bir tane" },
@@ -186,10 +204,10 @@ const SECTIONS: { title: string; description: string; fields: FieldDef[] }[] = [
         hint: "Profil görünümü hangi düzen(ler)le kurgulanacak",
       },
       {
-        path: "content_strategy.hashtag_strategy",
+        path: "content_strategy.required_hashtags",
         label: "Hashtag stratejisi ve zorunlu hashtag'ler",
-        kind: "long",
-        hint: "Strateji + her zaman kullanılacak hashtag'leri tek alanda yazın",
+        kind: "list",
+        hint: "Her satıra bir madde: strateji notu veya #etiket (AI bunları kullanır)",
       },
     ],
   },
