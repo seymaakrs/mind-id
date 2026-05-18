@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Save, CheckCircle2, AlertCircle, Fingerprint } from "lucide-react";
+import { Loader2, Save, CheckCircle2, AlertCircle, Fingerprint, Upload } from "lucide-react";
 import { useBusinesses } from "@/hooks";
 import { BusinessSelector } from "@/components/shared/BusinessSelector";
 import { FormSection } from "@/components/shared/FormSection";
@@ -17,24 +17,60 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getBrandIdentity, saveBrandIdentity } from "@/lib/firebase/firestore";
-import {
-  emptyBrandIdentity,
-  type BrandIdentity,
-} from "@/lib/brandIdentity";
+import { uploadFile } from "@/lib/firebase/storage";
+import { emptyBrandIdentity, type BrandIdentity } from "@/lib/brandIdentity";
 
 type Durum = "bosta" | "yukleniyor" | "kaydediliyor" | "basarili" | "hata";
-
 const NONE = "__none__";
 
-// Bölüm/alan tanımları — şema ile birebir aynı anahtarlar.
-type FieldKind = "text" | "long" | "list" | "number" | "select";
+// Panel-içi alan tanımları. Alttaki şema (mind-agent ile ortak) AYNEN korunur;
+// kaldırılan alanlar burada gösterilmez, birleştirilenler tek bir şema alanına yazılır.
+type FieldKind =
+  | "text"
+  | "long"
+  | "list"
+  | "select" // tek seçim, string saklar
+  | "langselect" // tr/en/tr+en -> dizi
+  | "multiselect" // çoklu seçim -> dizi (etiketler)
+  | "logo"; // dosya yükle -> url
+
 interface FieldDef {
-  path: string; // "basics.name" | "audience.primary.role"
+  path: string;
   label: string;
   kind: FieldKind;
-  options?: string[]; // select için
+  options?: string[];
   hint?: string;
 }
+
+const HOOK_OPTIONS = [
+  "Soru soran",
+  "Şok eden istatistik / veri",
+  "Hikaye / anekdot",
+  "Merak boşluğu (cliffhanger)",
+  "Doğrudan faydaya giren",
+  "İddialı / tartışmalı",
+  "Liste vaadi (örn. '5 yol')",
+];
+
+const CTA_OPTIONS = [
+  "Yumuşak: keşfet / göz at",
+  "Sert: hemen al / son fırsat",
+  "Bilgilendirici: detaylı bilgi al",
+  "Eğlenceli / esprili",
+  "DM'den yaz",
+  "Profildeki linke tıkla",
+  "Yorumlara yaz",
+  "Kaydet / paylaş",
+  "Arkadaşını etiketle",
+];
+
+const GRID_OPTIONS = [
+  "Dama Tahtası (Checkerboard)",
+  "Yapboz (Puzzle Grid)",
+  "Dikey Çizgi (Vertical Lines)",
+  "Yatay Sıra (Row by Row)",
+  "Renk / Filtre Temalı",
+];
 
 const SECTIONS: { title: string; description: string; fields: FieldDef[] }[] = [
   {
@@ -44,18 +80,22 @@ const SECTIONS: { title: string; description: string; fields: FieldDef[] }[] = [
       { path: "basics.name", label: "Marka adı", kind: "text" },
       { path: "basics.tagline", label: "Slogan", kind: "text" },
       { path: "basics.industry", label: "Sektör", kind: "text" },
-      { path: "basics.founded_year", label: "Kuruluş yılı", kind: "number" },
-      { path: "basics.languages", label: "Diller", kind: "list", hint: "Her satıra bir tane (örn: tr, en)" },
+      {
+        path: "basics.languages",
+        label: "Diller",
+        kind: "langselect",
+        options: ["tr", "en", "tr+en"],
+      },
       { path: "basics.keywords", label: "Anahtar kelimeler", kind: "list", hint: "Her satıra bir tane" },
     ],
   },
   {
     title: "Görsel Kimlik",
-    description: "Renkler, logo ve görsel stil",
+    description: "Logo, renkler ve görsel stil",
     fields: [
+      { path: "visual.logo_url", label: "Logo", kind: "logo", hint: "Bilgisayardan bir görsel seçin (PNG/JPG)" },
       { path: "visual.primary_colors", label: "Ana renkler (hex)", kind: "list", hint: "Örn: #FF0000 — her satıra bir tane" },
       { path: "visual.secondary_colors", label: "İkincil renkler (hex)", kind: "list", hint: "Her satıra bir tane" },
-      { path: "visual.logo_url", label: "Logo URL", kind: "text" },
       { path: "visual.font_family", label: "Yazı tipi", kind: "text" },
       { path: "visual.visual_style", label: "Görsel stil", kind: "text" },
       { path: "visual.photography_style", label: "Fotoğraf stili", kind: "text" },
@@ -65,44 +105,72 @@ const SECTIONS: { title: string; description: string; fields: FieldDef[] }[] = [
   },
   {
     title: "Marka Sesi",
-    description: "Ton, dil ve iletişim tarzı",
+    description: "İletişim tarzı ve dil",
     fields: [
-      { path: "voice.tone", label: "Ton", kind: "text" },
       { path: "voice.personality", label: "Kişilik", kind: "list", hint: "Her satıra bir tane" },
       { path: "voice.preferred_words", label: "Tercih edilen kelimeler", kind: "list", hint: "Her satıra bir tane" },
       { path: "voice.avoid_words", label: "Kaçınılacak kelimeler", kind: "list", hint: "Her satıra bir tane" },
       { path: "voice.avoid_topics", label: "Kaçınılacak konular", kind: "list", hint: "Her satıra bir tane" },
       { path: "voice.example_captions", label: "Örnek başlıklar", kind: "list", hint: "Her satıra bir tane" },
-      { path: "voice.cta_style", label: "CTA stili", kind: "select", options: ["soft", "hard", "quirky", "informative"] },
-      { path: "voice.address_form", label: "Hitap", kind: "select", options: ["siz", "sen"] },
-      { path: "voice.emoji_usage", label: "Emoji kullanımı", kind: "select", options: ["bol", "az", "yok", "secili"] },
-      { path: "voice.hook_style", label: "Hook (kanca) stili", kind: "text" },
-      { path: "voice.cta_templates", label: "CTA şablonları", kind: "list", hint: "Her satıra bir tane" },
-      { path: "voice.agent_role", label: "Ajan rolü", kind: "long" },
+      {
+        path: "voice.address_form",
+        label: "Hitap",
+        kind: "select",
+        options: ["siz", "sen"],
+      },
+      {
+        path: "voice.hook_style",
+        label: "Hook (kanca) stili",
+        kind: "select",
+        options: HOOK_OPTIONS,
+        hint: "İçeriğin ilk cümlesi/girişi hangi tarzda olsun",
+      },
+      {
+        path: "voice.cta_templates",
+        label: "CTA (harekete geçirme) tarzı",
+        kind: "multiselect",
+        options: CTA_OPTIONS,
+        hint: "Takipçiyi ne yapmaya çağırıyoruz? Birden fazla seçebilirsiniz. (Örn. 'DM'den yaz' = mesaj at; 'Profildeki linke tıkla' = siteye yönlendir.)",
+      },
     ],
   },
   {
     title: "Hedef Kitle",
-    description: "Birincil kitle ve coğrafya",
+    description: "Kime hitap ediyoruz",
     fields: [
       { path: "audience.primary.role", label: "Kitle tanımı", kind: "long" },
       { path: "audience.primary.age_range", label: "Yaş aralığı", kind: "text" },
-      { path: "audience.primary.gender", label: "Cinsiyet", kind: "text" },
-      { path: "audience.primary.ses", label: "Sosyoekonomik seviye", kind: "text" },
-      { path: "audience.primary.pain_points", label: "Sorun noktaları", kind: "list", hint: "Her satıra bir tane" },
-      { path: "audience.primary.motivations", label: "Motivasyonlar / ilgi alanları", kind: "list", hint: "Her satıra bir tane" },
-      { path: "audience.geo", label: "Coğrafya", kind: "list", hint: "Her satıra bir tane" },
-      { path: "audience.languages", label: "Diller", kind: "list", hint: "Her satıra bir tane" },
+      {
+        path: "audience.primary.gender",
+        label: "Cinsiyet",
+        kind: "select",
+        options: ["Kadın", "Erkek", "Tümü"],
+      },
+      {
+        path: "audience.primary.ses",
+        label: "Sosyoekonomik durum, sorun noktaları ve motivasyonlar",
+        kind: "long",
+        hint: "Hepsini tek alanda serbestçe yazın",
+      },
     ],
   },
   {
     title: "İçerik Stratejisi",
-    description: "İçerik sütunları ve paylaşım planı",
+    description: "Instagram düzeni ve hashtag",
     fields: [
-      { path: "content_strategy.pillars", label: "İçerik sütunları", kind: "list", hint: "Her satıra bir tane" },
-      { path: "content_strategy.posting_cadence", label: "Paylaşım sıklığı", kind: "text" },
-      { path: "content_strategy.hashtag_strategy", label: "Hashtag stratejisi", kind: "long" },
-      { path: "content_strategy.required_hashtags", label: "Zorunlu hashtag'ler", kind: "list", hint: "Her satıra bir tane" },
+      {
+        path: "content_strategy.pillars",
+        label: "İçerik / grid düzeni",
+        kind: "multiselect",
+        options: GRID_OPTIONS,
+        hint: "Profil görünümü hangi düzen(ler)le kurgulanacak",
+      },
+      {
+        path: "content_strategy.hashtag_strategy",
+        label: "Hashtag stratejisi ve zorunlu hashtag'ler",
+        kind: "long",
+        hint: "Strateji + her zaman kullanılacak hashtag'leri tek alanda yazın",
+      },
     ],
   },
   {
@@ -110,7 +178,12 @@ const SECTIONS: { title: string; description: string; fields: FieldDef[] }[] = [
     description: "Ürünler, rakipler ve değer önerisi",
     fields: [
       { path: "business_context.products", label: "Ürünler / hizmetler", kind: "list", hint: "Her satıra bir tane" },
-      { path: "business_context.price_segment", label: "Fiyat segmenti", kind: "select", options: ["ekonomik", "orta", "premium", "luks"] },
+      {
+        path: "business_context.price_segment",
+        label: "Fiyat segmenti",
+        kind: "select",
+        options: ["ekonomik", "orta", "premium", "luks"],
+      },
       { path: "business_context.usp", label: "Değer önerisi (USP)", kind: "long" },
       { path: "business_context.competitors", label: "Rakipler", kind: "list", hint: "Her satıra bir tane" },
       { path: "business_context.seo_keywords", label: "SEO anahtar kelimeleri", kind: "list", hint: "Her satıra bir tane" },
@@ -134,6 +207,21 @@ function setPath(obj: Record<string, unknown>, path: string, value: unknown): vo
   cur[keys[keys.length - 1]] = value;
 }
 
+function langArrayToOption(v: unknown): string {
+  if (!Array.isArray(v)) return "";
+  const has = (x: string) => v.includes(x);
+  if (has("tr") && has("en")) return "tr+en";
+  if (has("tr")) return "tr";
+  if (has("en")) return "en";
+  return "";
+}
+function langOptionToArray(opt: string): string[] {
+  if (opt === "tr+en") return ["tr", "en"];
+  if (opt === "tr") return ["tr"];
+  if (opt === "en") return ["en"];
+  return [];
+}
+
 interface Props {
   initialBusinessId?: string;
   onBusinessChange?: (id: string) => void;
@@ -145,6 +233,7 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
   const [identity, setIdentity] = useState<BrandIdentity | null>(null);
   const [durum, setDurum] = useState<Durum>("bosta");
   const [mesaj, setMesaj] = useState("");
+  const [logoYukleniyor, setLogoYukleniyor] = useState(false);
 
   const load = useCallback(async (id: string) => {
     if (!id) return;
@@ -155,12 +244,9 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
       setIdentity(existing ?? emptyBrandIdentity(id, "manual"));
       setDurum("bosta");
     } catch (e) {
-      // Okuma başarısız olsa bile boş defterle editörü aç (kullanıcı
-      // yine de doldurup kaydedebilsin); gerçek hatayı görünür yap.
       setIdentity(emptyBrandIdentity(id, "manual"));
       setDurum("hata");
-      const detay =
-        e instanceof Error ? e.message : typeof e === "string" ? e : "";
+      const detay = e instanceof Error ? e.message : typeof e === "string" ? e : "";
       setMesaj(
         `Mevcut marka kimliği okunamadı (boş formla devam edebilirsiniz). Detay: ${detay || "bilinmiyor"}`
       );
@@ -183,6 +269,22 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
       setPath(next, path, value);
       return next as unknown as BrandIdentity;
     });
+  };
+
+  const handleLogo = async (file: File | undefined) => {
+    if (!file || !businessId) return;
+    setLogoYukleniyor(true);
+    setMesaj("");
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const url = await uploadFile(file, `businesses/${businessId}/brand_logo.${ext}`);
+      update("visual.logo_url", url);
+    } catch (e) {
+      setDurum("hata");
+      setMesaj(`Logo yüklenemedi. Detay: ${e instanceof Error ? e.message : "bilinmiyor"}`);
+    } finally {
+      setLogoYukleniyor(false);
+    }
   };
 
   const handleSave = async () => {
@@ -249,44 +351,35 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
                 {section.fields.map((f) => {
                   const raw = getPath(identity, f.path);
                   const id = `f-${f.path}`;
+                  const wide =
+                    f.kind === "long" ||
+                    f.kind === "list" ||
+                    f.kind === "multiselect" ||
+                    f.kind === "logo";
                   return (
                     <div
                       key={f.path}
-                      className={`space-y-1.5 ${f.kind === "long" || f.kind === "list" ? "md:col-span-2" : ""}`}
+                      className={`space-y-1.5 ${wide ? "md:col-span-2" : ""}`}
                     >
                       <Label htmlFor={id}>{f.label}</Label>
+
                       {f.kind === "text" && (
                         <Input
                           id={id}
                           value={(raw as string) ?? ""}
-                          onChange={(e) =>
-                            update(f.path, e.target.value || null)
-                          }
+                          onChange={(e) => update(f.path, e.target.value || null)}
                         />
                       )}
-                      {f.kind === "number" && (
-                        <Input
-                          id={id}
-                          type="number"
-                          value={raw == null ? "" : String(raw)}
-                          onChange={(e) =>
-                            update(
-                              f.path,
-                              e.target.value ? Number(e.target.value) : null
-                            )
-                          }
-                        />
-                      )}
+
                       {f.kind === "long" && (
                         <Textarea
                           id={id}
                           rows={3}
                           value={(raw as string) ?? ""}
-                          onChange={(e) =>
-                            update(f.path, e.target.value || null)
-                          }
+                          onChange={(e) => update(f.path, e.target.value || null)}
                         />
                       )}
+
                       {f.kind === "list" && (
                         <Textarea
                           id={id}
@@ -303,9 +396,10 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
                           }
                         />
                       )}
+
                       {f.kind === "select" && (
                         <Select
-                          value={(raw as string) ?? NONE}
+                          value={(raw as string) || NONE}
                           onValueChange={(v) =>
                             update(f.path, v === NONE ? null : v)
                           }
@@ -323,6 +417,88 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
                           </SelectContent>
                         </Select>
                       )}
+
+                      {f.kind === "langselect" && (
+                        <Select
+                          value={langArrayToOption(raw) || NONE}
+                          onValueChange={(v) =>
+                            update(f.path, v === NONE ? [] : langOptionToArray(v))
+                          }
+                        >
+                          <SelectTrigger id={id}>
+                            <SelectValue placeholder="Seçilmedi" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>Seçilmedi</SelectItem>
+                            {f.options?.map((o) => (
+                              <SelectItem key={o} value={o}>
+                                {o}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {f.kind === "multiselect" && (
+                        <div className="flex flex-wrap gap-2">
+                          {f.options?.map((o) => {
+                            const arr = Array.isArray(raw) ? (raw as string[]) : [];
+                            const on = arr.includes(o);
+                            return (
+                              <button
+                                type="button"
+                                key={o}
+                                onClick={() =>
+                                  update(
+                                    f.path,
+                                    on ? arr.filter((x) => x !== o) : [...arr, o]
+                                  )
+                                }
+                                className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                                  on
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "border-border text-foreground hover:bg-muted"
+                                }`}
+                              >
+                                {o}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {f.kind === "logo" && (
+                        <div className="flex items-center gap-4">
+                          {typeof raw === "string" && raw ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={raw}
+                              alt="logo"
+                              className="h-16 w-16 rounded object-contain border border-border bg-muted"
+                            />
+                          ) : (
+                            <div className="h-16 w-16 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground text-xs">
+                              yok
+                            </div>
+                          )}
+                          <label className="inline-flex items-center gap-2 cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-muted">
+                            {logoYukleniyor ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4" />
+                            )}
+                            Bilgisayardan seç
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={logoYukleniyor}
+                              onChange={(e) => handleLogo(e.target.files?.[0])}
+                            />
+                          </label>
+                        </div>
+                      )}
+
                       {f.hint && (
                         <p className="text-xs text-muted-foreground">{f.hint}</p>
                       )}
@@ -334,11 +510,7 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
           ))}
 
           <div className="flex items-center gap-3 sticky bottom-4">
-            <Button
-              onClick={handleSave}
-              disabled={durum === "kaydediliyor"}
-              size="lg"
-            >
+            <Button onClick={handleSave} disabled={durum === "kaydediliyor"} size="lg">
               {durum === "kaydediliyor" ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
@@ -349,11 +521,6 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
             {durum === "basarili" && (
               <span className="flex items-center gap-1.5 text-sm text-green-500">
                 <CheckCircle2 className="w-4 h-4" /> {mesaj}
-              </span>
-            )}
-            {durum === "hata" && (
-              <span className="flex items-center gap-1.5 text-sm text-red-500">
-                <AlertCircle className="w-4 h-4" /> {mesaj}
               </span>
             )}
           </div>
