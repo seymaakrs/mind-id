@@ -32,6 +32,8 @@ type FieldKind =
   | "select" // tek seçim, string saklar
   | "langselect" // tr/en/tr+en -> dizi
   | "multiselect" // çoklu seçim -> dizi (etiketler)
+  | "multiselect_str" // çoklu seçim -> virgülle birleşik string
+  | "colorpalette" // renk listesi (swatch) -> dizi
   | "logo"; // dosya yükle -> url
 
 interface FieldDef {
@@ -64,6 +66,19 @@ const CTA_OPTIONS = [
   "Arkadaşını etiketle",
 ];
 
+const FONT_OPTIONS = [
+  "Inter",
+  "Roboto",
+  "Open Sans",
+  "Montserrat",
+  "Poppins",
+  "Lato",
+  "Nunito",
+  "Playfair Display",
+  "Raleway",
+  "Oswald",
+];
+
 const GRID_OPTIONS = [
   "Dama Tahtası (Checkerboard)",
   "Yapboz (Puzzle Grid)",
@@ -94,9 +109,14 @@ const SECTIONS: { title: string; description: string; fields: FieldDef[] }[] = [
     description: "Logo, renkler ve görsel stil",
     fields: [
       { path: "visual.logo_url", label: "Logo", kind: "logo", hint: "Bilgisayardan bir görsel seçin (PNG/JPG)" },
-      { path: "visual.primary_colors", label: "Ana renkler (hex)", kind: "list", hint: "Örn: #FF0000 — her satıra bir tane" },
-      { path: "visual.secondary_colors", label: "İkincil renkler (hex)", kind: "list", hint: "Her satıra bir tane" },
-      { path: "visual.font_family", label: "Yazı tipi", kind: "text" },
+      { path: "visual.primary_colors", label: "Renk paleti", kind: "colorpalette", hint: "Renk ekleyin; paletteki renkler önizlenir" },
+      {
+        path: "visual.font_family",
+        label: "Yazı tipi",
+        kind: "multiselect_str",
+        options: FONT_OPTIONS,
+        hint: "Başlıca 10 fonttan seçin (birden fazla seçilebilir)",
+      },
       { path: "visual.visual_style", label: "Görsel stil", kind: "text" },
       { path: "visual.photography_style", label: "Fotoğraf stili", kind: "text" },
       { path: "visual.image_dos", label: "Görselde yapılacaklar", kind: "list", hint: "Her satıra bir tane" },
@@ -355,6 +375,8 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
                     f.kind === "long" ||
                     f.kind === "list" ||
                     f.kind === "multiselect" ||
+                    f.kind === "multiselect_str" ||
+                    f.kind === "colorpalette" ||
                     f.kind === "logo";
                   return (
                     <div
@@ -464,6 +486,97 @@ export function BrandIdentityEditor({ initialBusinessId, onBusinessChange }: Pro
                               </button>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {f.kind === "multiselect_str" && (
+                        <div className="flex flex-wrap gap-2">
+                          {f.options?.map((o) => {
+                            const cur =
+                              typeof raw === "string" && raw
+                                ? raw.split(",").map((x) => x.trim()).filter(Boolean)
+                                : [];
+                            const on = cur.includes(o);
+                            return (
+                              <button
+                                type="button"
+                                key={o}
+                                style={{ fontFamily: o }}
+                                onClick={() => {
+                                  const next = on
+                                    ? cur.filter((x) => x !== o)
+                                    : [...cur, o];
+                                  update(f.path, next.length ? next.join(", ") : null);
+                                }}
+                                className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                                  on
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "border-border text-foreground hover:bg-muted"
+                                }`}
+                              >
+                                {o}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {f.kind === "colorpalette" && (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                            {(Array.isArray(raw) ? (raw as string[]) : []).map(
+                              (c, idx) => (
+                                <span
+                                  key={`${c}-${idx}`}
+                                  className="inline-flex items-center gap-1.5 rounded-md border border-border pl-1 pr-2 py-1 text-xs"
+                                >
+                                  <span
+                                    className="h-5 w-5 rounded"
+                                    style={{ backgroundColor: c }}
+                                  />
+                                  {c}
+                                  <button
+                                    type="button"
+                                    aria-label="kaldır"
+                                    className="text-muted-foreground hover:text-red-500"
+                                    onClick={() => {
+                                      const arr = Array.isArray(raw)
+                                        ? (raw as string[])
+                                        : [];
+                                      update(
+                                        f.path,
+                                        arr.filter((_, i) => i !== idx)
+                                      );
+                                    }}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              )
+                            )}
+                            {(!Array.isArray(raw) || raw.length === 0) && (
+                              <span className="text-xs text-muted-foreground">
+                                Henüz renk yok
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              className="h-9 w-12 rounded border border-border bg-transparent p-0.5"
+                              onChange={(e) => {
+                                const arr = Array.isArray(raw)
+                                  ? (raw as string[])
+                                  : [];
+                                const hex = e.target.value.toUpperCase();
+                                if (!arr.includes(hex))
+                                  update(f.path, [...arr, hex]);
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              Renk seç → palete eklenir
+                            </span>
+                          </div>
                         </div>
                       )}
 
