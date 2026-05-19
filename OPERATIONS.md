@@ -88,7 +88,7 @@ Bu hatalar **kanıtlanmış kırılma sebepleri**:
 4. ❌ Netlify secret scan'i bypass etme (`SECRETS_SCAN_OMIT_KEYS`'e private key isimleri ekleme) → güvenlik açığı
 5. ❌ Cloud Run revision'a doğrudan deploy etmeden Firestore env'i değiştir → cache uyumsuzluğu
 6. ❌ Frontend (mind-id) `serverUrl` Firestore alanını silme → "Bağlantı yok"
-7. ❌ Cloud Run servisini `--no-allow-unauthenticated` yapma → mind-id frontend Netlify'dan erişemez
+7. ❌ Cloud Run servisini `--no-allow-unauthenticated` yapma → mind-id frontend (Vercel) erişemez
 8. ❌ MindID `late_profile_id` Firestore alanını yanlış değer ile değiştir → sync `accounts: []` döner
 
 ---
@@ -163,7 +163,7 @@ print('imageGenerationModel:', data.get('imageGenerationModel'))
 | Cloud Run URL | `https://agents-sdk-api-704233028546.us-central1.run.app` |
 | GCP project | `instagram-post-bot-471518` (Cloud Run) |
 | Firebase project | `mindid-75079` (Firestore + Storage) |
-| Production frontend | `https://mindid.netlify.app` |
+| Production frontend | Vercel — proje: `seymaakrs-slowdays-web/mind-id` (Netlify bırakıldı) |
 | MindID business_id (Firestore) | `vPoHKXpvGqdMQzrjN4i4` |
 | Slowdays business_id | `ytS8ENQfrGNQ2rdHvei9` |
 | MindID Zernio profile_id | `69f4d7e77e906597eb4ebf54` |
