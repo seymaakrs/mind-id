@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindID Canvas — Standalone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #000; color: #0f0; font-family: "JetBrains Mono", monospace; height: 100vh; display: flex; flex-direction: column; }
+    nav { background: #5c1018; padding: 8px 12px; font-size: 11px; color: #fcd34d; }
+    .main { display: flex; flex: 1; min-height: 0; }
+    aside.left { width: 200px; border-right: 1px solid #0f03; padding: 12px; overflow-y: auto; }
+    aside.right { width: 320px; border-left: 1px solid #0ff3; padding: 12px; overflow-y: auto; color: #8ff; }
+    #canvas-wrap { flex: 1; position: relative; background: #000 radial-gradient(rgba(0,255,0,.06) 1px, transparent 1px); background-size: 24px 24px; }
+    svg { width: 100%; height: 100%; }
+    .terminal { height: 160px; border-top: 1px solid #0f03; padding: 12px; overflow-y: auto; font-size: 11px; color: #4ade80; }
+    h1 { font-size: 12px; color: #4ade80; }
+    .agent-btn { display: block; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; color: #fff; padding: 6px 8px; margin: 4px 0; cursor: pointer; font-family: inherit; font-size: 11px; }
+    .agent-btn:hover, .agent-btn.active { border-color: #4ade80; background: #0f0a; }
+    .node-label { font-size: 10px; fill: #fff; }
+  </style>
+</head>
+<body>
+  <nav>[1] AGENTS · MindID Canvas standalone · React sürümü: /komuta-merkezi-v2</nav>
+  <div class="main">
+    <aside class="left">
+      <h1>MINDID CANVAS</h1>
+      <p style="font-size:10px;color:#666;margin:8px 0">v0.1 · HTML önizleme</p>
+      <div id="agent-list"></div>
+    </aside>
+    <div id="canvas-wrap">
+      <svg id="graph" viewBox="0 0 1400 800"></svg>
+    </div>
+    <aside class="right" id="detail">
+      <p>Düğüm seç → detay</p>
+    </aside>
+  </div>
+  <div class="terminal" id="terminal"></div>
+  <script>
+    const NODES = [
+      { id:"user", label:"Kullanıcı", kind:"user", x:80, y:360, color:"#FF0", desc:"Agent sayfasında görev yazar." },
+      { id:"panel", label:"Agent Sayfası", kind:"panel", x:320, y:360, color:"#FB923C", desc:"MindID arayüz." },
+      { id:"api", label:"/api/agent-task", kind:"api", x:560, y:360, color:"#0F0", desc:"mind-agent proxy." },
+      { id:"orch", label:"Orkestratör", kind:"orch", x:800, y:300, color:"#FF8C00", desc:"Görevi uzman ajanlara dağıtır." },
+      { id:"img", label:"Görsel Ajan", kind:"expert", x:720, y:520, color:"#F0F", desc:"image_agent" },
+      { id:"vid", label:"Video Ajan", kind:"expert", x:960, y:520, color:"#F0F", desc:"video_agent" },
+      { id:"mkt", label:"Pazarlama Ajan", kind:"expert", x:720, y:680, color:"#F0F", desc:"marketing_agent" },
+      { id:"anl", label:"Analiz Ajan", kind:"expert", x:960, y:680, color:"#F0F", desc:"analysis_agent" },
+      { id:"fs", label:"Firestore", kind:"db", x:1080, y:360, color:"#0FF", desc:"Görev + sonuç." },
+      { id:"tasks", label:"Aktif Görevler", kind:"task", x:1240, y:360, color:"#FFF", desc:"İzleme paneli." },
+    ];
+    const EDGES = [
+      ["user","panel"],["panel","api"],["api","orch"],["orch","fs"],["fs","tasks"],
+      ["orch","img"],["orch","vid"],["orch","mkt"],["orch","anl"],
+      ["img","fs"],["vid","fs"],["mkt","fs"],["anl","fs"]
+    ];
+    const logs = ["> canvas.html yüklendi"];
+    const term = document.getElementById("terminal");
+    const detail = document.getElementById("detail");
+    const svg = document.getElementById("graph");
+    function log(m){ logs.push("> "+m); term.innerHTML = logs.slice(-20).map(l=>"<div>"+l+"</div>").join(""); }
+    function draw(){
+      let s = "";
+      EDGES.forEach(([a,b])=>{
+        const A=NODES.find(n=>n.id===a), B=NODES.find(n=>n.id===b);
+        s+=`<line x1="${A.x+80}" y1="${A.y+20}" x2="${B.x}" y2="${B.y+20}" stroke="${B.color}" stroke-width="2" opacity="0.7"/>`;
+      });
+      NODES.forEach((n,i)=>{
+        s+=`<g class="node" data-id="${n.id}" style="cursor:pointer">
+          <rect x="${n.x}" y="${n.y}" width="160" height="70" fill="#000" stroke="${n.color}" stroke-width="2" rx="4"/>
+          <text x="${n.x+8}" y="${n.y+22}" fill="${n.color}" font-size="10">[${i+1}]</text>
+          <text x="${n.x+8}" y="${n.y+40}" class="node-label">${n.label}</text>
+          <text x="${n.x+8}" y="${n.y+58}" fill="#888" font-size="9">${n.desc}</text>
+        </g>`;
+      });
+      svg.innerHTML = s;
+      svg.querySelectorAll(".node").forEach(g=>g.addEventListener("click",()=>{
+        const n=NODES.find(x=>x.id===g.dataset.id);
+        detail.innerHTML=`<strong style="color:${n.color}">${n.label}</strong><p style="margin-top:8px;font-size:12px;color:#ccc">${n.desc}</p>`;
+        log(n.label+" seçildi");
+      }));
+    }
+    const list=document.getElementById("agent-list");
+    NODES.forEach((n,i)=>{
+      const b=document.createElement("button");
+      b.className="agent-btn"; b.textContent=`[${i+1}] ${n.label}`;
+      b.onclick=()=>{ detail.innerHTML=`<strong>${n.label}</strong><p style="margin-top:8px;color:#aaa">${n.desc}</p>`; };
+      list.appendChild(b);
+    });
+    draw();
+    setInterval(()=>{ const n=NODES[Math.floor(Math.random()*NODES.length)]; log("Agent ["+n.desc+"] status: running"); },5000);
+  </script>
+</body>
+</html>
