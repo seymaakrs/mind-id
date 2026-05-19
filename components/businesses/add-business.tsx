@@ -104,7 +104,7 @@ export default function AddBusinessComponent() {
 
   const createMinimalBusiness = async (): Promise<string | null> => {
     return createBusiness({
-      name: tempName.trim(),
+      name: tempName.trim() || "Yeni İşletme",
       logo: "",
       colors: [DEFAULT_COLOR],
       late_profile_id: "",
@@ -147,10 +147,6 @@ export default function AddBusinessComponent() {
   };
 
   const startManual = async () => {
-    if (!tempName.trim()) {
-      setHata("İşletme adı zorunludur.");
-      return;
-    }
     setHata(null);
     try {
       const businessId = createdBusinessId || (await createMinimalBusiness());
@@ -161,7 +157,7 @@ export default function AddBusinessComponent() {
       setCreatedBusinessId(businessId);
       setMode("manual");
       const bi = emptyBrandIdentity(businessId, "manual");
-      bi.basics.name = tempName.trim();
+      bi.basics.name = tempName.trim() || null;
       setIdentity(bi);
       setStep("review");
     } catch (error) {
@@ -313,7 +309,7 @@ export default function AddBusinessComponent() {
             </p>
 
             <div className="space-y-2">
-              <Label htmlFor="tempName">İşletme Adı *</Label>
+              <Label htmlFor="tempName">İşletme Adı</Label>
               <Input
                 id="tempName"
                 value={tempName}
@@ -323,7 +319,12 @@ export default function AddBusinessComponent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="websiteUrl">Web Sitesi URL'si *</Label>
+              <Label htmlFor="websiteUrl">
+                Web Sitesi URL'si{" "}
+                <span className="text-muted-foreground">
+                  (yalnızca AI analizi için)
+                </span>
+              </Label>
               <Input
                 id="websiteUrl"
                 type="url"
@@ -349,6 +350,10 @@ export default function AddBusinessComponent() {
                 Web sitem yok — manuel gir
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Manuel girişte web sitesi (ve ad) zorunlu değildir; tüm
+              bilgileri sonraki adımda doldurabilirsiniz.
+            </p>
           </CardContent>
         </Card>
       )}

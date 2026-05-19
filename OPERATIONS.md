@@ -47,7 +47,7 @@ GitHub web UI: `https://github.com/seymaakrs/<repo>/settings/branches` → "Add 
 - [ ] Eski Google AI key (`AIzaSyDGdNaR...kpM`) AI Studio'dan **silindi mi?** Doğrula
 - [ ] Yeni Google AI key (`AIzaSyAf...bx08`) chat'e geçti — **rotate edilmeli**
 - [ ] Late/Zernio key (`sk_518334...`) chat'e geçti — rotate öner
-- [ ] mind-id PR #6 (`claude/improve-canvas-homepage-VIB8G`) → `netlify.toml` SECRETS_SCAN_OMIT_KEYS bypass içeriyor → **MERGE EDİLMEMELİ**
+- [ ] (Tarihsel) mind-id PR #6 → eski `netlify.toml` SECRETS_SCAN_OMIT_KEYS bypass içeriyordu. **Artık geçersiz:** Netlify tamamen bırakıldı, dağıtım Vercel'de; `netlify.toml` repodan kaldırıldı.
 - [ ] NocoDB `claude-setup` token revoke
 - [ ] n8n `claude-status-2026-05-01` token revoke
 
@@ -85,7 +85,7 @@ Bu hatalar **kanıtlanmış kırılma sebepleri**:
 1. ❌ `marketingModel`, `analysisAgent` Firestore'a `gpt-5` yazma → **OpenAI'da gpt-5 YOK**, fake-success döner
 2. ❌ `imageGenerationModel`'i `gemini-2.0-flash-image-generation` yapma → Google API'de yok, 404
 3. ❌ Repo'ya `serviceAccount.json` / private key commit etme → Google otomatik iptal eder
-4. ❌ Netlify secret scan'i bypass etme (`SECRETS_SCAN_OMIT_KEYS`'e private key isimleri ekleme) → güvenlik açığı
+4. ❌ (Geçersiz — Netlify bırakıldı) Eskiden: Netlify secret scan bypass etme. Artık Vercel kullanılıyor; gizli anahtarlar Vercel ortam değişkenlerinde tutulur.
 5. ❌ Cloud Run revision'a doğrudan deploy etmeden Firestore env'i değiştir → cache uyumsuzluğu
 6. ❌ Frontend (mind-id) `serverUrl` Firestore alanını silme → "Bağlantı yok"
 7. ❌ Cloud Run servisini `--no-allow-unauthenticated` yapma → mind-id frontend (Vercel) erişemez
