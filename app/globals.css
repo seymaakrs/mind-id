@@ -221,25 +221,68 @@
   z-index: 2 !important;
 }
 
-/* MindID Canvas (prompt spec) */
+/* MindID Canvas — kutusuz hayalet düğümler */
 .mind-id-canvas-grid {
   background-color: #000;
-  background-image: radial-gradient(rgba(0, 255, 0, 0.06) 1px, transparent 1px);
-  background-size: 24px 24px;
+}
+
+.mind-id-dot-field {
+  background-color: #000;
+  background-image: radial-gradient(rgba(0, 255, 120, 0.14) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.mind-id-agent-node {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.react-flow__node:has(.mind-id-agent-node) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.mind-id-flow-handle {
+  width: 7px !important;
+  height: 7px !important;
+  min-width: 7px !important;
+  min-height: 7px !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  opacity: 1 !important;
+  z-index: 2;
 }
 
 .mind-id-neon-edge path {
-  stroke-dasharray: 8 4;
-  animation: cyber-flow 1.2s linear infinite;
+  stroke-dasharray: 6 5;
+  animation: cyber-flow 1.4s linear infinite;
 }
 
-.mind-id-node-running {
-  animation: mind-id-pulse 1.5s ease-in-out infinite;
+.mind-id-ghost-pulse {
+  animation: mind-id-ghost-pulse 1.2s ease-in-out infinite;
+}
+
+.mind-id-node-running .mind-id-ghost-pulse,
+.mind-id-node-running .mind-id-agent-node > div:first-of-type svg {
+  animation: mind-id-ghost-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes mind-id-ghost-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px currentColor);
+    opacity: 1;
+  }
+  50% {
+    filter: drop-shadow(0 0 14px currentColor);
+    opacity: 0.92;
+  }
 }
 
 @keyframes mind-id-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.85; }
+  50% { opacity: 0.88; }
 }
 
 /* React Flow dark theme overrides */

@@ -8,8 +8,8 @@ import {
 import type { AgentNodeData } from "./AgentNode"
 import type { NeonEdgeData } from "./NeonEdge"
 
-const NODE_W = 220
-const NODE_H = 132
+const NODE_W = 148
+const NODE_H = 118
 
 /** Dikey soy ağacı — üstten alta (TB), geniş dallar için nodesep yüksek */
 export function buildMindIDFlowGraph(nodeStates: Record<string, AgentNodeData["status"]>) {
@@ -45,8 +45,8 @@ export function buildMindIDFlowGraph(nodeStates: Record<string, AgentNodeData["s
   g.setGraph({
     rankdir: "TB",
     align: "UL",
-    nodesep: 52,
-    ranksep: 88,
+    nodesep: 36,
+    ranksep: 96,
     marginx: 80,
     marginy: 60,
   })

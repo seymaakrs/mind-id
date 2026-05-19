@@ -1,14 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  ReactFlow,
-  ReactFlowProvider,
-  Background,
-  BackgroundVariant,
-  useReactFlow,
-  type Node,
-} from "@xyflow/react"
+import { ReactFlow, ReactFlowProvider, useReactFlow, type Node } from "@xyflow/react"
+import { CanvasDotBackground } from "./CanvasDotBackground"
 import "@xyflow/react/dist/style.css"
 import { AgentNode, type AgentNodeData } from "./AgentNode"
 import { NeonEdge } from "./NeonEdge"
@@ -88,6 +82,7 @@ function CanvasInner() {
           onSelect={setSelectedId}
         />
         <div className="mind-id-canvas-grid relative min-w-0 flex-1">
+          <CanvasDotBackground />
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -101,15 +96,8 @@ function CanvasInner() {
             defaultViewport={{ x: 0, y: 0, zoom: 0.55 }}
             nodesDraggable
             proOptions={{ hideAttribution: true }}
-            className="!bg-black"
-          >
-            <Background
-              variant={BackgroundVariant.Dots}
-              gap={24}
-              size={1}
-              color="rgba(0,255,0,0.08)"
-            />
-          </ReactFlow>
+            className="relative z-[1] !bg-transparent"
+          />
         </div>
         <DetailDrawer
           node={selectedNode}

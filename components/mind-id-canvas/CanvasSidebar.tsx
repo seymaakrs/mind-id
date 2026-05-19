@@ -30,7 +30,7 @@ export function CanvasSidebar({ nodes, selectedId, onSelect }: CanvasSidebarProp
     <aside className="flex w-[200px] shrink-0 flex-col border-r border-green-500/20 bg-black font-mono text-[11px]">
       <div className="border-b border-green-500/20 p-3">
         <p className="text-xs font-bold tracking-widest text-green-400">MINDID CANVAS</p>
-        <p className="mt-1 text-[10px] text-white/40">v0.2 · dikey soy ağacı</p>
+        <p className="mt-1 text-[10px] text-white/40">v0.3 · kutusuz hayalet</p>
       </div>
 
       <div className="border-b border-green-500/15 p-3 text-[10px] text-white/60">
@@ -81,10 +81,10 @@ export function CanvasSidebar({ nodes, selectedId, onSelect }: CanvasSidebarProp
       </div>
 
       <div className="border-t border-green-500/15 p-2 text-[9px] text-white/35">
-        <p>↓ Üstten alta soy ağacı</p>
-        <p>● Mor = satış ajanı</p>
-        <p>● Pembe = n8n merkez</p>
-        <p>● Gri = planlanan</p>
+        <p>↓ Üstten alta · kutusuz</p>
+        <p>● Sarı numara = adım</p>
+        <p>● Mor hayalet = satış</p>
+        <p>● Soluk = planlanan</p>
       </div>
     </aside>
   )

@@ -42,8 +42,8 @@ function NeonEdgeComponent({
         path={path}
         style={{
           stroke: color,
-          strokeWidth: d?.main ? 3 : 1.5,
-          opacity: 0.9,
+          strokeWidth: d?.main ? 2.5 : 1.25,
+          opacity: 0.88,
         }}
         className="mind-id-neon-edge"
       />
