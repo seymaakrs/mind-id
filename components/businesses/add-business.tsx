@@ -11,66 +11,44 @@ import {
   Globe,
   Sparkles,
   CheckCircle2,
-  ArrowLeft,
-  ArrowRight,
   PencilLine,
   RotateCcw,
+  Save,
 } from "lucide-react";
-import { useBusinesses, useBusinessForm, useAgentTask } from "@/hooks";
+import { useBusinesses, useAgentTask } from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_COLOR } from "@/lib/constants";
 import {
-  BasicInfoSection,
-  IdentitySection,
-  BrandVoiceSection,
-  VisualSection,
-  TargetAudienceSection,
-  BrandValuesSection,
-  SocialMediaSection,
-  RulesSection,
-  ExtraFieldsSection,
-} from "@/components/business/form";
-import { SyncAccountsButton } from "@/components/shared";
+  emptyBrandIdentity,
+  buildBrandIdentityFromBusiness,
+  type BrandIdentity,
+} from "@/lib/brandIdentity";
+import { getBrandIdentity, saveBrandIdentity } from "@/lib/firebase/firestore";
+import { uploadFile } from "@/lib/firebase/storage";
+import {
+  BrandIdentityFields,
+  setBrandPath,
+} from "@/components/business/BrandIdentityFields";
 
 type WizardStep = "intro" | "analyzing" | "review" | "done";
 type EntryMode = "ai" | "manual";
 
-const STEP_LABELS = ["İşletme Bilgisi", "AI Analizi", "İnceleme"];
-const REVIEW_PAGE_TITLES = [
-  "Temel Bilgiler & Kimlik",
-  "Marka Sesi & Görsel",
-  "Değerler, Sosyal & Kurallar",
-];
-const TOTAL_REVIEW_PAGES = 3;
+const STEP_LABELS = ["İşletme Bilgisi", "AI Analizi", "Marka Kimliği"];
 
 export default function AddBusinessComponent() {
   const [step, setStep] = useState<WizardStep>("intro");
-  const [mode, setMode] = useState<EntryMode | null>(null);
-  const [reviewPage, setReviewPage] = useState(0);
+  const [, setMode] = useState<EntryMode | null>(null);
   const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(null);
+  const [identity, setIdentity] = useState<BrandIdentity | null>(null);
 
   const [tempName, setTempName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
 
   const { user } = useAuth();
-  const { createBusiness, editBusiness, uploadLogo, loadBusiness } = useBusinesses();
-  const {
-    form,
-    setField,
-    setLogoFile,
-    addColor,
-    removeColor,
-    addExtraField,
-    removeExtraField,
-    updateExtraField,
-    resetForm,
-    loadFromBusiness,
-    buildBusinessData,
-    validate,
-  } = useBusinessForm();
-
+  const { createBusiness, editBusiness, loadBusiness } = useBusinesses();
   const {
     error: analysisError,
     progressMessages,
@@ -79,47 +57,59 @@ export default function AddBusinessComponent() {
     currentTask,
   } = useAgentTask();
 
-  // AI analiz tamamlanınca profili çekip incelemeye geç
+  // AI analiz tamamlanınca profili çekip marka kimliğine dönüştür
   useEffect(() => {
     if (step !== "analyzing" || !createdBusinessId) return;
     if (currentTask?.status === "completed") {
       (async () => {
-        const business = await loadBusiness(createdBusinessId);
-        if (business) loadFromBusiness(business);
-        setReviewPage(0);
+        const biz = await loadBusiness(createdBusinessId);
+        let bi: BrandIdentity | null = null;
+        try {
+          bi = await getBrandIdentity(createdBusinessId);
+        } catch {
+          bi = null;
+        }
+        if (!bi) {
+          bi = buildBrandIdentityFromBusiness({
+            businessId: createdBusinessId,
+            name: biz?.name || tempName.trim(),
+            logo: biz?.logo,
+            colors: biz?.colors,
+            profile: biz?.profile,
+            source: "ai_synthesis",
+          });
+        }
+        if (!bi.basics.name) bi.basics.name = tempName.trim() || null;
+        setIdentity(bi);
         setStep("review");
       })();
     }
-  }, [currentTask?.status, step, createdBusinessId, loadBusiness, loadFromBusiness]);
+  }, [currentTask?.status, step, createdBusinessId, loadBusiness, tempName]);
 
   const analyzing =
     currentTask?.status === "pending" || currentTask?.status === "running";
   const analysisFailed = step === "analyzing" && currentTask?.status === "failed";
 
   const resetWizard = () => {
-    resetForm();
     resetAgent();
     setStep("intro");
     setMode(null);
-    setReviewPage(0);
     setCreatedBusinessId(null);
+    setIdentity(null);
     setTempName("");
     setWebsiteUrl("");
     setHata(null);
     setSaving(false);
   };
 
-  const handleLogoSelect = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setHata("Lütfen geçerli bir resim dosyası seçin.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setHata("Logo dosyası 5MB'dan küçük olmalıdır.");
-      return;
-    }
-    setLogoFile(file);
-    setHata(null);
+  const createMinimalBusiness = async (): Promise<string | null> => {
+    return createBusiness({
+      name: tempName.trim(),
+      logo: "",
+      colors: [DEFAULT_COLOR],
+      late_profile_id: "",
+      profile: {},
+    });
   };
 
   const handleAnalyze = async () => {
@@ -134,21 +124,12 @@ export default function AddBusinessComponent() {
     setHata(null);
 
     try {
-      const businessId = await createBusiness({
-        name: tempName.trim(),
-        logo: "",
-        colors: [DEFAULT_COLOR],
-        late_profile_id: "",
-        profile: {},
-      });
+      const businessId = createdBusinessId || (await createMinimalBusiness());
       if (!businessId) {
         setHata("İşletme oluşturulamadı.");
         return;
       }
-
       setCreatedBusinessId(businessId);
-      setField("name", tempName.trim());
-      setField("colors", [DEFAULT_COLOR]);
       setMode("ai");
       setStep("analyzing");
 
@@ -165,74 +146,96 @@ export default function AddBusinessComponent() {
     }
   };
 
-  const handleManual = () => {
-    setMode("manual");
-    if (tempName.trim()) setField("name", tempName.trim());
-    if (websiteUrl.trim()) setField("website", websiteUrl.trim());
-    setField("colors", [DEFAULT_COLOR]);
-    setReviewPage(0);
-    setHata(null);
-    setStep("review");
-  };
-
-  const continueManuallyAfterFailure = () => {
-    setMode("manual");
-    setField("name", tempName.trim());
-    setField("colors", [DEFAULT_COLOR]);
-    setReviewPage(0);
-    setHata(null);
-    setStep("review");
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const validationError = validate();
-    if (validationError) {
-      setHata(validationError);
+  const startManual = async () => {
+    if (!tempName.trim()) {
+      setHata("İşletme adı zorunludur.");
       return;
     }
+    setHata(null);
+    try {
+      const businessId = createdBusinessId || (await createMinimalBusiness());
+      if (!businessId) {
+        setHata("İşletme oluşturulamadı.");
+        return;
+      }
+      setCreatedBusinessId(businessId);
+      setMode("manual");
+      const bi = emptyBrandIdentity(businessId, "manual");
+      bi.basics.name = tempName.trim();
+      setIdentity(bi);
+      setStep("review");
+    } catch (error) {
+      console.error("İşletme oluşturma hatası:", error);
+      setHata("İşletme oluşturulurken bir hata oluştu.");
+    }
+  };
 
-    // Logo, yalnızca henüz işletme oluşturulmamış manuel girişte zorunlu
-    if (!form.logoFile && !createdBusinessId) {
-      setHata("Logo yüklemek zorunludur.");
+  const continueManuallyAfterFailure = async () => {
+    if (!createdBusinessId) {
+      await startManual();
+      return;
+    }
+    setMode("manual");
+    const bi = emptyBrandIdentity(createdBusinessId, "manual");
+    bi.basics.name = tempName.trim();
+    setIdentity(bi);
+    setHata(null);
+    setStep("review");
+  };
+
+  const handleIdentityChange = (path: string, value: unknown) => {
+    setIdentity((prev) => {
+      if (!prev) return prev;
+      const next = structuredClone(prev) as unknown as Record<string, unknown>;
+      setBrandPath(next, path, value);
+      return next as unknown as BrandIdentity;
+    });
+  };
+
+  const handleLogo = async (file: File | undefined) => {
+    if (!file || !createdBusinessId) return;
+    if (!file.type.startsWith("image/")) {
+      setHata("Lütfen geçerli bir resim dosyası seçin.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setHata("Logo dosyası 5MB'dan küçük olmalıdır.");
+      return;
+    }
+    setLogoUploading(true);
+    setHata(null);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const url = await uploadFile(
+        file,
+        `businesses/${createdBusinessId}/brand_logo.${ext}`
+      );
+      handleIdentityChange("visual.logo_url", url);
+    } catch (error) {
+      console.error("Logo yükleme hatası:", error);
+      setHata("Logo yüklenirken bir hata oluştu.");
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!identity || !createdBusinessId) return;
+    if (!identity.basics.name?.trim()) {
+      setHata("Marka adı zorunludur.");
       return;
     }
 
     setSaving(true);
     setHata(null);
-
     try {
-      const businessData = buildBusinessData();
-
-      let logoUrl = "";
-      if (form.logoFile) {
-        const tempId = createdBusinessId || `temp_${Date.now()}`;
-        const uploadedUrl = await uploadLogo(form.logoFile, tempId);
-        if (!uploadedUrl) {
-          setHata("Logo yüklenirken bir hata oluştu.");
-          setSaving(false);
-          return;
-        }
-        logoUrl = uploadedUrl;
-      }
-
-      let success: boolean;
-      if (createdBusinessId) {
-        success = await editBusiness(createdBusinessId, {
-          ...businessData,
-          ...(logoUrl ? { logo: logoUrl } : {}),
-        });
-      } else {
-        const newId = await createBusiness({ ...businessData, logo: logoUrl });
-        success = !!newId;
-      }
-
-      if (success) {
-        setStep("done");
-      } else {
-        setHata("İşletme kaydedilirken bir hata oluştu.");
-      }
+      await editBusiness(createdBusinessId, {
+        name: identity.basics.name.trim(),
+        logo: identity.visual.logo_url || "",
+        colors: identity.visual.primary_colors,
+      });
+      await saveBrandIdentity(createdBusinessId, identity);
+      setStep("done");
     } catch (error) {
       console.error("İşletme kaydedilirken hata:", error);
       setHata("İşletme kaydedilirken bir hata oluştu.");
@@ -241,8 +244,7 @@ export default function AddBusinessComponent() {
     }
   };
 
-  const activeStepIndex =
-    step === "intro" ? 0 : step === "analyzing" ? 1 : 2;
+  const activeStepIndex = step === "intro" ? 0 : step === "analyzing" ? 1 : 2;
 
   return (
     <div className="space-y-6">
@@ -251,12 +253,12 @@ export default function AddBusinessComponent() {
         <div>
           <h2 className="text-2xl font-bold">Yeni İşletme Ekle</h2>
           <p className="text-muted-foreground">
-            Web sitesini yapay zekaya analiz ettir, gözden geçir, kaydet.
+            Web sitesini yapay zekaya analiz ettir, marka kimliğini gözden
+            geçir, kaydet. Ajanlar bu kimliği kullanır.
           </p>
         </div>
       </div>
 
-      {/* Adım göstergesi */}
       {step !== "done" && (
         <div className="flex items-center gap-2">
           {STEP_LABELS.map((label, i) => {
@@ -278,7 +280,9 @@ export default function AddBusinessComponent() {
                   ) : (
                     <span
                       className={`flex items-center justify-center w-5 h-5 rounded-full text-xs border ${
-                        active ? "border-primary text-primary" : "border-muted-foreground/40"
+                        active
+                          ? "border-primary text-primary"
+                          : "border-muted-foreground/40"
                       }`}
                     >
                       {i + 1}
@@ -304,8 +308,8 @@ export default function AddBusinessComponent() {
               Web Sitesi Analizi
             </div>
             <p className="text-sm text-muted-foreground">
-              İşletmenin adını ve web sitesini girin; yapay zeka profil
-              bilgilerini otomatik dolduracak.
+              İşletmenin adını ve web sitesini girin; yapay zeka marka kimliğini
+              otomatik dolduracak.
             </p>
 
             <div className="space-y-2">
@@ -336,7 +340,11 @@ export default function AddBusinessComponent() {
                 <Sparkles className="w-4 h-4" />
                 AI ile Analiz Et
               </Button>
-              <Button variant="outline" onClick={handleManual} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={startManual}
+                className="gap-2"
+              >
                 <PencilLine className="w-4 h-4" />
                 Web sitem yok — manuel gir
               </Button>
@@ -350,7 +358,9 @@ export default function AddBusinessComponent() {
         <Card>
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-center gap-2 font-medium">
-              {analyzing && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+              {analyzing && (
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              )}
               {analyzing
                 ? "AI işletmeyi analiz ediyor…"
                 : analysisFailed
@@ -369,7 +379,9 @@ export default function AddBusinessComponent() {
                       <span>{msg.message}</span>
                     </div>
                   ))}
-                  <div ref={(el) => el?.scrollIntoView({ behavior: "smooth" })} />
+                  <div
+                    ref={(el) => el?.scrollIntoView({ behavior: "smooth" })}
+                  />
                 </CardContent>
               </Card>
             )}
@@ -399,207 +411,40 @@ export default function AddBusinessComponent() {
         </Card>
       )}
 
-      {/* ADIM 3: İnceleme */}
-      {step === "review" && (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">
-              {REVIEW_PAGE_TITLES[reviewPage]}
-            </p>
-            <span className="text-xs text-muted-foreground">
-              Bölüm {reviewPage + 1}/{TOTAL_REVIEW_PAGES}
-            </span>
-          </div>
+      {/* ADIM 3: Marka Kimliği İncelemesi */}
+      {step === "review" && identity && (
+        <div className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Aşağıdaki alanlar otomatik dolduruldu. Seçim listeleri ve örneklerle
+            rahatça düzenleyip kaydedin.
+          </p>
 
-          {reviewPage === 0 && (
-            <>
-              <BasicInfoSection
-                name={form.name}
-                logoPreview={form.logoPreview}
-                colors={form.colors}
-                newColor={form.newColor}
-                website={form.website}
-                lateProfileId={form.lateProfileId}
-                disabled={saving}
-                onNameChange={(v) => setField("name", v)}
-                onLogoSelect={handleLogoSelect}
-                onColorAdd={addColor}
-                onColorRemove={removeColor}
-                onNewColorChange={(v) => setField("newColor", v)}
-                onWebsiteChange={(v) => setField("website", v)}
-                onLateProfileIdChange={(v) => setField("lateProfileId", v)}
-                logoFileName={form.logoFile?.name}
-                showLogoRequiredMark={!createdBusinessId}
-              />
-
-              {createdBusinessId && form.lateProfileId && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Hesap Senkronizasyonu</p>
-                        <p className="text-sm text-muted-foreground">
-                          Late Profile ID kullanarak diğer platform hesaplarını
-                          senkronize edin
-                        </p>
-                      </div>
-                      <SyncAccountsButton
-                        businessId={createdBusinessId}
-                        lateProfileId={form.lateProfileId}
-                        disabled={saving}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              <IdentitySection
-                slogan={form.slogan}
-                industry={form.industry}
-                subCategory={form.subCategory}
-                marketPosition={form.marketPosition}
-                locationCity={form.locationCity}
-                disabled={saving}
-                onSloganChange={(v) => setField("slogan", v)}
-                onIndustryChange={(v) => setField("industry", v)}
-                onSubCategoryChange={(v) => setField("subCategory", v)}
-                onMarketPositionChange={(v) => setField("marketPosition", v)}
-                onLocationCityChange={(v) => setField("locationCity", v)}
-              />
-            </>
-          )}
-
-          {reviewPage === 1 && (
-            <>
-              <BrandVoiceSection
-                tone={form.tone}
-                language={form.language}
-                formality={form.formality}
-                emojiUsage={form.emojiUsage}
-                captionStyle={form.captionStyle}
-                disabled={saving}
-                onToneChange={(v) => setField("tone", v)}
-                onLanguageChange={(v) => setField("language", v)}
-                onFormalityChange={(v) => setField("formality", v)}
-                onEmojiUsageChange={(v) => setField("emojiUsage", v)}
-                onCaptionStyleChange={(v) => setField("captionStyle", v)}
-              />
-
-              <VisualSection
-                aesthetic={form.aesthetic}
-                photographyStyle={form.photographyStyle}
-                colorMood={form.colorMood}
-                visualMood={form.visualMood}
-                font={form.font}
-                customFont={form.customFont}
-                disabled={saving}
-                onAestheticChange={(v) => setField("aesthetic", v)}
-                onPhotographyStyleChange={(v) => setField("photographyStyle", v)}
-                onColorMoodChange={(v) => setField("colorMood", v)}
-                onVisualMoodChange={(v) => setField("visualMood", v)}
-                onFontChange={(v) => setField("font", v)}
-                onCustomFontChange={(v) => setField("customFont", v)}
-              />
-
-              <TargetAudienceSection
-                targetAgeRange={form.targetAgeRange}
-                targetGender={form.targetGender}
-                targetDescription={form.targetDescription}
-                targetInterests={form.targetInterests}
-                disabled={saving}
-                onTargetAgeRangeChange={(v) => setField("targetAgeRange", v)}
-                onTargetGenderChange={(v) => setField("targetGender", v)}
-                onTargetDescriptionChange={(v) => setField("targetDescription", v)}
-                onTargetInterestsChange={(v) => setField("targetInterests", v)}
-              />
-            </>
-          )}
-
-          {reviewPage === 2 && (
-            <>
-              <BrandValuesSection
-                brandValues={form.brandValues}
-                uniquePoints={form.uniquePoints}
-                brandStoryShort={form.brandStoryShort}
-                disabled={saving}
-                onBrandValuesChange={(v) => setField("brandValues", v)}
-                onUniquePointsChange={(v) => setField("uniquePoints", v)}
-                onBrandStoryShortChange={(v) => setField("brandStoryShort", v)}
-              />
-
-              <SocialMediaSection
-                hashtagsBrand={form.hashtagsBrand}
-                hashtagsIndustry={form.hashtagsIndustry}
-                hashtagsLocation={form.hashtagsLocation}
-                contentPillars={form.contentPillars}
-                disabled={saving}
-                onHashtagsBrandChange={(v) => setField("hashtagsBrand", v)}
-                onHashtagsIndustryChange={(v) => setField("hashtagsIndustry", v)}
-                onHashtagsLocationChange={(v) => setField("hashtagsLocation", v)}
-                onContentPillarsChange={(v) => setField("contentPillars", v)}
-              />
-
-              <RulesSection
-                avoidTopics={form.avoidTopics}
-                seasonalContent={form.seasonalContent}
-                promoFrequency={form.promoFrequency}
-                disabled={saving}
-                onAvoidTopicsChange={(v) => setField("avoidTopics", v)}
-                onSeasonalContentChange={(v) => setField("seasonalContent", v)}
-                onPromoFrequencyChange={(v) => setField("promoFrequency", v)}
-              />
-
-              <ExtraFieldsSection
-                extraFields={form.extraFields}
-                disabled={saving}
-                onAddField={addExtraField}
-                onRemoveField={removeExtraField}
-                onUpdateField={updateExtraField}
-              />
-            </>
-          )}
+          <BrandIdentityFields
+            identity={identity}
+            onChange={handleIdentityChange}
+            onLogoSelect={handleLogo}
+            logoUploading={logoUploading}
+            disabled={saving}
+          />
 
           {hata && <p className="text-sm text-destructive">{hata}</p>}
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 sticky bottom-4">
             <Button
-              type="button"
-              variant="outline"
-              disabled={saving || reviewPage === 0}
-              onClick={() => setReviewPage((p) => Math.max(0, p - 1))}
+              onClick={handleSave}
+              disabled={saving}
+              size="lg"
               className="gap-2"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Geri
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              İşletmeyi Kaydet
             </Button>
-
-            {reviewPage < TOTAL_REVIEW_PAGES - 1 ? (
-              <Button
-                type="button"
-                disabled={saving}
-                onClick={() => setReviewPage((p) => p + 1)}
-                className="gap-2"
-              >
-                Devam
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            ) : (
-              <Button type="submit" disabled={saving} className="gap-2">
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Kaydediliyor...
-                  </>
-                ) : (
-                  <>
-                    <Building2 className="w-4 h-4" />
-                    İşletmeyi Kaydet
-                  </>
-                )}
-              </Button>
-            )}
           </div>
-        </form>
+        </div>
       )}
 
       {/* ADIM 4: Bitti */}
@@ -610,7 +455,7 @@ export default function AddBusinessComponent() {
             <div>
               <h3 className="text-xl font-semibold">İşletme kaydedildi!</h3>
               <p className="text-muted-foreground">
-                İşletme başarıyla eklendi. Yeni bir işletme ekleyebilirsiniz.
+                Marka kimliği kaydedildi. Ajanlar artık bu kimliği kullanacak.
               </p>
             </div>
             <Button onClick={resetWizard} className="gap-2">
