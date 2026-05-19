@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-  Trash2,
+  Database,
   Loader2,
   Palette,
   Building2,
@@ -73,7 +73,7 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
   const handleDelete = async () => {
     if (
       !confirm(
-        `"${currentBusiness.name}" işletmesini silmek istediğinize emin misiniz?`
+        `"${currentBusiness.name}" Veri Hazinesi'ne taşınacak. Hiçbir veri silinmez; istediğin zaman geri yükleyebilirsin. Devam edilsin mi?`
       )
     )
       return;
@@ -82,8 +82,8 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
       await removeBusiness(currentBusiness.id);
       onDeleted(currentBusiness.id);
     } catch (error) {
-      console.error("İşletme silinirken hata:", error);
-      alert("İşletme silinirken bir hata oluştu.");
+      console.error("İşletme veri hazinesine taşınırken hata:", error);
+      alert("İşletme veri hazinesine taşınırken bir hata oluştu.");
     } finally {
       setDeleting(false);
     }
@@ -225,7 +225,7 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
               Düzenle
             </Button>
             <Button
-              variant="destructive"
+              variant="outline"
               onClick={handleDelete}
               disabled={deleting}
             >
@@ -233,8 +233,8 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Sil
+                  <Database className="w-4 h-4 mr-2" />
+                  Veri Hazinesi'ne taşı
                 </>
               )}
             </Button>

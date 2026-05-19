@@ -116,8 +116,28 @@ export async function updateBusiness(id: string, business: Partial<Business>) {
   return updateDocument('businesses', id, business);
 }
 
-export async function deleteBusiness(id: string) {
-  return deleteDocument('businesses', id);
+// Yumuşak silme: işletme ASLA veritabanından silinmez. Sadece durumu
+// 'deleted' olur ve "Veri Hazinesi"ne taşınır. Tüm alt veriler
+// (brand_identity, raporlar, görseller, istatistikler) olduğu gibi korunur.
+export async function softDeleteBusiness(id: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', id);
+  await updateDoc(docRef, {
+    status: 'deleted',
+    deletedAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// Veri Hazinesi'nden geri yükleme: işletmeyi tekrar aktif (onaylı) yapar.
+export async function restoreBusiness(id: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', id);
+  await updateDoc(docRef, {
+    status: 'approved',
+    deletedAt: null,
+    updatedAt: Timestamp.now(),
+  });
 }
 
 // Business media operations (subcollection)

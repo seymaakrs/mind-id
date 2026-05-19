@@ -27,11 +27,13 @@ import {
   Trash2,
   Search,
   Sparkles,
+  Database,
+  RotateCcw,
 } from "lucide-react";
 import { useBusinesses } from "@/hooks";
 import type { Business } from "@/types/firebase";
 
-type TabFilter = "approved" | "archived";
+type TabFilter = "approved" | "archived" | "deleted";
 
 interface BusinessListComponentProps {
   onBusinessSelect?: (business: Business) => void;
@@ -45,6 +47,7 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
     loadBusinesses,
     editBusiness,
     removeBusiness,
+    restoreBusiness,
   } = useBusinesses();
 
   const [activeTab, setActiveTab] = useState<TabFilter>("approved");
@@ -53,9 +56,10 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
   const [searchQuery, setSearchQuery] = useState("");
 
   const approvedBusinesses = businesses.filter(
-    (b) => !b.status || b.status === "approved"
+    (b) => !b.status || b.status === "approved" || b.status === "pending"
   );
   const archivedBusinesses = businesses.filter((b) => b.status === "archived");
+  const deletedBusinesses = businesses.filter((b) => b.status === "deleted");
 
   const filterBySearch = (list: Business[]) => {
     const q = searchQuery.trim().toLowerCase();
@@ -65,6 +69,7 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
 
   const visibleApproved = filterBySearch(approvedBusinesses);
   const visibleArchived = filterBySearch(archivedBusinesses);
+  const visibleDeleted = filterBySearch(deletedBusinesses);
 
   const handleBusinessClick = (business: Business) => {
     if (onBusinessSelect) {
@@ -103,6 +108,16 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
     }
   };
 
+  const handleRestore = async (e: React.MouseEvent, business: Business) => {
+    e.stopPropagation();
+    setActionLoading(business.id);
+    try {
+      await restoreBusiness(business.id);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleRefresh = () => {
     loadBusinesses();
   };
@@ -127,6 +142,7 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
               <p className="text-sm text-muted-foreground">
                 {approvedBusinesses.length} aktif
                 {archivedBusinesses.length > 0 && ` · ${archivedBusinesses.length} arşiv`}
+                {deletedBusinesses.length > 0 && ` · ${deletedBusinesses.length} veri hazinesi`}
               </p>
             </div>
           </div>
@@ -154,6 +170,7 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
         {([
           { key: "approved", label: "Onaylanmış", count: approvedBusinesses.length, icon: CheckCircle2 },
           { key: "archived", label: "Arşiv", count: archivedBusinesses.length, icon: Archive },
+          { key: "deleted", label: "Veri Hazinesi", count: deletedBusinesses.length, icon: Database },
         ] as const).map(({ key, label, count, icon: Icon }) => {
           const active = activeTab === key;
           return (
@@ -204,7 +221,7 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
             ))}
           </div>
         )
-      ) : (
+      ) : activeTab === "archived" ? (
         visibleArchived.length === 0 ? (
           <EmptyState text={searchQuery ? "Eşleşen arşivli işletme yok." : "Arşivde işletme bulunmuyor."} />
         ) : (
@@ -225,26 +242,49 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
             ))}
           </div>
         )
+      ) : (
+        visibleDeleted.length === 0 ? (
+          <EmptyState text={searchQuery ? "Eşleşen kayıt yok." : "Veri Hazinesi boş. Sildiğin işletmelerin verisi burada güvenle saklanır."} />
+        ) : (
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-lg px-3 py-2">
+              Buradaki işletmeler silinmedi; tüm verileri (marka kimliği, raporlar, görseller) sunucuda korunuyor. İstediğin zaman geri yükleyebilirsin.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {visibleDeleted.map((business) => (
+                <BusinessCard
+                  key={business.id}
+                  business={business}
+                  deleted
+                  actionLoading={actionLoading === business.id}
+                  onClick={() => handleBusinessClick(business)}
+                  onRestore={(e) => handleRestore(e, business)}
+                />
+              ))}
+            </div>
+          </div>
+        )
       )}
       {/* Confirm delete dialog */}
       <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Trash2 className="w-5 h-5 text-destructive" />
-              İşletmeyi sil
+              <Database className="w-5 h-5 text-primary" />
+              Veri Hazinesi'ne taşı
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{confirmDelete?.name}</span> kalıcı olarak silinecek.
-            Bu işlem geri alınamaz.
+            <span className="font-semibold text-foreground">{confirmDelete?.name}</span> listeden kaldırılıp
+            <span className="font-medium text-foreground"> Veri Hazinesi</span>'ne taşınacak. Hiçbir veri silinmez —
+            marka kimliği, raporlar ve görseller sunucuda korunur. İstediğin zaman geri yükleyebilirsin.
           </p>
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="outline" onClick={() => setConfirmDelete(null)} disabled={!!actionLoading}>
               Vazgeç
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={!!actionLoading}>
-              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4 mr-1" />Sil</>}
+            <Button onClick={handleDelete} disabled={!!actionLoading}>
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Database className="w-4 h-4 mr-1" />Veri Hazinesi'ne taşı</>}
             </Button>
           </div>
         </DialogContent>
@@ -267,24 +307,28 @@ function EmptyState({ text }: { text: string }) {
 function BusinessCard({
   business,
   archived,
+  deleted,
   actionLoading,
   onClick,
   onArchive,
   onUnarchive,
+  onRestore,
   onDelete,
 }: {
   business: Business;
   archived?: boolean;
+  deleted?: boolean;
   actionLoading: boolean;
   onClick: () => void;
   onArchive?: (e: React.MouseEvent) => void;
   onUnarchive?: (e: React.MouseEvent) => void;
-  onDelete: (e: React.MouseEvent) => void;
+  onRestore?: (e: React.MouseEvent) => void;
+  onDelete?: (e: React.MouseEvent) => void;
 }) {
   return (
     <Card
       className={`group relative cursor-pointer overflow-hidden border-border/60 bg-gradient-to-b from-card to-card/40 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-200 ${
-        archived ? "opacity-70" : ""
+        archived || deleted ? "opacity-70" : ""
       }`}
       onClick={onClick}
     >
@@ -302,25 +346,34 @@ function BusinessCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
-            {archived ? (
-              <DropdownMenuItem onClick={onUnarchive}>
-                <ArchiveRestore className="w-4 h-4 mr-2" />
-                Arşivden çıkar
+            {deleted ? (
+              <DropdownMenuItem onClick={onRestore}>
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Geri yükle
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onClick={onArchive}>
-                <Archive className="w-4 h-4 mr-2" />
-                Arşive at
-              </DropdownMenuItem>
+              <>
+                {archived ? (
+                  <DropdownMenuItem onClick={onUnarchive}>
+                    <ArchiveRestore className="w-4 h-4 mr-2" />
+                    Arşivden çıkar
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={onArchive}>
+                    <Archive className="w-4 h-4 mr-2" />
+                    Arşive at
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Sil
+                </DropdownMenuItem>
+              </>
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={onDelete}
-              className="text-destructive focus:text-destructive focus:bg-destructive/10"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Sil
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -341,7 +394,12 @@ function BusinessCard({
           <h3 className="font-semibold truncate text-center" title={business.name}>
             {business.name}
           </h3>
-          {archived && (
+          {deleted && (
+            <p className="text-[10px] text-center uppercase tracking-wider text-primary/70">
+              Veri Hazinesi
+            </p>
+          )}
+          {archived && !deleted && (
             <p className="text-[10px] text-center uppercase tracking-wider text-muted-foreground">
               Arşivlendi
             </p>
