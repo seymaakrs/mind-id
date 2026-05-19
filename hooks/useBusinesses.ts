@@ -4,8 +4,10 @@ import {
   getBusiness,
   addBusiness,
   updateBusiness,
-  deleteBusiness,
+  softDeleteBusiness,
+  restoreBusiness as restoreBusinessDoc,
 } from "@/lib/firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 import { uploadBusinessLogo } from "@/lib/firebase/storage";
 import type { Business, BusinessProfile } from "@/types/firebase";
 
@@ -18,7 +20,8 @@ type BusinessInput = {
 };
 
 type UseBusinessesReturn = {
-  businesses: Business[];
+  businesses: Business[]; // Veri Hazinesi'ndekiler (silinmiş) HARİÇ - normal kullanım
+  allBusinesses: Business[]; // ham liste, silinmişler dahil (sadece İşletme Listesi sekmeleri için)
   loading: boolean;
   error: string | null;
   selectedBusiness: Business | null;
@@ -27,6 +30,7 @@ type UseBusinessesReturn = {
   createBusiness: (data: BusinessInput) => Promise<string | null>;
   editBusiness: (id: string, data: Partial<Business>) => Promise<boolean>;
   removeBusiness: (id: string) => Promise<boolean>;
+  restoreBusiness: (id: string) => Promise<boolean>;
   selectBusiness: (business: Business | null) => void;
   uploadLogo: (file: File, businessId: string) => Promise<string | null>;
 };
@@ -89,22 +93,50 @@ export function useBusinesses(): UseBusinessesReturn {
     [loadBusinesses]
   );
 
+  // "Sil" = yumuşak silme. İşletme silinmez, Veri Hazinesi'ne taşınır.
   const removeBusiness = useCallback(
     async (id: string): Promise<boolean> => {
       try {
-        await deleteBusiness(id);
-        setBusinesses((prev) => prev.filter((b) => b.id !== id));
+        await softDeleteBusiness(id);
+        setBusinesses((prev) =>
+          prev.map((b) =>
+            b.id === id
+              ? { ...b, status: "deleted", deletedAt: Timestamp.now() }
+              : b
+          )
+        );
         if (selectedBusiness?.id === id) {
           setSelectedBusiness(null);
         }
         return true;
       } catch (err) {
-        console.error("İşletme silinirken hata:", err);
-        setError("İşletme silinirken bir hata oluştu.");
+        console.error("İşletme veri hazinesine taşınırken hata:", err);
+        setError("İşletme veri hazinesine taşınırken bir hata oluştu.");
         return false;
       }
     },
     [selectedBusiness]
+  );
+
+  const restoreBusiness = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        await restoreBusinessDoc(id);
+        setBusinesses((prev) =>
+          prev.map((b) =>
+            b.id === id
+              ? { ...b, status: "approved", deletedAt: undefined }
+              : b
+          )
+        );
+        return true;
+      } catch (err) {
+        console.error("İşletme geri yüklenirken hata:", err);
+        setError("İşletme geri yüklenirken bir hata oluştu.");
+        return false;
+      }
+    },
+    []
   );
 
   const selectBusiness = useCallback((business: Business | null) => {
@@ -130,7 +162,8 @@ export function useBusinesses(): UseBusinessesReturn {
   }, [loadBusinesses]);
 
   return {
-    businesses,
+    businesses: businesses.filter((b) => b.status !== "deleted"),
+    allBusinesses: businesses,
     loading,
     error,
     selectedBusiness,
@@ -139,6 +172,7 @@ export function useBusinesses(): UseBusinessesReturn {
     createBusiness,
     editBusiness,
     removeBusiness,
+    restoreBusiness,
     selectBusiness,
     uploadLogo,
   };

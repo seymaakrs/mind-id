@@ -104,15 +104,44 @@ export async function verifyApiAuth(request: Request): Promise<AuthResult> {
       },
     };
   } catch (error) {
-    console.error("Token verification error:", error);
-
-    // Handle specific Firebase auth errors
     const errorCode = (error as { code?: string }).code;
+    const errorMessage = (error as { message?: string }).message || "";
+
+    // Detailed server log for root-cause diagnosis (does not leak to client)
+    console.error("Token verification failed", {
+      code: errorCode,
+      message: errorMessage,
+      serverProjectId: process.env.FIREBASE_PROJECT_ID,
+      clientProjectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    });
+
     if (errorCode === "auth/id-token-expired") {
       return {
         success: false,
         response: NextResponse.json(
           { error: "Oturum süresi dolmuş. Lütfen tekrar giriş yapın." },
+          { status: 401 }
+        ),
+      };
+    }
+
+    // Audience/issuer mismatch = client and server point to different
+    // Firebase projects (the most common real cause of this failure)
+    const looksLikeProjectMismatch =
+      /aud|audience|iss|issuer|incorrect/i.test(errorMessage);
+    const serverPid = process.env.FIREBASE_PROJECT_ID;
+    const clientPid = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (
+      looksLikeProjectMismatch ||
+      (serverPid && clientPid && serverPid !== clientPid)
+    ) {
+      return {
+        success: false,
+        response: NextResponse.json(
+          {
+            error:
+              "Kimlik doğrulanamadı: sunucu ve tarayıcı farklı Firebase projesine bakıyor. Ortam değişkenlerinde FIREBASE_PROJECT_ID ile NEXT_PUBLIC_FIREBASE_PROJECT_ID aynı projeyi göstermeli.",
+          },
           { status: 401 }
         ),
       };

@@ -3,6 +3,7 @@ import {
   doc,
   getDocs,
   getDoc,
+  setDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -15,6 +16,30 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './config';
+import type { BrandIdentity } from '@/lib/brandIdentity';
+
+// Brand Identity operations (subcollection: businesses/{id}/brand_identity/v1)
+export async function getBrandIdentity(
+  businessId: string
+): Promise<BrandIdentity | null> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'brand_identity', 'v1');
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? (docSnap.data() as BrandIdentity) : null;
+}
+
+export async function saveBrandIdentity(
+  businessId: string,
+  data: BrandIdentity
+): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', businessId, 'brand_identity', 'v1');
+  await setDoc(
+    docRef,
+    { ...data, business_id: businessId, updated_at: new Date().toISOString() },
+    { merge: true }
+  );
+}
 
 // Generic CRUD operations
 export async function getCollection<T>(collectionName: string): Promise<T[]> {
@@ -91,8 +116,28 @@ export async function updateBusiness(id: string, business: Partial<Business>) {
   return updateDocument('businesses', id, business);
 }
 
-export async function deleteBusiness(id: string) {
-  return deleteDocument('businesses', id);
+// Yumuşak silme: işletme ASLA veritabanından silinmez. Sadece durumu
+// 'deleted' olur ve "Veri Hazinesi"ne taşınır. Tüm alt veriler
+// (brand_identity, raporlar, görseller, istatistikler) olduğu gibi korunur.
+export async function softDeleteBusiness(id: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', id);
+  await updateDoc(docRef, {
+    status: 'deleted',
+    deletedAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// Veri Hazinesi'nden geri yükleme: işletmeyi tekrar aktif (onaylı) yapar.
+export async function restoreBusiness(id: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not configured');
+  const docRef = doc(db, 'businesses', id);
+  await updateDoc(docRef, {
+    status: 'approved',
+    deletedAt: null,
+    updatedAt: Timestamp.now(),
+  });
 }
 
 // Business media operations (subcollection)

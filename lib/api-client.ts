@@ -4,14 +4,16 @@ import { auth } from "@/lib/firebase/config";
  * Get the current user's Firebase ID token
  * Returns null if not authenticated
  */
-export async function getAuthToken(): Promise<string | null> {
+export async function getAuthToken(
+  forceRefresh = false
+): Promise<string | null> {
   const user = auth?.currentUser;
   if (!user) {
     return null;
   }
 
   try {
-    return await user.getIdToken();
+    return await user.getIdToken(forceRefresh);
   } catch (error) {
     console.error("Error getting auth token:", error);
     return null;
