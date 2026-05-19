@@ -20,7 +20,8 @@ type BusinessInput = {
 };
 
 type UseBusinessesReturn = {
-  businesses: Business[];
+  businesses: Business[]; // Veri Hazinesi'ndekiler (silinmiş) HARİÇ - normal kullanım
+  allBusinesses: Business[]; // ham liste, silinmişler dahil (sadece İşletme Listesi sekmeleri için)
   loading: boolean;
   error: string | null;
   selectedBusiness: Business | null;
@@ -161,7 +162,8 @@ export function useBusinesses(): UseBusinessesReturn {
   }, [loadBusinesses]);
 
   return {
-    businesses,
+    businesses: businesses.filter((b) => b.status !== "deleted"),
+    allBusinesses: businesses,
     loading,
     error,
     selectedBusiness,

@@ -41,7 +41,7 @@ interface BusinessListComponentProps {
 
 export default function BusinessListComponent({ onBusinessSelect }: BusinessListComponentProps) {
   const {
-    businesses,
+    allBusinesses: businesses,
     loading,
     error,
     loadBusinesses,
@@ -56,7 +56,7 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
   const [searchQuery, setSearchQuery] = useState("");
 
   const approvedBusinesses = businesses.filter(
-    (b) => !b.status || b.status === "approved" || b.status === "pending"
+    (b) => !b.status || b.status === "approved"
   );
   const archivedBusinesses = businesses.filter((b) => b.status === "archived");
   const deletedBusinesses = businesses.filter((b) => b.status === "deleted");
