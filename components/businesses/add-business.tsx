@@ -1,21 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Loader2, Globe, Sparkles } from "lucide-react";
+import {
+  Building2,
+  Loader2,
+  Globe,
+  Sparkles,
+  CheckCircle2,
+  ArrowLeft,
+  ArrowRight,
+  PencilLine,
+  RotateCcw,
+} from "lucide-react";
 import { useBusinesses, useBusinessForm, useAgentTask } from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
+import { DEFAULT_COLOR } from "@/lib/constants";
 import {
   BasicInfoSection,
   IdentitySection,
@@ -29,19 +32,30 @@ import {
 } from "@/components/business/form";
 import { SyncAccountsButton } from "@/components/shared";
 
-type Status = "bosta" | "kaydediliyor" | "basarili" | "hata";
-export default function AddBusinessComponent() {
-  const [status, setStatus] = useState<Status>("bosta");
-  const [hata, setHata] = useState<string | null>(null);
+type WizardStep = "intro" | "analyzing" | "review" | "done";
+type EntryMode = "ai" | "manual";
 
-  // Analiz dialog state
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [tempName, setTempName] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
+const STEP_LABELS = ["İşletme Bilgisi", "AI Analizi", "İnceleme"];
+const REVIEW_PAGE_TITLES = [
+  "Temel Bilgiler & Kimlik",
+  "Marka Sesi & Görsel",
+  "Değerler, Sosyal & Kurallar",
+];
+const TOTAL_REVIEW_PAGES = 3;
+
+export default function AddBusinessComponent() {
+  const [step, setStep] = useState<WizardStep>("intro");
+  const [mode, setMode] = useState<EntryMode | null>(null);
+  const [reviewPage, setReviewPage] = useState(0);
   const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(null);
 
+  const [tempName, setTempName] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [hata, setHata] = useState<string | null>(null);
+
   const { user } = useAuth();
-  const { createBusiness, uploadLogo } = useBusinesses();
+  const { createBusiness, editBusiness, uploadLogo, loadBusiness } = useBusinesses();
   const {
     form,
     setField,
@@ -52,17 +66,48 @@ export default function AddBusinessComponent() {
     removeExtraField,
     updateExtraField,
     resetForm,
+    loadFromBusiness,
     buildBusinessData,
     validate,
   } = useBusinessForm();
 
   const {
-    loading: analyzing,
     error: analysisError,
     progressMessages,
     sendTask,
     reset: resetAgent,
+    currentTask,
   } = useAgentTask();
+
+  // AI analiz tamamlanınca profili çekip incelemeye geç
+  useEffect(() => {
+    if (step !== "analyzing" || !createdBusinessId) return;
+    if (currentTask?.status === "completed") {
+      (async () => {
+        const business = await loadBusiness(createdBusinessId);
+        if (business) loadFromBusiness(business);
+        setReviewPage(0);
+        setStep("review");
+      })();
+    }
+  }, [currentTask?.status, step, createdBusinessId, loadBusiness, loadFromBusiness]);
+
+  const analyzing =
+    currentTask?.status === "pending" || currentTask?.status === "running";
+  const analysisFailed = step === "analyzing" && currentTask?.status === "failed";
+
+  const resetWizard = () => {
+    resetForm();
+    resetAgent();
+    setStep("intro");
+    setMode(null);
+    setReviewPage(0);
+    setCreatedBusinessId(null);
+    setTempName("");
+    setWebsiteUrl("");
+    setHata(null);
+    setSaving(false);
+  };
 
   const handleLogoSelect = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -77,13 +122,6 @@ export default function AddBusinessComponent() {
     setHata(null);
   };
 
-  const handleOpenAnalyzeDialog = () => {
-    setTempName("");
-    setWebsiteUrl("");
-    resetAgent();
-    setDialogOpen(true);
-  };
-
   const handleAnalyze = async () => {
     if (!tempName.trim()) {
       setHata("İşletme adı zorunludur.");
@@ -93,20 +131,16 @@ export default function AddBusinessComponent() {
       setHata("Web sitesi URL'si zorunludur.");
       return;
     }
-
     setHata(null);
 
     try {
-      // 1. Minimal işletme oluştur
-      const minimalBusiness = {
+      const businessId = await createBusiness({
         name: tempName.trim(),
-        logo: "", // Kullanıcı sonra ekleyecek
-        colors: ["#000000"], // Varsayılan renk
+        logo: "",
+        colors: [DEFAULT_COLOR],
         late_profile_id: "",
         profile: {},
-      };
-
-      const businessId = await createBusiness(minimalBusiness);
+      });
       if (!businessId) {
         setHata("İşletme oluşturulamadı.");
         return;
@@ -114,28 +148,40 @@ export default function AddBusinessComponent() {
 
       setCreatedBusinessId(businessId);
       setField("name", tempName.trim());
-      setField("colors", ["#000000"]);
+      setField("colors", [DEFAULT_COLOR]);
+      setMode("ai");
+      setStep("analyzing");
 
-      // 2. Agent'a analiz task'ı gönder (backend profili doğrudan güncelleyecek)
-      const taskPrompt = `Bu işletmenin web sitesini analiz et ve profil bilgilerini güncelle: ${websiteUrl}`;
-
-      const result = await sendTask({
-        task: taskPrompt,
+      await sendTask({
+        task: `Bu işletmenin web sitesini analiz et ve profil bilgilerini güncelle: ${websiteUrl}`,
         businessId,
         createdBy: user?.displayName || user?.email || undefined,
         extras: { website_url: websiteUrl },
       });
-
-      if (result) {
-        // Agent başarılı oldu, dialog'u kapat
-        setDialogOpen(false);
-        // Kullanıcıya bilgi ver - işletme listesine yönlendirilebilir
-        setStatus("basarili");
-      }
     } catch (error) {
       console.error("Analiz hatası:", error);
       setHata("Analiz sırasında bir hata oluştu.");
+      setStep("intro");
     }
+  };
+
+  const handleManual = () => {
+    setMode("manual");
+    if (tempName.trim()) setField("name", tempName.trim());
+    if (websiteUrl.trim()) setField("website", websiteUrl.trim());
+    setField("colors", [DEFAULT_COLOR]);
+    setReviewPage(0);
+    setHata(null);
+    setStep("review");
+  };
+
+  const continueManuallyAfterFailure = () => {
+    setMode("manual");
+    setField("name", tempName.trim());
+    setField("colors", [DEFAULT_COLOR]);
+    setReviewPage(0);
+    setHata(null);
+    setStep("review");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,23 +193,17 @@ export default function AddBusinessComponent() {
       return;
     }
 
-    // Eğer analiz ile oluşturulduysa logo zorunlu değil
+    // Logo, yalnızca henüz işletme oluşturulmamış manuel girişte zorunlu
     if (!form.logoFile && !createdBusinessId) {
       setHata("Logo yüklemek zorunludur.");
       return;
     }
 
-    setStatus("kaydediliyor");
+    setSaving(true);
     setHata(null);
 
     try {
       const businessData = buildBusinessData();
-
-      // Eğer analiz ile zaten oluşturulduysa, güncelle
-      if (createdBusinessId) {
-        // TODO: editBusiness fonksiyonu eklenebilir
-        // Şimdilik yeni işletme olarak devam
-      }
 
       let logoUrl = "";
       if (form.logoFile) {
@@ -171,67 +211,103 @@ export default function AddBusinessComponent() {
         const uploadedUrl = await uploadLogo(form.logoFile, tempId);
         if (!uploadedUrl) {
           setHata("Logo yüklenirken bir hata oluştu.");
-          setStatus("hata");
+          setSaving(false);
           return;
         }
         logoUrl = uploadedUrl;
       }
 
-      const businessId = await createBusiness({ ...businessData, logo: logoUrl });
-
-      if (businessId) {
-        setStatus("basarili");
-        resetForm();
-        setCreatedBusinessId(null);
+      let success: boolean;
+      if (createdBusinessId) {
+        success = await editBusiness(createdBusinessId, {
+          ...businessData,
+          ...(logoUrl ? { logo: logoUrl } : {}),
+        });
       } else {
-        setStatus("hata");
+        const newId = await createBusiness({ ...businessData, logo: logoUrl });
+        success = !!newId;
+      }
+
+      if (success) {
+        setStep("done");
+      } else {
         setHata("İşletme kaydedilirken bir hata oluştu.");
       }
     } catch (error) {
       console.error("İşletme kaydedilirken hata:", error);
       setHata("İşletme kaydedilirken bir hata oluştu.");
-      setStatus("hata");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const isDisabled = status === "kaydediliyor" || analyzing;
+  const activeStepIndex =
+    step === "intro" ? 0 : step === "analyzing" ? 1 : 2;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Building2 className="w-8 h-8" />
-          <div>
-            <h2 className="text-2xl font-bold">Yeni İşletme Ekle</h2>
-            <p className="text-muted-foreground">İşletme bilgilerini girin</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <Building2 className="w-8 h-8" />
+        <div>
+          <h2 className="text-2xl font-bold">Yeni İşletme Ekle</h2>
+          <p className="text-muted-foreground">
+            Web sitesini yapay zekaya analiz ettir, gözden geçir, kaydet.
+          </p>
         </div>
-
-        <Button
-          variant="outline"
-          onClick={handleOpenAnalyzeDialog}
-          disabled={isDisabled}
-          className="gap-2"
-        >
-          <Sparkles className="w-4 h-4" />
-          İşletmeyi Analiz Et
-        </Button>
       </div>
 
-      {/* Analiz Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Globe className="w-5 h-5" />
-              Web Sitesi Analizi
-            </DialogTitle>
-            <DialogDescription>
-              İşletmenin web sitesini girin, AI otomatik olarak profil bilgilerini dolduracak.
-            </DialogDescription>
-          </DialogHeader>
+      {/* Adım göstergesi */}
+      {step !== "done" && (
+        <div className="flex items-center gap-2">
+          {STEP_LABELS.map((label, i) => {
+            const done = i < activeStepIndex;
+            const active = i === activeStepIndex;
+            return (
+              <div key={label} className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-1.5 text-sm ${
+                    active
+                      ? "text-primary font-semibold"
+                      : done
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {done ? (
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                  ) : (
+                    <span
+                      className={`flex items-center justify-center w-5 h-5 rounded-full text-xs border ${
+                        active ? "border-primary text-primary" : "border-muted-foreground/40"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                  )}
+                  {label}
+                </div>
+                {i < STEP_LABELS.length - 1 && (
+                  <span className="w-8 h-px bg-border" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-          <div className="space-y-4 py-4">
+      {/* ADIM 1: Giriş */}
+      {step === "intro" && (
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Globe className="w-4 h-4" />
+              Web Sitesi Analizi
+            </div>
+            <p className="text-sm text-muted-foreground">
+              İşletmenin adını ve web sitesini girin; yapay zeka profil
+              bilgilerini otomatik dolduracak.
+            </p>
+
             <div className="space-y-2">
               <Label htmlFor="tempName">İşletme Adı *</Label>
               <Input
@@ -239,7 +315,6 @@ export default function AddBusinessComponent() {
                 value={tempName}
                 onChange={(e) => setTempName(e.target.value)}
                 placeholder="Örn: Acme Teknoloji"
-                disabled={analyzing}
               />
             </div>
 
@@ -251,17 +326,46 @@ export default function AddBusinessComponent() {
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
                 placeholder="https://example.com"
-                disabled={analyzing}
               />
             </div>
 
-            {analyzing && (
+            {hata && <p className="text-sm text-destructive">{hata}</p>}
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button onClick={handleAnalyze} className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                AI ile Analiz Et
+              </Button>
+              <Button variant="outline" onClick={handleManual} className="gap-2">
+                <PencilLine className="w-4 h-4" />
+                Web sitem yok — manuel gir
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ADIM 2: Analiz */}
+      {step === "analyzing" && (
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center gap-2 font-medium">
+              {analyzing && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+              {analyzing
+                ? "AI işletmeyi analiz ediyor…"
+                : analysisFailed
+                  ? "Analiz tamamlanamadı"
+                  : "Analiz başlatılıyor…"}
+            </div>
+
+            {(progressMessages.length > 0 || analyzing) && (
               <Card className="bg-muted/50 font-mono text-xs overflow-hidden">
-                <CardContent className="p-3 max-h-[200px] overflow-y-auto space-y-1">
-                  <p className="font-bold text-primary mb-2">Agent çalışıyor...</p>
+                <CardContent className="p-3 max-h-[300px] overflow-y-auto space-y-1">
                   {progressMessages.map((msg, i) => (
                     <div key={i} className="flex gap-2">
-                      <span className="text-muted-foreground">[{new Date(msg.timestamp).toLocaleTimeString()}]</span>
+                      <span className="text-muted-foreground">
+                        [{new Date(msg.timestamp).toLocaleTimeString()}]
+                      </span>
                       <span>{msg.message}</span>
                     </div>
                   ))}
@@ -270,192 +374,252 @@ export default function AddBusinessComponent() {
               </Card>
             )}
 
-            {analysisError && (
-              <p className="text-sm text-destructive">{analysisError}</p>
+            {analysisFailed && (
+              <>
+                {analysisError && (
+                  <p className="text-sm text-destructive">{analysisError}</p>
+                )}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button onClick={handleAnalyze} className="gap-2">
+                    <RotateCcw className="w-4 h-4" />
+                    Tekrar dene
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={continueManuallyAfterFailure}
+                    className="gap-2"
+                  >
+                    <PencilLine className="w-4 h-4" />
+                    Manuel devam et
+                  </Button>
+                </div>
+              </>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ADIM 3: İnceleme */}
+      {step === "review" && (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">
+              {REVIEW_PAGE_TITLES[reviewPage]}
+            </p>
+            <span className="text-xs text-muted-foreground">
+              Bölüm {reviewPage + 1}/{TOTAL_REVIEW_PAGES}
+            </span>
           </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              disabled={analyzing}
-            >
-              İptal
-            </Button>
-            <Button onClick={handleAnalyze} disabled={analyzing}>
-              {analyzing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Analiz Ediliyor...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Analiz Et
-                </>
+          {reviewPage === 0 && (
+            <>
+              <BasicInfoSection
+                name={form.name}
+                logoPreview={form.logoPreview}
+                colors={form.colors}
+                newColor={form.newColor}
+                website={form.website}
+                lateProfileId={form.lateProfileId}
+                disabled={saving}
+                onNameChange={(v) => setField("name", v)}
+                onLogoSelect={handleLogoSelect}
+                onColorAdd={addColor}
+                onColorRemove={removeColor}
+                onNewColorChange={(v) => setField("newColor", v)}
+                onWebsiteChange={(v) => setField("website", v)}
+                onLateProfileIdChange={(v) => setField("lateProfileId", v)}
+                logoFileName={form.logoFile?.name}
+                showLogoRequiredMark={!createdBusinessId}
+              />
+
+              {createdBusinessId && form.lateProfileId && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Hesap Senkronizasyonu</p>
+                        <p className="text-sm text-muted-foreground">
+                          Late Profile ID kullanarak diğer platform hesaplarını
+                          senkronize edin
+                        </p>
+                      </div>
+                      <SyncAccountsButton
+                        businessId={createdBusinessId}
+                        lateProfileId={form.lateProfileId}
+                        disabled={saving}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <BasicInfoSection
-          name={form.name}
-          logoPreview={form.logoPreview}
-          colors={form.colors}
-          newColor={form.newColor}
-          website={form.website}
-          lateProfileId={form.lateProfileId}
-          disabled={isDisabled}
-          onNameChange={(v) => setField("name", v)}
-          onLogoSelect={handleLogoSelect}
-          onColorAdd={addColor}
-          onColorRemove={removeColor}
-          onNewColorChange={(v) => setField("newColor", v)}
-          onWebsiteChange={(v) => setField("website", v)}
-          onLateProfileIdChange={(v) => setField("lateProfileId", v)}
-          logoFileName={form.logoFile?.name}
-          showLogoRequiredMark={!createdBusinessId}
-        />
-
-        {/* Sync Accounts Button - shown when business is created and has late_profile_id */}
-        {createdBusinessId && form.lateProfileId && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Hesap Senkronizasyonu</p>
-                  <p className="text-sm text-muted-foreground">
-                    Late Profile ID kullanarak diger platform hesaplarini senkronize edin
-                  </p>
-                </div>
-                <SyncAccountsButton
-                  businessId={createdBusinessId}
-                  lateProfileId={form.lateProfileId}
-                  disabled={isDisabled}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <IdentitySection
-          slogan={form.slogan}
-          industry={form.industry}
-          subCategory={form.subCategory}
-          marketPosition={form.marketPosition}
-          locationCity={form.locationCity}
-          disabled={isDisabled}
-          onSloganChange={(v) => setField("slogan", v)}
-          onIndustryChange={(v) => setField("industry", v)}
-          onSubCategoryChange={(v) => setField("subCategory", v)}
-          onMarketPositionChange={(v) => setField("marketPosition", v)}
-          onLocationCityChange={(v) => setField("locationCity", v)}
-        />
-
-        <BrandVoiceSection
-          tone={form.tone}
-          language={form.language}
-          formality={form.formality}
-          emojiUsage={form.emojiUsage}
-          captionStyle={form.captionStyle}
-          disabled={isDisabled}
-          onToneChange={(v) => setField("tone", v)}
-          onLanguageChange={(v) => setField("language", v)}
-          onFormalityChange={(v) => setField("formality", v)}
-          onEmojiUsageChange={(v) => setField("emojiUsage", v)}
-          onCaptionStyleChange={(v) => setField("captionStyle", v)}
-        />
-
-        <VisualSection
-          aesthetic={form.aesthetic}
-          photographyStyle={form.photographyStyle}
-          colorMood={form.colorMood}
-          visualMood={form.visualMood}
-          font={form.font}
-          customFont={form.customFont}
-          disabled={isDisabled}
-          onAestheticChange={(v) => setField("aesthetic", v)}
-          onPhotographyStyleChange={(v) => setField("photographyStyle", v)}
-          onColorMoodChange={(v) => setField("colorMood", v)}
-          onVisualMoodChange={(v) => setField("visualMood", v)}
-          onFontChange={(v) => setField("font", v)}
-          onCustomFontChange={(v) => setField("customFont", v)}
-        />
-
-        <TargetAudienceSection
-          targetAgeRange={form.targetAgeRange}
-          targetGender={form.targetGender}
-          targetDescription={form.targetDescription}
-          targetInterests={form.targetInterests}
-          disabled={isDisabled}
-          onTargetAgeRangeChange={(v) => setField("targetAgeRange", v)}
-          onTargetGenderChange={(v) => setField("targetGender", v)}
-          onTargetDescriptionChange={(v) => setField("targetDescription", v)}
-          onTargetInterestsChange={(v) => setField("targetInterests", v)}
-        />
-
-        <BrandValuesSection
-          brandValues={form.brandValues}
-          uniquePoints={form.uniquePoints}
-          brandStoryShort={form.brandStoryShort}
-          disabled={isDisabled}
-          onBrandValuesChange={(v) => setField("brandValues", v)}
-          onUniquePointsChange={(v) => setField("uniquePoints", v)}
-          onBrandStoryShortChange={(v) => setField("brandStoryShort", v)}
-        />
-
-        <SocialMediaSection
-          hashtagsBrand={form.hashtagsBrand}
-          hashtagsIndustry={form.hashtagsIndustry}
-          hashtagsLocation={form.hashtagsLocation}
-          contentPillars={form.contentPillars}
-          disabled={isDisabled}
-          onHashtagsBrandChange={(v) => setField("hashtagsBrand", v)}
-          onHashtagsIndustryChange={(v) => setField("hashtagsIndustry", v)}
-          onHashtagsLocationChange={(v) => setField("hashtagsLocation", v)}
-          onContentPillarsChange={(v) => setField("contentPillars", v)}
-        />
-
-        <RulesSection
-          avoidTopics={form.avoidTopics}
-          seasonalContent={form.seasonalContent}
-          promoFrequency={form.promoFrequency}
-          disabled={isDisabled}
-          onAvoidTopicsChange={(v) => setField("avoidTopics", v)}
-          onSeasonalContentChange={(v) => setField("seasonalContent", v)}
-          onPromoFrequencyChange={(v) => setField("promoFrequency", v)}
-        />
-
-        <ExtraFieldsSection
-          extraFields={form.extraFields}
-          disabled={isDisabled}
-          onAddField={addExtraField}
-          onRemoveField={removeExtraField}
-          onUpdateField={updateExtraField}
-        />
-
-        {hata && <p className="text-sm text-destructive">{hata}</p>}
-        {status === "basarili" && (
-          <p className="text-sm text-green-600">İşletme başarıyla kaydedildi!</p>
-        )}
-
-        <Button type="submit" className="w-full" disabled={isDisabled}>
-          {status === "kaydediliyor" ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Kaydediliyor...
-            </>
-          ) : (
-            <>
-              <Building2 className="w-4 h-4 mr-2" />
-              İşletmeyi Kaydet
+              <IdentitySection
+                slogan={form.slogan}
+                industry={form.industry}
+                subCategory={form.subCategory}
+                marketPosition={form.marketPosition}
+                locationCity={form.locationCity}
+                disabled={saving}
+                onSloganChange={(v) => setField("slogan", v)}
+                onIndustryChange={(v) => setField("industry", v)}
+                onSubCategoryChange={(v) => setField("subCategory", v)}
+                onMarketPositionChange={(v) => setField("marketPosition", v)}
+                onLocationCityChange={(v) => setField("locationCity", v)}
+              />
             </>
           )}
-        </Button>
-      </form>
+
+          {reviewPage === 1 && (
+            <>
+              <BrandVoiceSection
+                tone={form.tone}
+                language={form.language}
+                formality={form.formality}
+                emojiUsage={form.emojiUsage}
+                captionStyle={form.captionStyle}
+                disabled={saving}
+                onToneChange={(v) => setField("tone", v)}
+                onLanguageChange={(v) => setField("language", v)}
+                onFormalityChange={(v) => setField("formality", v)}
+                onEmojiUsageChange={(v) => setField("emojiUsage", v)}
+                onCaptionStyleChange={(v) => setField("captionStyle", v)}
+              />
+
+              <VisualSection
+                aesthetic={form.aesthetic}
+                photographyStyle={form.photographyStyle}
+                colorMood={form.colorMood}
+                visualMood={form.visualMood}
+                font={form.font}
+                customFont={form.customFont}
+                disabled={saving}
+                onAestheticChange={(v) => setField("aesthetic", v)}
+                onPhotographyStyleChange={(v) => setField("photographyStyle", v)}
+                onColorMoodChange={(v) => setField("colorMood", v)}
+                onVisualMoodChange={(v) => setField("visualMood", v)}
+                onFontChange={(v) => setField("font", v)}
+                onCustomFontChange={(v) => setField("customFont", v)}
+              />
+
+              <TargetAudienceSection
+                targetAgeRange={form.targetAgeRange}
+                targetGender={form.targetGender}
+                targetDescription={form.targetDescription}
+                targetInterests={form.targetInterests}
+                disabled={saving}
+                onTargetAgeRangeChange={(v) => setField("targetAgeRange", v)}
+                onTargetGenderChange={(v) => setField("targetGender", v)}
+                onTargetDescriptionChange={(v) => setField("targetDescription", v)}
+                onTargetInterestsChange={(v) => setField("targetInterests", v)}
+              />
+            </>
+          )}
+
+          {reviewPage === 2 && (
+            <>
+              <BrandValuesSection
+                brandValues={form.brandValues}
+                uniquePoints={form.uniquePoints}
+                brandStoryShort={form.brandStoryShort}
+                disabled={saving}
+                onBrandValuesChange={(v) => setField("brandValues", v)}
+                onUniquePointsChange={(v) => setField("uniquePoints", v)}
+                onBrandStoryShortChange={(v) => setField("brandStoryShort", v)}
+              />
+
+              <SocialMediaSection
+                hashtagsBrand={form.hashtagsBrand}
+                hashtagsIndustry={form.hashtagsIndustry}
+                hashtagsLocation={form.hashtagsLocation}
+                contentPillars={form.contentPillars}
+                disabled={saving}
+                onHashtagsBrandChange={(v) => setField("hashtagsBrand", v)}
+                onHashtagsIndustryChange={(v) => setField("hashtagsIndustry", v)}
+                onHashtagsLocationChange={(v) => setField("hashtagsLocation", v)}
+                onContentPillarsChange={(v) => setField("contentPillars", v)}
+              />
+
+              <RulesSection
+                avoidTopics={form.avoidTopics}
+                seasonalContent={form.seasonalContent}
+                promoFrequency={form.promoFrequency}
+                disabled={saving}
+                onAvoidTopicsChange={(v) => setField("avoidTopics", v)}
+                onSeasonalContentChange={(v) => setField("seasonalContent", v)}
+                onPromoFrequencyChange={(v) => setField("promoFrequency", v)}
+              />
+
+              <ExtraFieldsSection
+                extraFields={form.extraFields}
+                disabled={saving}
+                onAddField={addExtraField}
+                onRemoveField={removeExtraField}
+                onUpdateField={updateExtraField}
+              />
+            </>
+          )}
+
+          {hata && <p className="text-sm text-destructive">{hata}</p>}
+
+          <div className="flex items-center justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving || reviewPage === 0}
+              onClick={() => setReviewPage((p) => Math.max(0, p - 1))}
+              className="gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Geri
+            </Button>
+
+            {reviewPage < TOTAL_REVIEW_PAGES - 1 ? (
+              <Button
+                type="button"
+                disabled={saving}
+                onClick={() => setReviewPage((p) => p + 1)}
+                className="gap-2"
+              >
+                Devam
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            ) : (
+              <Button type="submit" disabled={saving} className="gap-2">
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Kaydediliyor...
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="w-4 h-4" />
+                    İşletmeyi Kaydet
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </form>
+      )}
+
+      {/* ADIM 4: Bitti */}
+      {step === "done" && (
+        <Card>
+          <CardContent className="py-12 flex flex-col items-center text-center gap-4">
+            <CheckCircle2 className="w-12 h-12 text-green-600" />
+            <div>
+              <h3 className="text-xl font-semibold">İşletme kaydedildi!</h3>
+              <p className="text-muted-foreground">
+                İşletme başarıyla eklendi. Yeni bir işletme ekleyebilirsiniz.
+              </p>
+            </div>
+            <Button onClick={resetWizard} className="gap-2">
+              <Building2 className="w-4 h-4" />
+              Yeni İşletme Ekle
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
