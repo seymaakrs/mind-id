@@ -8,9 +8,10 @@ import {
 import type { AgentNodeData } from "./AgentNode"
 import type { NeonEdgeData } from "./NeonEdge"
 
-const W = 220
-const H = 130
+const NODE_W = 220
+const NODE_H = 132
 
+/** Dikey soy ağacı — üstten alta (TB), geniş dallar için nodesep yüksek */
 export function buildMindIDFlowGraph(nodeStates: Record<string, AgentNodeData["status"]>) {
   const nodes: Node<AgentNodeData>[] = AGENT_GRAPH_NODES.map((n, i) => ({
     id: n.id,
@@ -29,49 +30,40 @@ export function buildMindIDFlowGraph(nodeStates: Record<string, AgentNodeData["s
       id: e.id,
       source: e.source,
       target: e.target,
-      sourceHandle: e.source === "orchestrator" && e.target.includes("_agent") ? "dispatch" : undefined,
       type: "neonEdge",
       data: {
         color: KIND_COLORS[targetNode.kind],
         label: e.label,
         main: e.main,
       },
+      style: e.main ? undefined : { opacity: 0.65 },
     }
   })
 
   const g = new dagre.graphlib.Graph()
   g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({ rankdir: "LR", nodesep: 80, ranksep: 120, marginx: 50, marginy: 100 })
+  g.setGraph({
+    rankdir: "TB",
+    align: "UL",
+    nodesep: 52,
+    ranksep: 88,
+    marginx: 80,
+    marginy: 60,
+  })
 
-  nodes.forEach((n) => g.setNode(n.id, { width: W, height: H }))
-  AGENT_GRAPH_EDGES.filter((e) => e.main).forEach((e) => g.setEdge(e.source, e.target))
+  nodes.forEach((n) => g.setNode(n.id, { width: NODE_W, height: NODE_H }))
+  AGENT_GRAPH_EDGES.forEach((e) => g.setEdge(e.source, e.target))
   dagre.layout(g)
 
   const positioned = nodes.map((n) => {
     const p = g.node(n.id)
-    return { ...n, position: { x: p.x - W / 2, y: p.y - H / 2 } }
-  })
-
-  const experts = ["image_agent", "video_agent", "marketing_agent", "analysis_agent"]
-  const orch = positioned.find((n) => n.id === "orchestrator")!
-  const ox = orch.position.x + W / 2
-  const oy = orch.position.y + H + 80
-  const colW = 240
-  const rowH = 150
-
-  const laid = positioned.map((n) => {
-    const i = experts.indexOf(n.id)
-    if (i < 0) return n
-    const col = i % 2
-    const row = Math.floor(i / 2)
     return {
       ...n,
-      position: {
-        x: ox - colW + col * colW - W / 2,
-        y: oy + row * rowH,
-      },
+      position: { x: p.x - NODE_W / 2, y: p.y - NODE_H / 2 },
+      sourcePosition: "bottom" as const,
+      targetPosition: "top" as const,
     }
   })
 
-  return { nodes: laid, edges }
+  return { nodes: positioned, edges }
 }

@@ -38,8 +38,9 @@ function CanvasInner() {
   )
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [logs, setLogs] = useState<string[]>([
-    "> MindID Canvas başlatıldı — mock canlı log (5sn)",
-    "> Kaynak: mind-id repo analizi + mind-agent ajanları",
+    "> MindID Canvas v0.2 — dikey soy ağacı (üstten alta)",
+    "> 4 repo: mind-id · mind-agent · customer_agent · NocoDB",
+    "> Mock canlı log (5sn) — ileride Firestore/NocoDB bağlanır",
   ])
   const { fitView } = useReactFlow()
 
@@ -94,9 +95,10 @@ function CanvasInner() {
             edgeTypes={edgeTypes}
             onNodeClick={onNodeClick}
             fitView
-            fitViewOptions={{ padding: 0.12 }}
-            minZoom={0.25}
+            fitViewOptions={{ padding: 0.08 }}
+            minZoom={0.15}
             maxZoom={2}
+            defaultViewport={{ x: 0, y: 0, zoom: 0.55 }}
             nodesDraggable
             proOptions={{ hideAttribution: true }}
             className="!bg-black"

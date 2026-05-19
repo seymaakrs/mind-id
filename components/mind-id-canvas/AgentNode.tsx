@@ -40,28 +40,34 @@ function StatusBadge({ status }: { status: AgentStatus }) {
 
 function AgentNodeComponent({ data, selected }: NodeProps<Node<AgentNodeData>>) {
   const color = KIND_COLORS[data.kind]
-  const isExpert = data.kind === "expert"
+  const isExpert = data.kind === "expert" || data.kind === "sales"
   const isUser = data.kind === "user"
   const isOrch = data.kind === "orchestrator"
+  const isWorkflow = data.kind === "workflow"
   const isApi = data.kind === "api"
   const isDb = data.kind === "database"
+  const isPlanned = data.kind === "planned"
+  const isPortal = data.kind === "portal"
 
   return (
     <div
       className={cn(
         "mind-id-agent-node relative min-w-[200px] max-w-[240px] font-mono",
         selected && "mind-id-node-selected",
-        data.status === "running" && "mind-id-node-running"
+        data.status === "running" && "mind-id-node-running",
+        isPlanned && "opacity-70"
       )}
       style={{
         filter: selected ? `drop-shadow(0 0 14px ${color})` : undefined,
       }}
     >
+      <Handle type="target" position={Position.Top} className="!h-1 !w-1 !border-0 !bg-transparent !opacity-0" />
       <div
         className={cn(
           "rounded border-2 bg-black/90 p-2.5",
           isApi && "rounded-sm",
-          isDb && "rounded-full px-4"
+          isDb && "rounded-full px-4",
+          isWorkflow && "border-dashed"
         )}
         style={{ borderColor: color, boxShadow: `0 0 12px ${color}33` }}
       >
@@ -75,7 +81,7 @@ function AgentNodeComponent({ data, selected }: NodeProps<Node<AgentNodeData>>) 
           <div className="shrink-0">
             {isUser || isExpert ? (
               <PixelGhost color={color} size="sm" />
-            ) : isOrch ? (
+            ) : isOrch || isWorkflow ? (
               <span
                 className="mt-1 block h-8 w-8 rounded-full border-2"
                 style={{ borderColor: color, backgroundColor: `${color}44` }}
@@ -90,6 +96,11 @@ function AgentNodeComponent({ data, selected }: NodeProps<Node<AgentNodeData>>) 
                 className="mt-1 block h-8 w-6 rounded-t-full border-2 border-b-0"
                 style={{ borderColor: color }}
               />
+            ) : isPortal ? (
+              <span
+                className="mt-1 block h-7 w-7 rotate-45 border-2"
+                style={{ borderColor: color, backgroundColor: `${color}33` }}
+              />
             ) : (
               <span
                 className="mt-1 block h-6 w-6 rounded border"
@@ -100,6 +111,7 @@ function AgentNodeComponent({ data, selected }: NodeProps<Node<AgentNodeData>>) 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold leading-tight text-white">{data.label}</p>
             <p className="mt-0.5 truncate text-[10px] text-white/50">{data.className}</p>
+            <p className="mt-0.5 text-[9px] uppercase tracking-wide text-white/35">{data.repo}</p>
           </div>
         </div>
         {data.subtasks.length > 0 && (
@@ -112,14 +124,7 @@ function AgentNodeComponent({ data, selected }: NodeProps<Node<AgentNodeData>>) 
           </ul>
         )}
       </div>
-      <Handle type="target" position={Position.Left} className="!opacity-0 !h-1 !w-1" />
-      <Handle type="source" position={Position.Right} className="!opacity-0 !h-1 !w-1" />
-      {isOrch && (
-        <Handle type="source" position={Position.Bottom} id="dispatch" className="!opacity-0 !h-1 !w-1" />
-      )}
-      {isExpert && (
-        <Handle type="target" position={Position.Top} className="!opacity-0 !h-1 !w-1" />
-      )}
+      <Handle type="source" position={Position.Bottom} className="!h-1 !w-1 !border-0 !bg-transparent !opacity-0" />
     </div>
   )
 }

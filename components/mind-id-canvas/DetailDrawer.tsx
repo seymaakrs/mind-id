@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react"
 import type { AgentGraphNode } from "./data/agentGraph"
-import { KIND_COLORS } from "./data/agentGraph"
+import { BRANCH_LABELS, KIND_COLORS, REPO_LABELS } from "./data/agentGraph"
 
 interface DetailDrawerProps {
   node: AgentGraphNode | null
@@ -30,6 +30,9 @@ export function DetailDrawer({ node, logs, onClose }: DetailDrawerProps) {
           </p>
           <h2 className="text-base font-bold text-white">{node.label}</h2>
           <p className="text-[11px] text-white/50">{node.className}</p>
+          <p className="mt-1 text-[10px] text-white/40">
+            {BRANCH_LABELS[node.branch]} · {REPO_LABELS[node.repo]}
+          </p>
         </div>
         <button type="button" onClick={onClose} className="text-white/50 hover:text-white">
           <X className="h-4 w-4" />
