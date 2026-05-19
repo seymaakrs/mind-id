@@ -12,7 +12,7 @@ import {
 import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
-import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
+import { MindIDCanvas } from "@/components/mind-id-canvas/MindIDCanvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
@@ -129,6 +129,8 @@ export default function AdminPanel() {
     setActiveSubMenu("isletme-dashboard")
   }
 
+  const isFullBleed = activeMenu === "agent" || activeMenu === "anasayfa"
+
   return (
     <ProtectedRoute>
       <div className="fixed inset-0 flex bg-background overflow-hidden">
@@ -223,7 +225,7 @@ export default function AdminPanel() {
         </aside>
 
       {/* Main Content Area - Responsive */}
-      <main className={`flex-1 min-h-0 overflow-x-hidden flex flex-col ${activeMenu === "agent" ? "overflow-hidden" : "overflow-y-auto h-full"}`}>
+      <main className={`flex-1 min-h-0 overflow-x-hidden flex flex-col ${isFullBleed ? "overflow-hidden" : "overflow-y-auto h-full"}`}>
         {/* Top Header Bar */}
         <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 md:px-8 md:py-3 bg-background/80 backdrop-blur-sm border-b border-border shrink-0">
           {/* Mobile menu toggle (left) */}
@@ -248,9 +250,9 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
+        <div className={`max-w-full ${isFullBleed ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <CommandCenterCanvas />
+            <MindIDCanvas />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (

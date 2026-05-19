@@ -74,7 +74,7 @@ function CanvasInner() {
   }, [])
 
   return (
-    <div className="flex h-full min-h-[720px] min-w-[1280px] flex-col bg-black">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-black">
       <div className="flex min-h-0 flex-1">
         <CanvasSidebar
           nodes={graphNodes}
