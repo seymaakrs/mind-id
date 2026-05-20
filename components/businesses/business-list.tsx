@@ -29,8 +29,11 @@ import {
   Sparkles,
   Database,
   RotateCcw,
+  Palette,
+  Clock,
 } from "lucide-react";
 import { useBusinesses } from "@/hooks";
+import { useBusinessSummary, relativeTime } from "@/hooks/useBusinessSummary";
 import type { Business } from "@/types/firebase";
 
 type TabFilter = "approved" | "archived" | "deleted";
@@ -325,6 +328,10 @@ function BusinessCard({
   onRestore?: (e: React.MouseEvent) => void;
   onDelete?: (e: React.MouseEvent) => void;
 }) {
+  // Sadece aktif (approved) kartlarda özet metrik göster — arşiv/silinmiş
+  // kartlar için Firestore okumaya gerek yok (boşa quota).
+  const showSummary = !archived && !deleted;
+  const summary = useBusinessSummary(showSummary ? business.id : "");
   return (
     <Card
       className={`group relative cursor-pointer overflow-hidden border-border/60 bg-gradient-to-b from-card to-card/40 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-200 ${
@@ -420,6 +427,56 @@ function BusinessCard({
                 +{business.colors.length - 6}
               </span>
             )}
+          </div>
+        )}
+
+        {showSummary && (
+          <div className="pt-2 mt-1 border-t border-border/40 space-y-1.5">
+            {/* Marka skoru */}
+            <div
+              className="flex items-center gap-2"
+              title="Marka kimliği doluluk oranı (6 bölüm: temel, görsel, ses, hedef kitle, içerik stratejisi, iş bağlamı)"
+            >
+              <Palette className="w-3 h-3 text-muted-foreground shrink-0" />
+              <span className="text-[11px] text-muted-foreground shrink-0">
+                Marka
+              </span>
+              <div className="flex-1 h-1.5 bg-muted rounded overflow-hidden">
+                <div
+                  className={`h-full rounded transition-all ${
+                    summary.brandCompleteness == null
+                      ? "bg-muted"
+                      : summary.brandCompleteness >= 80
+                      ? "bg-emerald-500"
+                      : summary.brandCompleteness >= 50
+                      ? "bg-amber-500"
+                      : "bg-red-500/70"
+                  }`}
+                  style={{ width: `${summary.brandCompleteness ?? 0}%` }}
+                />
+              </div>
+              <span className="text-[11px] tabular-nums w-8 text-right">
+                {summary.loading
+                  ? "…"
+                  : summary.brandCompleteness != null
+                  ? `${summary.brandCompleteness}%`
+                  : "—"}
+              </span>
+            </div>
+
+            {/* Son aktivite */}
+            <div
+              className="flex items-center gap-2"
+              title="En son task / agent çalıştırma zamanı"
+            >
+              <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
+              <span className="text-[11px] text-muted-foreground shrink-0">
+                Son aktivite
+              </span>
+              <span className="text-[11px] ml-auto text-muted-foreground">
+                {summary.loading ? "…" : relativeTime(summary.lastActivity)}
+              </span>
+            </div>
           </div>
         )}
       </CardContent>
