@@ -31,12 +31,21 @@ import {
   RotateCcw,
   Palette,
   Clock,
+  PauseCircle,
 } from "lucide-react";
 import { useBusinesses } from "@/hooks";
 import { useBusinessSummary, relativeTime } from "@/hooks/useBusinessSummary";
+import { useOutreachHealth } from "@/hooks/useOutreachHealth";
 import type { Business } from "@/types/firebase";
 
 type TabFilter = "approved" | "archived" | "deleted";
+type SortKey = "recent" | "name" | "oldest";
+
+const SORT_LABELS: Record<SortKey, string> = {
+  recent: "Son eklenen",
+  name: "İsme göre (A→Z)",
+  oldest: "İlk eklenen",
+};
 
 interface BusinessListComponentProps {
   onBusinessSelect?: (business: Business) => void;
@@ -57,6 +66,10 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Business | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("recent");
+
+  // Bekçi durumu — global pause/active. Tüm işletmeleri etkiler.
+  const outreachHealth = useOutreachHealth();
 
   const approvedBusinesses = businesses.filter(
     (b) => !b.status || b.status === "approved"
@@ -70,9 +83,25 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
     return list.filter((b) => b.name?.toLowerCase().includes(q));
   };
 
-  const visibleApproved = filterBySearch(approvedBusinesses);
-  const visibleArchived = filterBySearch(archivedBusinesses);
-  const visibleDeleted = filterBySearch(deletedBusinesses);
+  const sortList = (list: Business[]): Business[] => {
+    const copy = [...list];
+    if (sortKey === "name") {
+      copy.sort((a, b) => (a.name || "").localeCompare(b.name || "", "tr"));
+    } else {
+      const ts = (b: Business): number => {
+        const v = b.createdAt as unknown as { toDate?: () => Date } | undefined;
+        if (v && typeof v.toDate === "function") return v.toDate().getTime();
+        if (typeof v === "string") return new Date(v).getTime();
+        return 0;
+      };
+      copy.sort((a, b) => (sortKey === "recent" ? ts(b) - ts(a) : ts(a) - ts(b)));
+    }
+    return copy;
+  };
+
+  const visibleApproved = sortList(filterBySearch(approvedBusinesses));
+  const visibleArchived = sortList(filterBySearch(archivedBusinesses));
+  const visibleDeleted = sortList(filterBySearch(deletedBusinesses));
 
   const handleBusinessClick = (business: Business) => {
     if (onBusinessSelect) {
@@ -160,6 +189,18 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
                 className="h-9 pl-9 pr-3 rounded-lg bg-background/60 border border-border/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-48"
               />
             </div>
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="h-9 px-2 rounded-lg bg-background/60 border border-border/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              title="Sıralama"
+            >
+              {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                <option key={k} value={k}>
+                  {SORT_LABELS[k]}
+                </option>
+              ))}
+            </select>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
               <RefreshCw className={`w-4 h-4 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
               Yenile
@@ -167,6 +208,30 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
           </div>
         </div>
       </div>
+
+      {/* Outreach pause uyari seridi — Bekci RED demis */}
+      {outreachHealth.paused === true && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4">
+          <PauseCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium text-red-500">
+              Outreach Durduruldu — Bekçi Robotu
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {outreachHealth.reason || "Sebep belirtilmemiş"}
+              {outreachHealth.pausedAt && (
+                <span className="ml-2 text-xs">
+                  ({new Date(outreachHealth.pausedAt).toLocaleString("tr-TR")})
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Tüm işletmeler için outreach gönderimi durmuştur. Insan
+              onayıyla yeniden başlatılabilir.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs - segmented control */}
       <div className="inline-flex p-1 rounded-xl bg-muted/40 border border-border/60">
