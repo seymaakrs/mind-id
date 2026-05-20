@@ -31,6 +31,7 @@ import {
   Globe,
   Search,
   Wrench,
+  Flame,
 } from "lucide-react";
 import { useBusinesses, useAgentTask } from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,6 +47,7 @@ import {
   InstagramPostsTab,
   ReportsTab,
   SeoTab,
+  SalesTab,
 } from "./tabs";
 import type { Business } from "@/types/firebase";
 
@@ -55,7 +57,7 @@ interface BusinessDashboardProps {
   onNavigateToAgent?: () => void;
 }
 
-type TabValue = "details" | "media" | "plans" | "memory" | "jobs" | "tasks" | "stats" | "instagram" | "reports" | "seo";
+type TabValue = "details" | "sales" | "media" | "plans" | "memory" | "jobs" | "tasks" | "stats" | "instagram" | "reports" | "seo";
 
 export default function BusinessDashboard({
   initialBusinessId,
@@ -297,10 +299,14 @@ export default function BusinessDashboard({
       {selectedBusinessId && selectedBusiness ? (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
           {/* Desktop: Grid layout */}
-          <TabsList className="hidden md:grid w-full grid-cols-10">
+          <TabsList className="hidden md:grid w-full grid-cols-11">
             <TabsTrigger value="details" className="gap-2">
               <Info className="w-4 h-4" />
               <span>Detaylar</span>
+            </TabsTrigger>
+            <TabsTrigger value="sales" className="gap-2">
+              <Flame className="w-4 h-4" />
+              <span>Satis</span>
             </TabsTrigger>
             <TabsTrigger value="media" className="gap-2">
               <FolderOpen className="w-4 h-4" />
@@ -346,6 +352,9 @@ export default function BusinessDashboard({
               <TabsTrigger value="details" className="min-w-[44px] px-3">
                 <Info className="w-4 h-4" />
               </TabsTrigger>
+              <TabsTrigger value="sales" className="min-w-[44px] px-3">
+                <Flame className="w-4 h-4" />
+              </TabsTrigger>
               <TabsTrigger value="media" className="min-w-[44px] px-3">
                 <FolderOpen className="w-4 h-4" />
               </TabsTrigger>
@@ -383,6 +392,10 @@ export default function BusinessDashboard({
                 business={selectedBusiness}
                 onUpdated={handleBusinessUpdated}
               />
+            </TabsContent>
+
+            <TabsContent value="sales" className="m-0">
+              <SalesTab businessId={selectedBusinessId} />
             </TabsContent>
 
             <TabsContent value="media" className="m-0">
