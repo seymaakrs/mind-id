@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
+import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity, GitBranch } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
@@ -18,8 +18,9 @@ import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell"
 import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
 import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
+import { StatusVersionPanel } from "@/components/status/StatusVersionPanel"
 
-type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "durum" | "settings"
 type SubMenuType =
   | "isletme-ekle"
   | "isletme-listele"
@@ -79,6 +80,12 @@ export default function AdminPanel() {
       id: "istatistikler" as MainMenuType,
       label: "İstatistikler",
       icon: BarChart3,
+      subItems: [],
+    },
+    {
+      id: "durum" as MainMenuType,
+      label: "Durum / Versiyon",
+      icon: GitBranch,
       subItems: [],
     },
     {
@@ -262,6 +269,8 @@ export default function AdminPanel() {
             <SettingsPanel />
           ) : activeMenu === "istatistikler" ? (
             <ApiStatisticsPanel />
+          ) : activeMenu === "durum" ? (
+            <StatusVersionPanel />
           ) : (
             <>
               {/* İşletmeler Sub-menus */}
