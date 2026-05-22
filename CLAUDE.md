@@ -1,5 +1,20 @@
 # MindID Admin Panel - Claude Code Guide
 
+## ⚡ SON SESSION DURUMU (2026-05-22)
+
+**Branch:** `claude/vibrant-brahmagupta-m8eqI` | **HEAD:** `2c5f271`
+
+**Bu session'da merge edilen:** `claude/zernio-connections-ui` (commit `c3c4b45`) — "Bağlantılar" sayfası (7 platform, real-time Firestore onSnapshot, `/api/connections/status` route).
+
+**Sonraki iş — `/durum` sayfası entegrasyonu (mevcut ana sayfaya eklenecek, yeni sayfa değil):**
+- Veri kaynağı: `https://raw.githubusercontent.com/seymaakrs/mind-agent/claude/vibrant-brahmagupta-m8eqI/docs/versions.json`
+- UI: mevcut shadcn Card pattern'ı kullan
+- Göstereceği bilgi: son session, hangi ajan ne yaptı, hangi branch/commit, deploy checklist progress, açık PR'lar
+- Firestore cache: `active_sessions/` collection (live "kim ne yapıyor")
+- Detay için `mind-agent/CLAUDE.md` üst bölümünü oku — diğer session'lara dalma (token tasarrufu)
+
+---
+
 ## 👤 Kurucu Notu (ÖNEMLİ — Her oturumda oku)
 
 **Kurucu: Seyma.** Seyma kod bilmiyor; projeye **iş/ürün penceresinden** bakıyor.
