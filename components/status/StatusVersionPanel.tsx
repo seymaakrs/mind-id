@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Activity, CheckCircle2, Circle, GitBranch, GitPullRequest, RefreshCw } from "lucide-react"
 
 const VERSIONS_URL =
-  "https://raw.githubusercontent.com/seymaakrs/mind-agent/claude/vibrant-brahmagupta-m8eqI/docs/versions.json"
+  "https://raw.githubusercontent.com/seymaakrs/mind-agent/claude/zen-wozniak-LEuNW/docs/versions.json"
 
 const REPOS = ["seymaakrs/mind-id", "seymaakrs/mind-agent", "seymaakrs/customer_agent"] as const
 
