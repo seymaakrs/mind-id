@@ -17,6 +17,7 @@
 11. ✅ Caddy IP whitelist: NocoDB UI sadece Seyma IP (`185.98.219.69`), API public (mind-agent için)
 12. ✅ Cloud Run `NOCODB_BASE_URL` → `https://db.mindidai.com.tr` (revision `00008-bnk`)
 13. ✅ Smoke test (HTTPS NocoDB üzerinden) — 133 sıcak lead
+14. ✅ **Zernio webhook Signing Secret aktive edildi** (HMAC-SHA256, panel-side)
 
 ---
 
@@ -60,7 +61,8 @@ NocoDB container (127.0.0.1:8080)
 
 ```
 Zernio (WhatsApp/Instagram) → n8n cloud → lead-toplama workflow → NocoDB
-Beklemede: Zernio SSL düzelene kadar panel yönetimi açılmıyor
+  Zernio: Signing Secret AKTİF → X-Zernio-Signature gönderiyor
+  n8n:    Signature doğrulama YOK (yarım koruma — ileride tam yapılacak)
 ```
 
 ---
@@ -90,8 +92,9 @@ NocoDB tables:
 
 Zernio:
   WA_ACCOUNT_ID:    69ecc2273a63baf2053dfc21
-  WEBHOOK_SECRET:   <SECRET_MANAGER'DAN_AL>
+  WEBHOOK_SECRET:   Zernio panel "Mind Sales — Lead Toplama" → Signing Secret (2026-05-22 set, sadece panelden görünür)
   Base URL:         https://api.zernio.com/v1
+  Imza formatı:     X-Zernio-Signature: lowercase hex HMAC-SHA256(rawBody, secret)
 
 GUARDIAN_ALERT_WEBHOOK_URL: https://mindidai.app.n8n.cloud/webhook/lead-toplama
 
@@ -111,11 +114,53 @@ mind-id default: main (PR #15 + #16 merged)
 
 | İş | Neden Atlandı | Süre Tahmini |
 |---|---|---|
-| customer_agent (n8n) entegrasyonu | n8n'de 8 workflow zaten aktif. Eksik 3 (LinkedIn/Clay/IG DM) ayrı sprint | 1-3 saat |
+| **n8n HMAC doğrulama** (Zernio signature verify) | Production workflow'u modifiye etmek + raw body capture risk. Test workflow'da güvenli yapılmalı | 1-1.5 saat |
+| customer_agent eksik 3 workflow (LinkedIn/Clay/IG DM) | Yeni workflow inşası, ayrı sprint | 2-4 saat her biri |
 | v1.23.0 atomik plan | Mevcut canlı yeterli. İhtiyaç çıkarsa tekrar bak | 3-5 saat |
-| Zernio panel webhook | Zernio SSL bozuk (NET::ERR_CERT_DATE_INVALID). Düzelince. | 5 dk |
 | Cloud Run static egress IP + tam firewall | $5-8/ay maliyet kabul edilmedi | 45 dk |
 | Tüm key/token nihai revoke | Kullanım kopukluğu riski kabul edilmedi | 15 dk |
+| Lead Onboarding workflow aktive (n8n) | 133 sıcak lead'e gerçek mail gider — onay gerek | 5 dk |
+| OpenAI auto-recharge OFF + usage alert | Henüz yapılmadı, opsiyonel ek güvenlik | 5 dk |
+| mind-agent secrets → GCP Secret Manager | env var yerine secret mount | 1 saat |
+
+---
+
+## 📝 N8N HMAC DOĞRULAMASI — İLERİDE YAPMA REHBERİ
+
+Lead Toplama Agent workflow'una eklenmesi gereken kod (raw body alabilmek için Webhook node'unda `options.rawBody = true` aktive edilmeli):
+
+```javascript
+// Code node: "Verify Zernio Signature" (Webhook → BU NODE → Calculate Lead Score)
+const crypto = require('crypto');
+const secret = $env.ZERNIO_WEBHOOK_SECRET; // n8n env var, panelden alınır
+
+const headers = $input.first().json.headers || {};
+const signature = headers['x-zernio-signature'] || headers['X-Zernio-Signature'];
+
+// Raw body — webhook node options.rawBody=true gerek
+const rawBody = Buffer.from($input.first().binary.data.data, 'base64').toString('utf8');
+
+if (!signature) {
+  // No signature — reject (post-rotation, all real Zernio sends signature)
+  console.log('REJECTED: no signature');
+  return [];
+}
+
+const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+
+if (signature !== expected) {
+  console.log('REJECTED: signature mismatch');
+  return [];
+}
+
+// Valid — pass parsed body to next node
+return [{ json: { body: JSON.parse(rawBody), headers } }];
+```
+
+**Test stratejisi:**
+1. Lead Toplama Agent'ı duplicate → "Lead Toplama Agent (HMAC Test)"
+2. Test workflow URL'ini Zernio'da SADECE test event'i için kullan
+3. 1-2 gerçek delivery sonra production swap
 
 ---
 
@@ -134,6 +179,7 @@ mind-id default: main (PR #15 + #16 merged)
 11. **VM vs Cloud Shell prompt karışıklığı** — komutları çalıştırmadan önce prompt'u (`@mindid-nocodb` vs `@cs-...`) doğrula
 12. NocoDB Docker container recreate olduğunda volume `nocodb_data` mutlaka mount edilmeli (yoksa veri kaybı)
 13. Caddy port 80'i Let's Encrypt yenileme + HTTP→HTTPS redirect için kullanır — port 80 firewall kuralı asla silinmemeli
+14. **Webhook HMAC verification'ı production'da direkt değiştirme** — raw body re-serialize sorunu sessizce tüm istekleri reddedebilir, lead'ler kaçar
 
 ---
 
