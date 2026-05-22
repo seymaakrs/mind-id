@@ -16,6 +16,7 @@ type BusinessInput = {
   logo: string;
   colors: string[];
   late_profile_id?: string;
+  zernio_profile_id?: string;
   profile: BusinessProfile;
 };
 

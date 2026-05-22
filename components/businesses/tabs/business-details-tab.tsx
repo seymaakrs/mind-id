@@ -222,6 +222,7 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
       <div className="flex justify-end gap-2">
         <SyncAccountsButton
           businessId={currentBusiness.id}
+          zernioProfileId={currentBusiness.zernio_profile_id}
           lateProfileId={currentBusiness.late_profile_id}
           onSyncComplete={handleSyncComplete}
         />
@@ -277,9 +278,14 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
                   </a>
                 </div>
               )}
-              {currentBusiness.late_profile_id && (
+              {currentBusiness.zernio_profile_id && (
                 <p className="text-sm text-muted-foreground">
-                  Late Profile ID: {currentBusiness.late_profile_id}
+                  Zernio Profile ID: {currentBusiness.zernio_profile_id}
+                </p>
+              )}
+              {currentBusiness.late_profile_id && !currentBusiness.zernio_profile_id && (
+                <p className="text-sm text-muted-foreground">
+                  Late Profile ID (eski): {currentBusiness.late_profile_id}
                 </p>
               )}
             </div>

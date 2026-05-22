@@ -70,7 +70,8 @@ export interface Business extends BaseDocument {
   logo: string; // Zorunlu alan - logo URL (Storage path)
   colors: string[]; // Zorunlu alan - renk paleti (hex kodları)
   website?: string; // İşletme web sitesi
-  late_profile_id?: string; // Late Profile ID
+  late_profile_id?: string; // [DEPRECATED] Late Profile ID — Zernio'ya geçiş bitince kaldırılacak
+  zernio_profile_id?: string; // Zernio Profile ID (yeni; Late muadili — paralel saklanır)
   profile: BusinessProfile; // İşletme profil bilgileri
   status?: 'pending' | 'approved' | 'archived' | 'deleted'; // undefined = approved (backward compat). 'deleted' = veri hazinesinde (yumuşak silme, veri korunur)
   archivedAt?: Timestamp; // arşive alınma zamanı

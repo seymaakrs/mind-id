@@ -14,6 +14,7 @@ export type BusinessFormState = {
   newColor: string;
   website: string;
   lateProfileId: string;
+  zernioProfileId: string;
 
   // Profile - Identity
   slogan: string;

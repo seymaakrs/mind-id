@@ -287,9 +287,14 @@ export default function BusinessDetail({ business, onBack, onDeleted, onUpdated 
                     </a>
                   </div>
                 )}
-                {currentBusiness.late_profile_id && (
+                {currentBusiness.zernio_profile_id && (
                   <p className="text-sm text-muted-foreground">
-                    Late Profile ID: {currentBusiness.late_profile_id}
+                    Zernio Profile ID: {currentBusiness.zernio_profile_id}
+                  </p>
+                )}
+                {currentBusiness.late_profile_id && !currentBusiness.zernio_profile_id && (
+                  <p className="text-sm text-muted-foreground">
+                    Late Profile ID (eski): {currentBusiness.late_profile_id}
                   </p>
                 )}
               </div>

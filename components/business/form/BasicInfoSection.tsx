@@ -15,6 +15,7 @@ type Props = {
   newColor: string;
   website: string;
   lateProfileId: string;
+  zernioProfileId: string;
   disabled?: boolean;
   onNameChange: (value: string) => void;
   onLogoSelect: (file: File) => void;
@@ -23,6 +24,7 @@ type Props = {
   onNewColorChange: (value: string) => void;
   onWebsiteChange: (value: string) => void;
   onLateProfileIdChange: (value: string) => void;
+  onZernioProfileIdChange: (value: string) => void;
   logoFileName?: string;
   showLogoRequiredMark?: boolean;
   hideLateProfileId?: boolean;
@@ -36,6 +38,7 @@ export function BasicInfoSection({
   newColor,
   website,
   lateProfileId,
+  zernioProfileId,
   disabled = false,
   onNameChange,
   onLogoSelect,
@@ -44,6 +47,7 @@ export function BasicInfoSection({
   onNewColorChange,
   onWebsiteChange,
   onLateProfileIdChange,
+  onZernioProfileIdChange,
   logoFileName,
   showLogoRequiredMark = true,
   hideLateProfileId = false,
@@ -173,16 +177,33 @@ export function BasicInfoSection({
         </div>
 
         {!hideLateProfileId && (
-          <div className="space-y-2">
-            <Label htmlFor="late-profile-id">Late Profile ID</Label>
-            <Input
-              id="late-profile-id"
-              placeholder="Late profil ID'si"
-              value={lateProfileId}
-              onChange={(e) => onLateProfileIdChange(e.target.value)}
-              disabled={disabled}
-            />
-          </div>
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="zernio-profile-id">Zernio Profile ID</Label>
+              <Input
+                id="zernio-profile-id"
+                placeholder="Zernio profil ID'si"
+                value={zernioProfileId}
+                onChange={(e) => onZernioProfileIdChange(e.target.value)}
+                disabled={disabled}
+              />
+              <p className="text-xs text-muted-foreground">
+                Hesap senkronu ve istatistikler Zernio üzerinden çalışır.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="late-profile-id" className="text-muted-foreground">
+                Late Profile ID <span className="text-xs">(eski, geçiş dönemi)</span>
+              </Label>
+              <Input
+                id="late-profile-id"
+                placeholder="Late profil ID'si (artık kullanılmıyor)"
+                value={lateProfileId}
+                onChange={(e) => onLateProfileIdChange(e.target.value)}
+                disabled={disabled}
+              />
+            </div>
+          </>
         )}
       </div>
     </FormSection>

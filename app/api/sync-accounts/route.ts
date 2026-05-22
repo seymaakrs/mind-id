@@ -20,8 +20,9 @@ function httpsGet(url: string, headers: Record<string, string>): Promise<{ ok: b
 
 export const maxDuration = 30;
 
+const ZERNIO_BASE_URL = process.env.ZERNIO_BASE_URL || "https://api.zernio.com/v1";
+
 export async function POST(request: NextRequest) {
-  // Verify authentication
   const authResult = await verifyApiAuth(request);
   if (!authResult.success) {
     return authResult.response;
@@ -44,7 +45,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get business document to get late_profile_id
     const businessDoc = await adminDb.collection("businesses").doc(businessId).get();
 
     if (!businessDoc.exists) {
@@ -55,56 +55,65 @@ export async function POST(request: NextRequest) {
     }
 
     const business = businessDoc.data();
-    const lateProfileId = business?.late_profile_id;
+    // Zernio'ya öncelik ver; eski işletmelerde Late ID kaldıysa onu kullan.
+    const profileId = business?.zernio_profile_id || business?.late_profile_id;
+    const usingZernio = Boolean(business?.zernio_profile_id);
 
-    if (!lateProfileId) {
+    if (!profileId) {
       return NextResponse.json(
-        { error: "Late Profile ID tanimli degil" },
+        { error: "Zernio Profile ID tanimli degil" },
         { status: 400 }
       );
     }
 
-    // Get Late API key from secrets
+    // Secrets dokümanı: Zernio anahtarı yoksa Late'e geri düş (geçiş dönemi).
     const secretDoc = await adminDb.collection("secrets").doc("other").get();
-
     if (!secretDoc.exists) {
       return NextResponse.json(
         { error: "API anahtari bulunamadi" },
         { status: 500 }
       );
     }
-
     const secrets = secretDoc.data();
-    const lateApiKey = secrets?.late_api_key;
+    const zernioApiKey = secrets?.zernio_api_key as string | undefined;
+    const lateApiKey = secrets?.late_api_key as string | undefined;
 
-    if (!lateApiKey) {
+    let apiUrl: string;
+    let apiKey: string | undefined;
+    let backend: "zernio" | "late";
+
+    if (usingZernio && zernioApiKey) {
+      apiUrl = `${ZERNIO_BASE_URL}/accounts?profileId=${encodeURIComponent(profileId)}`;
+      apiKey = zernioApiKey;
+      backend = "zernio";
+    } else if (lateApiKey) {
+      apiUrl = `https://getlate.dev/api/v1/accounts?profileId=${encodeURIComponent(profileId)}`;
+      apiKey = lateApiKey;
+      backend = "late";
+    } else {
       return NextResponse.json(
-        { error: "Late API anahtari yapilandirilmamis" },
+        { error: "Zernio veya Late API anahtari yapilandirilmamis" },
         { status: 500 }
       );
     }
 
-    // Make request to Late API (IPv4 forced - Windows DNS IPv6 timeout fix)
-    const lateApiUrl = `https://getlate.dev/api/v1/accounts?profileId=${encodeURIComponent(lateProfileId)}`;
-
-    const response = await httpsGet(lateApiUrl, {
-      "Authorization": `Bearer ${lateApiKey}`,
+    const response = await httpsGet(apiUrl, {
+      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     });
 
     if (!response.ok) {
-      console.error("Late API error:", response.data);
+      console.error(`${backend} API error:`, response.data);
       return NextResponse.json(
-        { error: `Late API hatasi: ${response.status}` },
+        { error: `${backend === "zernio" ? "Zernio" : "Late"} API hatasi: ${response.status}` },
         { status: response.status }
       );
     }
 
     const data = JSON.parse(response.data);
-    console.log("Late API response:", JSON.stringify(data, null, 2));
+    console.log(`${backend} API response:`, JSON.stringify(data, null, 2));
     const accounts = data.accounts || [];
 
-    // Process accounts and create update object
     const platformUpdates: Record<string, string> = {};
     const accountsSummary: Array<{ platform: string; id: string; username?: string }> = [];
 
@@ -125,7 +134,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update business document with platform IDs
     if (Object.keys(platformUpdates).length > 0) {
       await adminDb.collection("businesses").doc(businessId).update({
         ...platformUpdates,
@@ -135,7 +143,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `${accountsSummary.length} hesap senkronize edildi`,
+      message: `${accountsSummary.length} hesap senkronize edildi (${backend})`,
+      backend,
       accounts: accountsSummary,
     });
   } catch (error) {

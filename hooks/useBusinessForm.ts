@@ -11,6 +11,7 @@ const initialState: BusinessFormState = {
   newColor: DEFAULT_COLOR,
   website: "",
   lateProfileId: "",
+  zernioProfileId: "",
   slogan: "",
   industry: "",
   subCategory: "",
@@ -69,6 +70,7 @@ type UseBusinessFormReturn = {
     colors: string[];
     website: string;
     late_profile_id: string;
+    zernio_profile_id: string;
     profile: BusinessProfile;
   };
   validate: () => string | null;
@@ -154,6 +156,7 @@ export function useBusinessForm(): UseBusinessFormReturn {
       newColor: DEFAULT_COLOR,
       website: business.website || "",
       lateProfileId: business.late_profile_id || "",
+      zernioProfileId: business.zernio_profile_id || "",
       slogan: p.slogan || "",
       industry: p.industry || "",
       subCategory: p.sub_category || "",
@@ -202,6 +205,7 @@ export function useBusinessForm(): UseBusinessFormReturn {
       newColor: DEFAULT_COLOR,
       website: (data.website as string) || "",
       lateProfileId: (data.late_profile_id as string) || "",
+      zernioProfileId: (data.zernio_profile_id as string) || "",
       slogan: (p.slogan as string) || "",
       industry: (p.industry as string) || "",
       subCategory: (p.sub_category as string) || "",
@@ -286,6 +290,7 @@ export function useBusinessForm(): UseBusinessFormReturn {
       colors: form.colors,
       website: form.website.trim(),
       late_profile_id: form.lateProfileId.trim(),
+      zernio_profile_id: form.zernioProfileId.trim(),
       profile,
     };
   }, [form]);

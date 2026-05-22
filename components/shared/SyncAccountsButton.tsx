@@ -20,7 +20,9 @@ type SyncResult = {
 
 type Props = {
   businessId: string;
+  /** @deprecated Zernio'ya geçildi — yeni işletmelerde zernioProfileId kullan. */
   lateProfileId?: string;
+  zernioProfileId?: string;
   disabled?: boolean;
   onSyncComplete?: (accounts: SyncResult[]) => void;
   variant?: "default" | "outline" | "secondary" | "ghost";
@@ -31,6 +33,7 @@ type Props = {
 export function SyncAccountsButton({
   businessId,
   lateProfileId,
+  zernioProfileId,
   disabled = false,
   onSyncComplete,
   variant = "outline",
@@ -46,10 +49,10 @@ export function SyncAccountsButton({
   } | null>(null);
 
   const handleSync = async () => {
-    if (!lateProfileId) {
+    if (!zernioProfileId && !lateProfileId) {
       setResult({
         success: false,
-        message: "Late Profile ID tanimli degil. Lutfen once Late Profile ID girin.",
+        message: "Zernio Profile ID tanimli degil. Lutfen once Zernio Profile ID girin.",
       });
       setDialogOpen(true);
       return;
@@ -152,7 +155,7 @@ export function SyncAccountsButton({
             </DialogTitle>
             <DialogDescription>
               {loading
-                ? "Hesaplar Late API uzerinden senkronize ediliyor..."
+                ? "Hesaplar Zernio uzerinden senkronize ediliyor..."
                 : result?.message}
             </DialogDescription>
           </DialogHeader>

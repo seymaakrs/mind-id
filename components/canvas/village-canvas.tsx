@@ -93,7 +93,7 @@ const HUBS: HubDef[] = [
       {
         key: "tellal", name: "Tellal Şirin", role: "Pazarlama & Yayın Uzmanı",
         tool: "📣", bodyColor: "#e23d8b", status: "calisir",
-        badges: [{ label: "Late API", tone: "late" }, { label: "Instagram" }, { label: "YouTube" }, { label: "TikTok" }, { label: "LinkedIn" }, { label: "GPT-4o", tone: "gpt" }],
+        badges: [{ label: "Zernio", tone: "late" }, { label: "Instagram" }, { label: "YouTube" }, { label: "TikTok" }, { label: "LinkedIn" }, { label: "GPT-4o", tone: "gpt" }],
       },
       {
         key: "akilli", name: "Akıllı Şirin", role: "Veri & Performans Analisti (SWOT + SEO + GEO)",
@@ -163,10 +163,10 @@ const HUBS: HubDef[] = [
 ]
 
 const DETAILS: Record<string, Detail> = {
-  papa: { title: "Şirin Baba", sub: "Komuta Merkezi · Orkestratör Ajan", desc: "Tüm köyü o yönetir. İsteği anlar, doğru şirine yönlendirir, sonuçları toparlar.", tools: ["GPT-4o-mini", "Firebase", "Late API", "OpenAI Agents SDK"], collab: ["Ressam", "Yönetmen", "Tellal", "Akıllı", "Köprücü"], status: "🟢 Çalışıyor" },
+  papa: { title: "Şirin Baba", sub: "Komuta Merkezi · Orkestratör Ajan", desc: "Tüm köyü o yönetir. İsteği anlar, doğru şirine yönlendirir, sonuçları toparlar.", tools: ["GPT-4o-mini", "Firebase", "Zernio", "OpenAI Agents SDK"], collab: ["Ressam", "Yönetmen", "Tellal", "Akıllı", "Köprücü"], status: "🟢 Çalışıyor" },
   ressam: { title: "Ressam Şirin", sub: "Görsel Ajan", desc: "Resim ve görsel üretir.", tools: ["Gemini 2.0 Flash", "GPT-4o", "Firebase Storage"], collab: ["Şirin Baba", "Tellal Şirin"], status: "🟢 Çalışıyor" },
   yonetmen: { title: "Yönetmen Şirin", sub: "Video Ajan", desc: "Video çeker; sahneye göre motoru seçer.", tools: ["Veo 3.1", "Kling v3", "HeyGen", "fal.ai MMAudio", "GPT-4o"], collab: ["Şirin Baba", "Tellal Şirin"], status: "🟢 Çalışıyor" },
-  tellal: { title: "Tellal Şirin", sub: "Pazarlama Ajan", desc: "Plan kurar, paylaşır, sonuçları işler.", tools: ["Late API", "GPT-4o", "Firestore"], collab: ["Ressam", "Yönetmen", "Akıllı"], status: "🟢 Çalışıyor" },
+  tellal: { title: "Tellal Şirin", sub: "Pazarlama Ajan", desc: "Plan kurar, paylaşır, sonuçları işler.", tools: ["Zernio", "GPT-4o", "Firestore"], collab: ["Ressam", "Yönetmen", "Akıllı"], status: "🟢 Çalışıyor" },
   akilli: { title: "Akıllı Şirin", sub: "Analiz Ajan", desc: "Web tarar, SEO/GEO skoru hesaplar, rapor yazar.", tools: ["Serper.dev", "GPT-4o", "Firestore", "SEO v2", "GEO"], collab: ["Şirin Baba", "Tellal", "Kütüphaneci"], status: "🟢 Çalışıyor" },
   kutuphaneci: { title: "Kütüphaneci Şirin", sub: "NocoDB · Lead DB", desc: "Lead kayıtlarını idempotent biçimde tutar.", tools: ["NocoDB v2", "leads tablosu"], collab: ["Avcı", "Trafikçi", "Sekreter"], status: "🟢 Çalışıyor" },
   sekreter: { title: "Sekreter Şirin", sub: "NocoDB · CRM", desc: "Lead mesajları ve bildirimler.", tools: ["NocoDB", "lead_messages", "seyma_notifications"], collab: ["Kütüphaneci"], status: "🟢 Çalışıyor" },

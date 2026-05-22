@@ -466,7 +466,7 @@ interface InstagramWeeklyMetrics {
   top_posts: InstagramTopPost[];
 }
 
-// Late API response types
+// Posting API response types (Late/Zernio paylaşılan shape)
 interface LatePostAnalytics {
   impressions: number;
   reach: number;
@@ -502,21 +502,33 @@ interface LateApiResponse {
 }
 
 /**
- * Get Late API key from Firestore secrets
+ * Get posting API keys (Zernio + Late legacy) from Firestore secrets.
+ * Zernio'ya öncelik veriyoruz; Late aboneliği kapatılınca tamamen Zernio'ya geçilecek.
  */
-async function getLateApiKey(): Promise<string | null> {
+async function getPostingApiKeys(): Promise<{
+  zernio: string | null;
+  late: string | null;
+}> {
   try {
     const secretsDoc = await db.collection("secrets").doc("other").get();
     if (secretsDoc.exists) {
       const data = secretsDoc.data();
-      return data?.late_api_key || null;
+      return {
+        zernio: (data?.zernio_api_key as string) || null,
+        late: (data?.late_api_key as string) || null,
+      };
     }
-    return null;
+    return { zernio: null, late: null };
   } catch (error) {
-    logger.error("Error fetching Late API key:", error);
-    return null;
+    logger.error("Error fetching posting API keys:", error);
+    return { zernio: null, late: null };
   }
 }
+
+const ZERNIO_BASE_URL = "https://api.zernio.com/v1";
+const LATE_BASE_URL = "https://getlate.dev/api/v1";
+
+type PostingBackend = "zernio" | "late";
 
 /**
  * Calculate week ID and date range for the previous week
@@ -588,23 +600,27 @@ function detectPostType(post: LatePost): "reels" | "image" | "carousel" {
 }
 
 /**
- * Fetch all posts from Late API (handles pagination)
- * Uses profileId (not accountId) and fromDate/toDate (not dateFrom/dateTo)
+ * Fetch all posts from posting analytics API (handles pagination).
+ * Zernio ve Late aynı query shape'i paylaşıyor (profileId, fromDate/toDate,
+ * sortBy=date, order=desc); sadece base URL farklı.
  */
-async function fetchAllPostsFromLateApi(
+async function fetchAllPostsFromAnalyticsApi(
   profileId: string,
   fromDate: string,
   toDate: string,
-  apiKey: string
+  apiKey: string,
+  backend: PostingBackend
 ): Promise<LatePost[]> {
   const allPosts: LatePost[] = [];
   let page = 1;
   let hasMore = true;
 
-  while (hasMore) {
-    const url = `https://getlate.dev/api/v1/analytics?platform=instagram&profileId=${profileId}&fromDate=${fromDate}&toDate=${toDate}&sortBy=date&order=desc&limit=100&page=${page}`;
+  const baseUrl = backend === "zernio" ? ZERNIO_BASE_URL : LATE_BASE_URL;
 
-    logger.info(`Late API Request - profileId: ${profileId}, page: ${page}`);
+  while (hasMore) {
+    const url = `${baseUrl}/analytics?platform=instagram&profileId=${profileId}&fromDate=${fromDate}&toDate=${toDate}&sortBy=date&order=desc&limit=100&page=${page}`;
+
+    logger.info(`${backend} analytics request - profileId: ${profileId}, page: ${page}`);
 
     const response = await fetch(url, {
       method: "GET",
@@ -616,19 +632,17 @@ async function fetchAllPostsFromLateApi(
 
     if (!response.ok) {
       const errorText = await response.text();
-      logger.error(`Late API error: ${response.status} ${response.statusText} - ${errorText}`);
-      throw new Error(`Late API error: ${response.status}`);
+      logger.error(`${backend} analytics error: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(`${backend} analytics error: ${response.status}`);
     }
 
     const data: LateApiResponse = await response.json();
-    logger.info(`Late API Response - page ${page}: ${data.posts.length} posts, total: ${data.pagination.total}`);
+    logger.info(`${backend} analytics response - page ${page}: ${data.posts.length} posts, total: ${data.pagination.total}`);
     allPosts.push(...data.posts);
 
-    // Check if there are more pages
     hasMore = page < data.pagination.totalPages;
     page++;
 
-    // Safety limit
     if (page > 10) {
       logger.warn("Reached page limit (10), stopping pagination");
       break;
@@ -639,17 +653,17 @@ async function fetchAllPostsFromLateApi(
 }
 
 /**
- * Fetch and aggregate Instagram stats from Late API
+ * Fetch and aggregate Instagram stats from posting analytics API.
  */
-async function fetchInstagramStatsFromLateApi(
+async function fetchInstagramStatsFromAnalyticsApi(
   profileId: string,
   startDate: string,
   endDate: string,
-  apiKey: string
+  apiKey: string,
+  backend: PostingBackend
 ): Promise<InstagramWeeklyMetrics | null> {
   try {
-    // Fetch all posts for the date range
-    const posts = await fetchAllPostsFromLateApi(profileId, startDate, endDate, apiKey);
+    const posts = await fetchAllPostsFromAnalyticsApi(profileId, startDate, endDate, apiKey, backend);
 
     if (posts.length === 0) {
       logger.info(`No posts found for profile ${profileId} in date range ${startDate} - ${endDate}`);
@@ -738,7 +752,7 @@ async function fetchInstagramStatsFromLateApi(
 
     return metrics;
   } catch (error) {
-    logger.error(`Error fetching from Late API for profile ${profileId}:`, error);
+    logger.error(`Error fetching from ${backend} analytics for profile ${profileId}:`, error);
     return null;
   }
 }
@@ -754,10 +768,10 @@ export const collectInstagramWeeklyStats = onSchedule({
 }, async () => {
   logger.info("Starting Instagram weekly stats collection...");
 
-  // Get Late API key
-  const apiKey = await getLateApiKey();
-  if (!apiKey) {
-    logger.error("Late API not configured. Add late_api_key to secrets/other");
+  // Posting API anahtarlarını al — Zernio öncelikli, Late legacy fallback.
+  const apiKeys = await getPostingApiKeys();
+  if (!apiKeys.zernio && !apiKeys.late) {
+    logger.error("Posting API not configured. Add zernio_api_key (önerilen) veya late_api_key to secrets/other");
     return;
   }
 
@@ -785,16 +799,23 @@ export const collectInstagramWeeklyStats = onSchedule({
       // arka plan işleri çalışmaz, istatistik toplanmaz. Veri korunur.
       if (businessDoc.data()?.status === "deleted") continue;
       const businessData = businessDoc.data();
-      const lateProfileId = businessData.late_profile_id;
+      const zernioProfileId = businessData.zernio_profile_id as string | undefined;
+      const lateProfileId = businessData.late_profile_id as string | undefined;
       const businessName = businessData.name || "unnamed";
 
-      if (!lateProfileId) {
-        logger.info(`Business ${businessId} has no late_profile_id, skipping`);
+      // Zernio'ya öncelik ver; yoksa Late legacy ID'yi dene.
+      const profileId = zernioProfileId || lateProfileId;
+      const usingZernio = Boolean(zernioProfileId);
+      const backend: PostingBackend = usingZernio ? "zernio" : "late";
+      const apiKey = usingZernio ? apiKeys.zernio : apiKeys.late;
+
+      if (!profileId || !apiKey) {
+        logger.info(`Business ${businessId} has no profile_id or matching api key, skipping`);
         skippedCount++;
         continue;
       }
 
-      logger.info(`Processing business ${businessId} (${businessName}) with late_profile_id: ${lateProfileId}`);
+      logger.info(`Processing business ${businessId} (${businessName}) via ${backend} with profileId: ${profileId}`);
 
       try {
         // Check if we already have stats for this week
@@ -811,12 +832,13 @@ export const collectInstagramWeeklyStats = onSchedule({
           continue;
         }
 
-        // Fetch stats from Late API
-        const metrics = await fetchInstagramStatsFromLateApi(
-          lateProfileId,
+        // Fetch stats from posting analytics API (Zernio or Late legacy)
+        const metrics = await fetchInstagramStatsFromAnalyticsApi(
+          profileId,
           weekInfo.date_range.start,
           weekInfo.date_range.end,
-          apiKey
+          apiKey,
+          backend
         );
 
         if (!metrics) {

@@ -108,6 +108,7 @@ export default function AddBusinessComponent() {
       logo: "",
       colors: [DEFAULT_COLOR],
       late_profile_id: "",
+      zernio_profile_id: "",
       profile: {},
     });
   };
