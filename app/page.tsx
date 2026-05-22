@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
+import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity, Plug } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
@@ -18,8 +18,9 @@ import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell"
 import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
 import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
+import { ConnectionsPanel } from "@/components/connections/ConnectionsPanel"
 
-type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "baglantilar" | "istatistikler" | "settings"
 type SubMenuType =
   | "isletme-ekle"
   | "isletme-listele"
@@ -74,6 +75,12 @@ export default function AdminPanel() {
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
         { id: "isletme-dashboard" as SubMenuType, label: "İşletme Dashboard" },
       ],
+    },
+    {
+      id: "baglantilar" as MainMenuType,
+      label: "Bağlantılar",
+      icon: Plug,
+      subItems: [],
     },
     {
       id: "istatistikler" as MainMenuType,
@@ -257,6 +264,11 @@ export default function AdminPanel() {
               sidebarCollapsed={sidebarCollapsed}
               onSidebarCollapse={setSidebarCollapsed}
               initialBusinessId={selectedBusinessId || undefined}
+            />
+          ) : activeMenu === "baglantilar" ? (
+            <ConnectionsPanel
+              initialBusinessId={selectedBusinessId}
+              onBusinessChange={setSelectedBusinessId}
             />
           ) : activeMenu === "settings" ? (
             <SettingsPanel />

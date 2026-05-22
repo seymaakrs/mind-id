@@ -86,6 +86,33 @@ export interface Business extends BaseDocument {
   linkedin_account_id?: string;
   // Allow any other platform ID fields
   [key: `${string}_id` | `${string}_account_id`]: string | undefined;
+  // Bağlantı durumu (Zernio'dan senkronize edilir; mind-agent webhook'u da yazabilir)
+  connections?: Partial<Record<ConnectionPlatform, ConnectionStatus>>;
+}
+
+// Desteklenen platformlar — Zernio'nun döndüğü/desteklediği isimler.
+export type ConnectionPlatform =
+  | "instagram"
+  | "facebook"
+  | "twitter"
+  | "tiktok"
+  | "youtube"
+  | "linkedin"
+  | "whatsapp";
+
+export type ConnectionState =
+  | "connected"      // 🟢 Bağlı, token taze
+  | "expiring"       // 🟡 Token süresi yakın (< 7 gün)
+  | "disconnected"   // 🔴 Token sona ermiş veya kullanıcı bağlantıyı kesmiş
+  | "never";         // ⚪ Hiç bağlanmamış
+
+export interface ConnectionStatus {
+  status: ConnectionState;
+  username?: string | null;
+  account_id?: string | null;
+  last_synced_at?: string | null; // ISO datetime
+  expires_at?: string | null;     // ISO datetime
+  source?: "zernio" | "late" | "webhook";
 }
 
 // Business media (subcollection: businesses/{business_id}/media)
