@@ -29,11 +29,23 @@ import {
   Sparkles,
   Database,
   RotateCcw,
+  Palette,
+  Clock,
+  PauseCircle,
 } from "lucide-react";
 import { useBusinesses } from "@/hooks";
+import { useBusinessSummary, relativeTime } from "@/hooks/useBusinessSummary";
+import { useOutreachHealth } from "@/hooks/useOutreachHealth";
 import type { Business } from "@/types/firebase";
 
 type TabFilter = "approved" | "archived" | "deleted";
+type SortKey = "recent" | "name" | "oldest";
+
+const SORT_LABELS: Record<SortKey, string> = {
+  recent: "Son eklenen",
+  name: "İsme göre (A→Z)",
+  oldest: "İlk eklenen",
+};
 
 interface BusinessListComponentProps {
   onBusinessSelect?: (business: Business) => void;
@@ -54,6 +66,10 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Business | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("recent");
+
+  // Bekçi durumu — global pause/active. Tüm işletmeleri etkiler.
+  const outreachHealth = useOutreachHealth();
 
   const approvedBusinesses = businesses.filter(
     (b) => !b.status || b.status === "approved"
@@ -67,9 +83,25 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
     return list.filter((b) => b.name?.toLowerCase().includes(q));
   };
 
-  const visibleApproved = filterBySearch(approvedBusinesses);
-  const visibleArchived = filterBySearch(archivedBusinesses);
-  const visibleDeleted = filterBySearch(deletedBusinesses);
+  const sortList = (list: Business[]): Business[] => {
+    const copy = [...list];
+    if (sortKey === "name") {
+      copy.sort((a, b) => (a.name || "").localeCompare(b.name || "", "tr"));
+    } else {
+      const ts = (b: Business): number => {
+        const v = b.createdAt as unknown as { toDate?: () => Date } | undefined;
+        if (v && typeof v.toDate === "function") return v.toDate().getTime();
+        if (typeof v === "string") return new Date(v).getTime();
+        return 0;
+      };
+      copy.sort((a, b) => (sortKey === "recent" ? ts(b) - ts(a) : ts(a) - ts(b)));
+    }
+    return copy;
+  };
+
+  const visibleApproved = sortList(filterBySearch(approvedBusinesses));
+  const visibleArchived = sortList(filterBySearch(archivedBusinesses));
+  const visibleDeleted = sortList(filterBySearch(deletedBusinesses));
 
   const handleBusinessClick = (business: Business) => {
     if (onBusinessSelect) {
@@ -157,6 +189,18 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
                 className="h-9 pl-9 pr-3 rounded-lg bg-background/60 border border-border/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-48"
               />
             </div>
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="h-9 px-2 rounded-lg bg-background/60 border border-border/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              title="Sıralama"
+            >
+              {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                <option key={k} value={k}>
+                  {SORT_LABELS[k]}
+                </option>
+              ))}
+            </select>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
               <RefreshCw className={`w-4 h-4 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
               Yenile
@@ -164,6 +208,30 @@ export default function BusinessListComponent({ onBusinessSelect }: BusinessList
           </div>
         </div>
       </div>
+
+      {/* Outreach pause uyari seridi — Bekci RED demis */}
+      {outreachHealth.paused === true && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4">
+          <PauseCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium text-red-500">
+              Outreach Durduruldu — Bekçi Robotu
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {outreachHealth.reason || "Sebep belirtilmemiş"}
+              {outreachHealth.pausedAt && (
+                <span className="ml-2 text-xs">
+                  ({new Date(outreachHealth.pausedAt).toLocaleString("tr-TR")})
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Tüm işletmeler için outreach gönderimi durmuştur. Insan
+              onayıyla yeniden başlatılabilir.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs - segmented control */}
       <div className="inline-flex p-1 rounded-xl bg-muted/40 border border-border/60">
@@ -325,6 +393,10 @@ function BusinessCard({
   onRestore?: (e: React.MouseEvent) => void;
   onDelete?: (e: React.MouseEvent) => void;
 }) {
+  // Sadece aktif (approved) kartlarda özet metrik göster — arşiv/silinmiş
+  // kartlar için Firestore okumaya gerek yok (boşa quota).
+  const showSummary = !archived && !deleted;
+  const summary = useBusinessSummary(showSummary ? business.id : "");
   return (
     <Card
       className={`group relative cursor-pointer overflow-hidden border-border/60 bg-gradient-to-b from-card to-card/40 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-200 ${
@@ -420,6 +492,56 @@ function BusinessCard({
                 +{business.colors.length - 6}
               </span>
             )}
+          </div>
+        )}
+
+        {showSummary && (
+          <div className="pt-2 mt-1 border-t border-border/40 space-y-1.5">
+            {/* Marka skoru */}
+            <div
+              className="flex items-center gap-2"
+              title="Marka kimliği doluluk oranı (6 bölüm: temel, görsel, ses, hedef kitle, içerik stratejisi, iş bağlamı)"
+            >
+              <Palette className="w-3 h-3 text-muted-foreground shrink-0" />
+              <span className="text-[11px] text-muted-foreground shrink-0">
+                Marka
+              </span>
+              <div className="flex-1 h-1.5 bg-muted rounded overflow-hidden">
+                <div
+                  className={`h-full rounded transition-all ${
+                    summary.brandCompleteness == null
+                      ? "bg-muted"
+                      : summary.brandCompleteness >= 80
+                      ? "bg-emerald-500"
+                      : summary.brandCompleteness >= 50
+                      ? "bg-amber-500"
+                      : "bg-red-500/70"
+                  }`}
+                  style={{ width: `${summary.brandCompleteness ?? 0}%` }}
+                />
+              </div>
+              <span className="text-[11px] tabular-nums w-8 text-right">
+                {summary.loading
+                  ? "…"
+                  : summary.brandCompleteness != null
+                  ? `${summary.brandCompleteness}%`
+                  : "—"}
+              </span>
+            </div>
+
+            {/* Son aktivite */}
+            <div
+              className="flex items-center gap-2"
+              title="En son task / agent çalıştırma zamanı"
+            >
+              <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
+              <span className="text-[11px] text-muted-foreground shrink-0">
+                Son aktivite
+              </span>
+              <span className="text-[11px] ml-auto text-muted-foreground">
+                {summary.loading ? "…" : relativeTime(summary.lastActivity)}
+              </span>
+            </div>
           </div>
         )}
       </CardContent>

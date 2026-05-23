@@ -8,3 +8,4 @@ export { TasksTab } from "./tasks-tab";
 export { InstagramPostsTab } from "./instagram-posts-tab";
 export { ReportsTab } from "./reports-tab";
 export { SeoTab } from "./seo-tab";
+export { SalesTab } from "./sales-tab";

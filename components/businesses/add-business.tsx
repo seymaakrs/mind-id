@@ -29,6 +29,7 @@ import {
   BrandIdentityFields,
   setBrandPath,
 } from "@/components/business/BrandIdentityFields";
+import { BusinessPreviewCard } from "./business-preview-card";
 
 type WizardStep = "intro" | "analyzing" | "review" | "done";
 type EntryMode = "ai" | "manual";
@@ -423,6 +424,11 @@ export default function AddBusinessComponent() {
             Aşağıdaki alanlar otomatik dolduruldu. Seçim listeleri ve örneklerle
             rahatça düzenleyip kaydedin.
           </p>
+
+          <BusinessPreviewCard
+            identity={identity}
+            logoUrl={identity.visual?.logo_url || null}
+          />
 
           <BrandIdentityFields
             identity={identity}
