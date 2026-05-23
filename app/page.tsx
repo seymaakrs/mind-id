@@ -11,7 +11,8 @@ import {
 } from "@/components/businesses"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
-import { MindIDCanvas } from "@/components/mind-id-canvas/MindIDCanvas"
+import { OperationsCenter } from "@/components/operations-center"
+import type { OpsNavigateTarget } from "@/hooks/useOperationsCenter"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
@@ -125,6 +126,16 @@ export default function AdminPanel() {
   const handleSubMenuClick = (menuId: MainMenuType, subMenuId: SubMenuType) => {
     setActiveMenu(menuId)
     setActiveSubMenu(subMenuId)
+  }
+
+  const handleOpsNavigate = (target: OpsNavigateTarget) => {
+    setExpandedMenu(null)
+    if (target === "isletmeler") {
+      setActiveMenu("isletmeler")
+      setActiveSubMenu("isletme-listele")
+      return
+    }
+    setActiveMenu(target)
   }
 
   // Handler for navigating to dashboard from business list
@@ -256,7 +267,7 @@ export default function AdminPanel() {
 
         <div className={`max-w-full ${isFullBleed ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <MindIDCanvas />
+            <OperationsCenter onNavigate={handleOpsNavigate} />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (

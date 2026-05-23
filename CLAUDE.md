@@ -325,6 +325,16 @@ FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
+### Server-side (Anasayfa satış / CRM — `/api/sales-operations`)
+```env
+NOCODB_BASE_URL=http://34.26.138.196
+NOCODB_API_TOKEN=your-xc-token
+NOCODB_LEADS_TABLE_ID=m5lcgc5ifeqh38h
+N8N_API_KEY=your-n8n-api-key
+N8N_BASE_URL=https://mindidai.app.n8n.cloud
+```
+Vercel Production + Preview'da aynı değişkenler gerekir; yoksa satış düğümleri boşta kalır (uydurma veri yok).
+
 ## Business Management Flow
 1. **Add Business:** Form submission -> Upload logo to Storage -> Save to Firestore
 2. **List Businesses:** Fetch from Firestore -> Display in responsive grid

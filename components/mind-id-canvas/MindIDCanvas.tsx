@@ -12,50 +12,52 @@ import { TerminalPanel } from "./TerminalPanel"
 import { buildMindIDFlowGraph } from "./buildLayout"
 import {
   AGENT_GRAPH_NODES,
+  type AgentGraphNode,
+  type AgentStatus,
 } from "./data/agentGraph"
-import { useLiveAgentStates } from "./useLiveAgentStates"
+import {
+  nodeIdToNavigateTarget,
+  type OpsNavigateTarget,
+} from "@/hooks/useOperationsCenter"
 
 const nodeTypes = { mindIdAgent: AgentNode }
 const edgeTypes = { neonEdge: NeonEdge }
 
-function CanvasInner() {
-  // Canli veri: Firestore active_tasks dinleyici. Deploy edilen agent'lar,
-  // cron job'lar, gercek kullanici task'lari → bu canvas anlik sekillenir.
-  const { states: liveStates, logs: liveLogs, connected, activeCount } =
-    useLiveAgentStates()
+interface MindIDCanvasProps {
+  nodeStates: Record<string, AgentStatus>
+  activityLines: string[]
+  onNavigate?: (target: OpsNavigateTarget) => void
+}
 
+function CanvasInner({
+  nodeStates,
+  activityLines,
+  onNavigate,
+}: MindIDCanvasProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const { fitView } = useReactFlow()
 
   const graphNodes = useMemo(
-    () =>
+    (): AgentGraphNode[] =>
       AGENT_GRAPH_NODES.map((n) => ({
         ...n,
-        status: liveStates[n.id] ?? n.status,
+        status: nodeStates[n.id] ?? "idle",
       })),
-    [liveStates]
+    [nodeStates]
   )
 
   const { nodes, edges } = useMemo(
-    () => buildMindIDFlowGraph(liveStates),
-    [liveStates]
-  )
-
-  // Header banner için statü
-  const connectionLabel = connected
-    ? `Canli — ${activeCount} aktif gorev`
-    : "Firestore bekleniyor…"
-
-  const headerLogs = useMemo(
-    () => [
-      `> MindID Canvas v0.3 — ${connectionLabel}`,
-      "> Aktif task'lar tool isimlerine gore ilgili agent'lari aydinlatir",
-      ...liveLogs,
-    ],
-    [connected, activeCount, liveLogs, connectionLabel]
+    () => buildMindIDFlowGraph(nodeStates),
+    [nodeStates]
   )
 
   const selectedNode = graphNodes.find((n) => n.id === selectedId) ?? null
+  const navigateTarget = selectedId ? nodeIdToNavigateTarget(selectedId) : null
+
+  const terminalLines = useMemo(() => {
+    if (activityLines.length === 0) return []
+    return activityLines
+  }, [activityLines])
 
   useEffect(() => {
     const t = setTimeout(() => fitView({ padding: 0.12, duration: 300 }), 100)
@@ -94,19 +96,25 @@ function CanvasInner() {
         </div>
         <DetailDrawer
           node={selectedNode}
-          logs={headerLogs}
+          logs={terminalLines}
+          navigateTarget={navigateTarget}
+          onNavigate={
+            navigateTarget && onNavigate
+              ? () => onNavigate(navigateTarget)
+              : undefined
+          }
           onClose={() => setSelectedId(null)}
         />
       </div>
-      <TerminalPanel lines={headerLogs} />
+      {terminalLines.length > 0 && <TerminalPanel lines={terminalLines} />}
     </div>
   )
 }
 
-export function MindIDCanvas() {
+export function MindIDCanvas(props: MindIDCanvasProps) {
   return (
     <ReactFlowProvider>
-      <CanvasInner />
+      <CanvasInner {...props} />
     </ReactFlowProvider>
   )
 }

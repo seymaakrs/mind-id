@@ -16,3 +16,9 @@ export { useActiveTasks } from "@/contexts/ActiveTasksContext";
 export { useChatThread } from "./useChatThread";
 export { useMediaJobs } from "./useMediaJobs";
 export { useAgentInstructions } from "./useAgentInstructions";
+export {
+  useOperationsCenter,
+  nodeIdToNavigateTarget,
+  type OpsNavigateTarget,
+} from "./useOperationsCenter";
+export { useSalesOperations } from "./useSalesOperations";

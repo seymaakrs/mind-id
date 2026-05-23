@@ -1,7 +1,7 @@
 /**
  * Mind ekosistemi — mind-id + mind-agent + customer_agent + NocoDB
  * Dikey soy ağacı (üstten alta): Seyma → Portal → iki dal → yapraklar
- * Durumlar şema anlatımı için sabit; canlı veri ileride Firestore/NocoDB'den gelir.
+ * Durumlar anasayfada Firestore active_tasks, errors ve health-check ile türetilir.
  */
 
 export type AgentKind =
