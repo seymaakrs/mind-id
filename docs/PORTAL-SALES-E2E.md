@@ -11,38 +11,20 @@ PR #13 (portal Sales sekmesi) için H-8/H-9/H-10 birleşik runbook'u. mind-id'de
 
 ---
 
-## ⚠️ H-8/H-9/H-10 Hazırlık — TESPİT EDİLEN CONTRACT DRIFT
+## ✅ Contract Doğrulaması — DRIFT YOK
 
-mind-id `components/businesses/tabs/sales-tab.tsx` aşağıdaki shape'leri bekliyor; **mind-agent PR #24 `src/app/sales_api.py` farklı isim döndürüyor olabilir.** Deploy öncesi BIRLİKTE düzeltilmeli — aksi halde Sales sekmesi sessiz boş gösterir (TypeScript'in `unknown` cast'i UI'da `undefined` olarak görünür, hata fırlatmaz).
+ADIM 3 hardening sırasında mind-agent `src/tools/sales/reporting_tools.py` cross-verify edildi. Backend dönüşleri ile portal `components/businesses/tabs/sales-tab.tsx` field isimleri TAM UYUMLU:
 
-| Endpoint | Portal bekliyor | Backend (PR #24 `_*_impl`) | Aksiyon |
+| Endpoint | Portal bekliyor | Backend `_*_impl` döner | Durum |
 |---|---|---|---|
-| `/sales/leads/count` | `{ success, count }` | `{ success, count }` | ✅ uyumlu |
-| `/sales/leads/funnel` | `{ success, data: [...] }` | `{ success, stages: [...] }` | ❌ **field name drift** — biri "data" veya "stages" olarak hizalanmalı |
-| `/sales/outreach/status` | `{ success, sent_today, sent_last_hour, daily_limit, remaining }` | `{ success, sent_today, remaining_capacity, ... }` | ⚠️ `remaining` vs `remaining_capacity` |
-| `/sales/outreach/health` | `{ success, active, paused, reason, configured }` | `{ success, paused, reason, ... }` | ⚠️ `active` ve `configured` backend'de var mı? |
+| `/sales/leads/count` | `{ success, count }` | `{ success, count }` | ✅ |
+| `/sales/leads/funnel` | `{ success, data[].asama/count }` | `{ success, data[].asama/count, total, schema }` | ✅ |
+| `/sales/outreach/status` | `{ success, sent_today, sent_last_hour, daily_limit, remaining }` | `{ success, sent_today, daily_limit, remaining, percent_used, sent_last_hour }` | ✅ |
+| `/sales/outreach/health` | `{ success, active, paused, reason, configured }` | `{ success, configured, active, paused, reason, paused_at? }` | ✅ |
 
-### Önerilen çözüm
-Backend (`sales_api.py`'a değil, `reporting_tools.py` `_lead_funnel_impl` ve `_outreach_*_impl`'a) **her iki ismi de dönderecek** geriye-uyum shim'i ekle:
+**Sonuç:** Backend ↔ portal sözleşmesi sağlam, ek shim gerekmiyor. Mind-agent PR #24 `tests/test_sales_api_contract.py` H-1 testi de bu isimleri snapshot olarak donduruyor — gelecekteki sessiz drift CI'da yakalanır.
 
-```python
-# reporting_tools.py _lead_funnel_impl içinde:
-result = {"success": True, "stages": stages, "data": stages, "total": total}
-return result
-
-# _outreach_status_impl içinde:
-result = {
-    "success": True,
-    "sent_today": sent,
-    "remaining_capacity": cap - sent,
-    "remaining": cap - sent,  # portal shim
-    ...
-}
-```
-
-Portal tarafı next PR'da yeni isimlere geçer; shim 1 ay sonra kaldırılır.
-
-> **Bu drift'i fix etmeden PR #13 merge edilse bile, prod UI boş görünür ama hata vermez.** Bu sessiz fail mode CI'da yakalanamaz çünkü mind-id test framework yok. Manuel E2E'de mutlaka kontrol et (aşağıdaki Adım 4).
+> Gelecekte yeni endpoint eklendiğinde veya field rename yapılmak istendiğinde **iki PR aynı anda merge edilmeli** (mind-agent + mind-id). Bu kuralı runbook sonundaki "Future work" bölümüne ekleyin.
 
 ---
 
@@ -124,10 +106,9 @@ curl -s -o /dev/null -w '%{http_code}\n' "$AGENT_URL/sales/leads/count"
 curl -sf "$PORTAL_URL/api/sales/leads/count" | jq .
 # Beklenen: 200 + {success: true, count: <int>, ...}
 
-# Funnel — KRİTİK: hem 'data' hem 'stages' field'ı dolu mu?
-curl -sf "$PORTAL_URL/api/sales/leads/funnel" | jq '{success, has_data: (.data != null), has_stages: (.stages != null)}'
-# Beklenen: { "success": true, "has_data": true, "has_stages": true }
-# Eğer biri false dönerse: yukarıdaki contract drift fix'i deploy edilmemiş.
+# Funnel — data field dolu mu, stage shape doğru mu?
+curl -sf "$PORTAL_URL/api/sales/leads/funnel" | jq '{success, n_stages: (.data | length), first_stage_keys: (.data[0] | keys)}'
+# Beklenen: { "success": true, "n_stages": >=1, "first_stage_keys": ["asama", "count"] }
 ```
 
 ### Adım 5 — Browser DevTools (token leak kontrol)
@@ -151,7 +132,7 @@ curl -sf "$PORTAL_URL/api/sales/leads/funnel" | jq '{success, has_data: (.data !
 3. `useLiveAgentStates.ts` hook 30 sn'de bir yenilenmeli (Network panel'de polling görünür)
 
 ### Kabul kriterleri
-- [ ] Adım 4'te `has_data` ve `has_stages` her ikisi de `true`
+- [ ] Adım 4'te `n_stages >= 1` ve `first_stage_keys == ["asama","count"]`
 - [ ] Adım 5'te token DevTools'ta hiçbir yerde görünmüyor
 - [ ] Adım 6'da 4 metrik kart dolu (veya doğru empty state)
 - [ ] Console'da hata yok
