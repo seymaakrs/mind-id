@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import {
   Loader2,
   Upload,
@@ -33,6 +33,7 @@ type FieldKind =
   | "text"
   | "long"
   | "list"
+  | "tags"
   | "select"
   | "langselect"
   | "multiselect"
@@ -143,9 +144,9 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
       {
         path: "basics.keywords",
         label: "Anahtar kelimeler",
-        kind: "list",
-        hint: "İşletmeyi tanımlayan kelimeler — her satıra bir tane",
-        placeholder: "yapay zeka\nbulut\nverimlilik",
+        kind: "tags",
+        hint: "Enter veya virgül ile ekle, × ile sil",
+        placeholder: "yapay zeka, bulut, verimlilik…",
       },
     ],
   },
@@ -216,37 +217,16 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
       {
         path: "voice.personality",
         label: "Marka kişiliği",
-        kind: "list",
-        hint: "Sıfatlarla tanımlayın — her satıra bir tane",
-        placeholder: "Cesur\nYenilikçi\nGüven veren",
-      },
-      {
-        path: "voice.preferred_words",
-        label: "Tercih edilen kelimeler",
-        kind: "list",
-        hint: "Sık kullanılmasını istediğin kelimeler",
-        placeholder: "çözüm\nbirlikte\nkolay",
-      },
-      {
-        path: "voice.avoid_words",
-        label: "Kaçınılacak kelimeler",
-        kind: "list",
-        hint: "Asla kullanılmamasını istediğin kelimeler",
-        placeholder: "ucuz\nsıradan",
+        kind: "tags",
+        hint: "Sıfatlarla tanımlayın",
+        placeholder: "cesur, yenilikçi, güven veren…",
       },
       {
         path: "voice.avoid_topics",
-        label: "Kaçınılacak konular",
-        kind: "list",
-        hint: "İçerikte değinilmemesi gereken konular",
-        placeholder: "Siyaset\nRakip karşılaştırması",
-      },
-      {
-        path: "voice.example_captions",
-        label: "Örnek başlıklar",
-        kind: "list",
-        hint: "Beğendiğin gönderi metni örnekleri — AI tarzı buradan öğrenir",
-        placeholder: "Bugün küçük bir adım, yarın büyük bir fark. 🚀",
+        label: "Kaçınılacak kelime ve konular",
+        kind: "tags",
+        hint: "İçerikte kullanılmaması/değinilmemesi gereken kelime ve konular",
+        placeholder: "ucuz, siyaset, rakip karşılaştırması…",
       },
       {
         path: "voice.address_form",
@@ -295,14 +275,6 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
         kind: "select",
         options: ["Kadın", "Erkek", "Tümü"],
       },
-      {
-        path: "audience.primary.ses",
-        label: "Sosyoekonomik durum, sorun noktaları ve motivasyonlar",
-        kind: "long",
-        hint: "Tek alanda serbestçe yazın",
-        placeholder:
-          "Orta-üst gelir; zaman kıtlığı yaşıyor; büyümek ama kontrolü kaybetmemek istiyor",
-      },
     ],
   },
   {
@@ -320,9 +292,9 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
       {
         path: "content_strategy.required_hashtags",
         label: "Hashtag stratejisi ve zorunlu etiketler",
-        kind: "list",
-        hint: "Her satıra bir strateji notu veya #etiket",
-        placeholder: "#markaadi\n#sektor\nKonum etiketi her gönderide",
+        kind: "tags",
+        hint: "Enter veya virgül ile ekle",
+        placeholder: "#markaadi, #sektor, konum etiketi…",
       },
     ],
   },
@@ -354,16 +326,16 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
       {
         path: "business_context.competitors",
         label: "Rakipler",
-        kind: "list",
-        hint: "Her satıra bir tane",
-        placeholder: "RakipA\nRakipB",
+        kind: "tags",
+        hint: "Enter veya virgül ile ekle",
+        placeholder: "RakipA, RakipB…",
       },
       {
         path: "business_context.seo_keywords",
         label: "SEO anahtar kelimeleri",
-        kind: "list",
-        hint: "Her satıra bir tane",
-        placeholder: "online yedekleme\nkobi yazılımı",
+        kind: "tags",
+        hint: "Enter veya virgül ile ekle",
+        placeholder: "online yedekleme, kobi yazılımı…",
       },
     ],
   },
@@ -407,6 +379,82 @@ function langOptionToArray(opt: string): string[] {
 function fieldFilled(raw: unknown): boolean {
   if (Array.isArray(raw)) return raw.length > 0;
   return typeof raw === "string" ? raw.trim().length > 0 : raw != null;
+}
+
+interface TagsInputProps {
+  id?: string;
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+function TagsInput({
+  id,
+  values,
+  onChange,
+  placeholder,
+  disabled,
+}: TagsInputProps) {
+  const [draft, setDraft] = useState("");
+
+  const commit = (raw: string) => {
+    const parts = raw
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+    if (!parts.length) return;
+    const next = [...values];
+    for (const p of parts) if (!next.includes(p)) next.push(p);
+    onChange(next);
+    setDraft("");
+  };
+
+  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commit(draft);
+    } else if (e.key === "Backspace" && !draft && values.length) {
+      onChange(values.slice(0, -1));
+    }
+  };
+
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 min-h-9 focus-within:ring-1 focus-within:ring-ring ${
+        disabled ? "opacity-60" : ""
+      }`}
+    >
+      {values.map((v, idx) => (
+        <span
+          key={`${v}-${idx}`}
+          className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs"
+        >
+          {v}
+          <button
+            type="button"
+            aria-label="kaldır"
+            disabled={disabled}
+            className="leading-none hover:text-destructive"
+            onClick={() => onChange(values.filter((_, i) => i !== idx))}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        id={id}
+        type="text"
+        disabled={disabled}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={handleKey}
+        onBlur={() => draft && commit(draft)}
+        placeholder={values.length === 0 ? placeholder : ""}
+        className="flex-1 min-w-[8ch] bg-transparent outline-none text-sm py-0.5"
+      />
+    </div>
+  );
 }
 
 interface Props {
@@ -471,6 +519,7 @@ export function BrandIdentityFields({
                   const wide =
                     f.kind === "long" ||
                     f.kind === "list" ||
+                    f.kind === "tags" ||
                     f.kind === "multiselect" ||
                     f.kind === "multiselect_str" ||
                     f.kind === "colorpalette" ||
@@ -525,6 +574,16 @@ export function BrandIdentityFields({
                                 .filter(Boolean)
                             )
                           }
+                        />
+                      )}
+
+                      {f.kind === "tags" && (
+                        <TagsInput
+                          id={id}
+                          disabled={disabled}
+                          placeholder={f.placeholder}
+                          values={Array.isArray(raw) ? (raw as string[]) : []}
+                          onChange={(next) => onChange(f.path, next)}
                         />
                       )}
 
