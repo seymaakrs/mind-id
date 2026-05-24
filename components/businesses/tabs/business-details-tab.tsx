@@ -19,6 +19,7 @@ import {
   Globe,
 } from "lucide-react";
 import { useBusinesses } from "@/hooks";
+import { getBusiness } from "@/lib/firebase/firestore";
 import {
   BrandIdentityFields,
   setBrandPath,
@@ -188,8 +189,16 @@ export function BusinessDetailsTab({ business, onUpdated }: BusinessDetailsTabPr
 
   const platformIds = getPlatformIds();
 
-  const handleSyncComplete = () => {
-    window.location.reload();
+  const handleSyncComplete = async () => {
+    try {
+      const updated = await getBusiness(currentBusiness.id);
+      if (updated) {
+        setCurrentBusiness(updated);
+        onUpdated?.(updated);
+      }
+    } catch (err) {
+      console.error("Sync sonrasi business yenilenemedi:", err);
+    }
   };
 
   // Marka kimliği özeti (görüntüleme)
