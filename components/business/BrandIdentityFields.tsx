@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import {
   Loader2,
   Upload,
@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Briefcase,
   ImageOff,
+  Power,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -109,6 +110,13 @@ type SectionMeta = {
   description: string;
   icon: typeof Building2;
   fields: FieldDef[];
+  // Opsiyonel: bölüm bir bayrakla aç/kapa edilebilir (örn. "Aktif edilmeden
+  // ajanlar okumaz"). Path bool bir alana işaret eder.
+  enabledPath?: string;
+  // Toggle kapalıyken kullanıcıya gösterilecek açıklama.
+  disabledNotice?: string;
+  // Toggle açıkken kullanıcıya verilecek özet (yeşil bilgi).
+  enabledNotice?: string;
 };
 
 export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
@@ -300,8 +308,17 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
   },
   {
     title: "İş Bağlamı",
-    description: "Ürünler, değer önerisi ve rakipler",
+    description:
+      "Ürün, USP, rakip ve SEO — sadece sen aktif edersen ajanlar okur",
     icon: Briefcase,
+    enabledPath: "business_context.enabled",
+    disabledNotice:
+      "Bu bölüm şu an PASİF. Ajanlar (Satış Direktörü dahil) ürün, USP, " +
+      "rakip ve SEO bilgilerini OKUMAZ. İhtiyaç olduğunda sağ üstteki " +
+      "anahtarı açın.",
+    enabledNotice:
+      "Bu bölüm AKTİF. Satış Direktörü ve ilgili ajanlar buradaki ürün/USP/" +
+      "rakip/SEO bilgilerini kullanacak.",
     fields: [
       {
         path: "business_context.products",
@@ -457,6 +474,40 @@ function TagsInput({
   );
 }
 
+interface SectionToggleProps {
+  on: boolean;
+  disabled?: boolean;
+  onToggle: (next: boolean) => void;
+}
+
+function SectionToggle({ on, disabled, onToggle }: SectionToggleProps) {
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    // Accordion butonunu tetiklemesin
+    e.stopPropagation();
+    onToggle(!on);
+  };
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={handleClick}
+      title={on ? "Ajanlar için aktif" : "Ajanlar için pasif"}
+      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+        on ? "bg-primary" : "bg-muted-foreground/30"
+      } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+          on ? "translate-x-4" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
 interface Props {
   identity: BrandIdentity;
   onChange: (path: string, value: unknown) => void;
@@ -483,6 +534,11 @@ export function BrandIdentityFields({
           fieldFilled(getPath(identity, f.path))
         ).length;
 
+        const sectionEnabled = section.enabledPath
+          ? Boolean(getPath(identity, section.enabledPath))
+          : true;
+        const fieldsDisabled = disabled || !sectionEnabled;
+
         return (
           <Card key={section.title} className="overflow-hidden">
             <button
@@ -490,7 +546,13 @@ export function BrandIdentityFields({
               onClick={() => setOpenIndex(open ? -1 : sIdx)}
               className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/40 transition-colors"
             >
-              <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0">
+              <span
+                className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${
+                  sectionEnabled
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
                 <Icon className="w-4 h-4" />
               </span>
               <span className="flex-1 min-w-0">
@@ -499,11 +561,28 @@ export function BrandIdentityFields({
                   <span className="text-xs text-muted-foreground">
                     {filledCount}/{section.fields.length}
                   </span>
+                  {section.enabledPath && !sectionEnabled && (
+                    <span className="text-[10px] uppercase tracking-wide rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+                      pasif
+                    </span>
+                  )}
+                  {section.enabledPath && sectionEnabled && (
+                    <span className="text-[10px] uppercase tracking-wide rounded-full bg-primary/15 text-primary px-2 py-0.5">
+                      aktif
+                    </span>
+                  )}
                 </span>
                 <span className="block text-sm text-muted-foreground truncate">
                   {section.description}
                 </span>
               </span>
+              {section.enabledPath && (
+                <SectionToggle
+                  on={sectionEnabled}
+                  disabled={disabled}
+                  onToggle={(next) => onChange(section.enabledPath!, next)}
+                />
+              )}
               <ChevronDown
                 className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
                   open ? "rotate-180" : ""
@@ -512,310 +591,331 @@ export function BrandIdentityFields({
             </button>
 
             {open && (
-              <div className="border-t p-5 grid gap-5 md:grid-cols-2">
-                {section.fields.map((f) => {
-                  const raw = getPath(identity, f.path);
-                  const id = `f-${f.path}`;
-                  const wide =
-                    f.kind === "long" ||
-                    f.kind === "list" ||
-                    f.kind === "tags" ||
-                    f.kind === "multiselect" ||
-                    f.kind === "multiselect_str" ||
-                    f.kind === "colorpalette" ||
-                    f.kind === "logo";
-                  return (
-                    <div
-                      key={f.path}
-                      className={`space-y-2 ${wide ? "md:col-span-2" : ""}`}
-                    >
-                      <Label htmlFor={id} className="text-sm font-medium">
-                        {f.label}
-                      </Label>
+              <div className="border-t">
+                {section.enabledPath && (
+                  <div
+                    className={`flex items-start gap-2 px-5 py-3 text-xs border-b ${
+                      sectionEnabled
+                        ? "bg-primary/5 text-primary"
+                        : "bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200/60"
+                    }`}
+                  >
+                    <Power className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      {sectionEnabled
+                        ? section.enabledNotice
+                        : section.disabledNotice}
+                    </span>
+                  </div>
+                )}
 
-                      {f.kind === "text" && (
-                        <Input
-                          id={id}
-                          disabled={disabled}
-                          placeholder={f.placeholder}
-                          value={(raw as string) ?? ""}
-                          onChange={(e) =>
-                            onChange(f.path, e.target.value || null)
-                          }
-                        />
-                      )}
+                <div className="p-5 grid gap-5 md:grid-cols-2">
+                  {section.fields.map((f) => {
+                    const raw = getPath(identity, f.path);
+                    const id = `f-${f.path}`;
+                    const wide =
+                      f.kind === "long" ||
+                      f.kind === "list" ||
+                      f.kind === "tags" ||
+                      f.kind === "multiselect" ||
+                      f.kind === "multiselect_str" ||
+                      f.kind === "colorpalette" ||
+                      f.kind === "logo";
+                    return (
+                      <div
+                        key={f.path}
+                        className={`space-y-2 ${wide ? "md:col-span-2" : ""} ${
+                          fieldsDisabled ? "opacity-60" : ""
+                        }`}
+                      >
+                        <Label htmlFor={id} className="text-sm font-medium">
+                          {f.label}
+                        </Label>
 
-                      {f.kind === "long" && (
-                        <Textarea
-                          id={id}
-                          rows={3}
-                          disabled={disabled}
-                          placeholder={f.placeholder}
-                          value={(raw as string) ?? ""}
-                          onChange={(e) =>
-                            onChange(f.path, e.target.value || null)
-                          }
-                        />
-                      )}
+                        {f.kind === "text" && (
+                          <Input
+                            id={id}
+                            disabled={fieldsDisabled}
+                            placeholder={f.placeholder}
+                            value={(raw as string) ?? ""}
+                            onChange={(e) =>
+                              onChange(f.path, e.target.value || null)
+                            }
+                          />
+                        )}
 
-                      {f.kind === "list" && (
-                        <Textarea
-                          id={id}
-                          rows={3}
-                          disabled={disabled}
-                          placeholder={f.placeholder}
-                          value={Array.isArray(raw) ? raw.join("\n") : ""}
-                          onChange={(e) =>
-                            onChange(
-                              f.path,
-                              e.target.value
-                                .split("\n")
-                                .map((x) => x.trim())
-                                .filter(Boolean)
-                            )
-                          }
-                        />
-                      )}
+                        {f.kind === "long" && (
+                          <Textarea
+                            id={id}
+                            rows={3}
+                            disabled={fieldsDisabled}
+                            placeholder={f.placeholder}
+                            value={(raw as string) ?? ""}
+                            onChange={(e) =>
+                              onChange(f.path, e.target.value || null)
+                            }
+                          />
+                        )}
 
-                      {f.kind === "tags" && (
-                        <TagsInput
-                          id={id}
-                          disabled={disabled}
-                          placeholder={f.placeholder}
-                          values={Array.isArray(raw) ? (raw as string[]) : []}
-                          onChange={(next) => onChange(f.path, next)}
-                        />
-                      )}
-
-                      {f.kind === "select" && (
-                        <Select
-                          disabled={disabled}
-                          value={(raw as string) || NONE}
-                          onValueChange={(v) =>
-                            onChange(f.path, v === NONE ? null : v)
-                          }
-                        >
-                          <SelectTrigger id={id}>
-                            <SelectValue placeholder="Seçilmedi" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NONE}>Seçilmedi</SelectItem>
-                            {f.options?.map((o) => (
-                              <SelectItem key={o} value={o}>
-                                {o}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-
-                      {f.kind === "langselect" && (
-                        <Select
-                          disabled={disabled}
-                          value={langArrayToOption(raw) || NONE}
-                          onValueChange={(v) =>
-                            onChange(
-                              f.path,
-                              v === NONE ? [] : langOptionToArray(v)
-                            )
-                          }
-                        >
-                          <SelectTrigger id={id}>
-                            <SelectValue placeholder="Seçilmedi" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NONE}>Seçilmedi</SelectItem>
-                            {f.options?.map((o) => (
-                              <SelectItem key={o} value={o}>
-                                {o}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-
-                      {f.kind === "multiselect" && (
-                        <div className="flex flex-wrap gap-2">
-                          {f.options?.map((o) => {
-                            const arr = Array.isArray(raw)
-                              ? (raw as string[])
-                              : [];
-                            const on = arr.includes(o);
-                            return (
-                              <button
-                                type="button"
-                                key={o}
-                                disabled={disabled}
-                                onClick={() =>
-                                  onChange(
-                                    f.path,
-                                    on
-                                      ? arr.filter((x) => x !== o)
-                                      : [...arr, o]
-                                  )
-                                }
-                                className={`rounded-full border px-3 py-1.5 text-sm transition-all ${
-                                  on
-                                    ? "bg-primary text-primary-foreground border-primary ring-2 ring-primary/20"
-                                    : "border-border text-foreground hover:bg-muted hover:border-primary/40"
-                                }`}
-                              >
-                                {o}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {f.kind === "multiselect_str" && (
-                        <div className="flex flex-wrap gap-2">
-                          {f.options?.map((o) => {
-                            const cur =
-                              typeof raw === "string" && raw
-                                ? raw
-                                    .split(",")
-                                    .map((x) => x.trim())
-                                    .filter(Boolean)
-                                : [];
-                            const on = cur.includes(o);
-                            return (
-                              <button
-                                type="button"
-                                key={o}
-                                disabled={disabled}
-                                style={{ fontFamily: o }}
-                                onClick={() => {
-                                  const next = on
-                                    ? cur.filter((x) => x !== o)
-                                    : [...cur, o];
-                                  onChange(
-                                    f.path,
-                                    next.length ? next.join(", ") : null
-                                  );
-                                }}
-                                className={`rounded-full border px-3 py-1.5 text-sm transition-all ${
-                                  on
-                                    ? "bg-primary text-primary-foreground border-primary ring-2 ring-primary/20"
-                                    : "border-border text-foreground hover:bg-muted hover:border-primary/40"
-                                }`}
-                              >
-                                {o}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {f.kind === "colorpalette" && (
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap gap-2">
-                            {(Array.isArray(raw) ? (raw as string[]) : []).map(
-                              (c, idx) => (
-                                <span
-                                  key={`${c}-${idx}`}
-                                  className="inline-flex items-center gap-2 rounded-lg border border-border pl-1.5 pr-2 py-1.5 text-xs"
-                                >
-                                  <span
-                                    className="h-6 w-6 rounded-md border border-border/60"
-                                    style={{ backgroundColor: c }}
-                                  />
-                                  <span className="font-mono">{c}</span>
-                                  <button
-                                    type="button"
-                                    aria-label="rengi kaldır"
-                                    disabled={disabled}
-                                    className="text-muted-foreground hover:text-destructive text-base leading-none"
-                                    onClick={() => {
-                                      const arr = Array.isArray(raw)
-                                        ? (raw as string[])
-                                        : [];
-                                      onChange(
-                                        f.path,
-                                        arr.filter((_, i) => i !== idx)
-                                      );
-                                    }}
-                                  >
-                                    ×
-                                  </button>
-                                </span>
+                        {f.kind === "list" && (
+                          <Textarea
+                            id={id}
+                            rows={3}
+                            disabled={fieldsDisabled}
+                            placeholder={f.placeholder}
+                            value={Array.isArray(raw) ? raw.join("\n") : ""}
+                            onChange={(e) =>
+                              onChange(
+                                f.path,
+                                e.target.value
+                                  .split("\n")
+                                  .map((x) => x.trim())
+                                  .filter(Boolean)
                               )
-                            )}
-                            {(!Array.isArray(raw) || raw.length === 0) && (
-                              <span className="text-xs text-muted-foreground">
-                                Henüz renk eklenmedi
-                              </span>
-                            )}
+                            }
+                          />
+                        )}
+
+                        {f.kind === "tags" && (
+                          <TagsInput
+                            id={id}
+                            disabled={fieldsDisabled}
+                            placeholder={f.placeholder}
+                            values={Array.isArray(raw) ? (raw as string[]) : []}
+                            onChange={(next) => onChange(f.path, next)}
+                          />
+                        )}
+
+                        {f.kind === "select" && (
+                          <Select
+                            disabled={fieldsDisabled}
+                            value={(raw as string) || NONE}
+                            onValueChange={(v) =>
+                              onChange(f.path, v === NONE ? null : v)
+                            }
+                          >
+                            <SelectTrigger id={id}>
+                              <SelectValue placeholder="Seçilmedi" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NONE}>Seçilmedi</SelectItem>
+                              {f.options?.map((o) => (
+                                <SelectItem key={o} value={o}>
+                                  {o}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+
+                        {f.kind === "langselect" && (
+                          <Select
+                            disabled={fieldsDisabled}
+                            value={langArrayToOption(raw) || NONE}
+                            onValueChange={(v) =>
+                              onChange(
+                                f.path,
+                                v === NONE ? [] : langOptionToArray(v)
+                              )
+                            }
+                          >
+                            <SelectTrigger id={id}>
+                              <SelectValue placeholder="Seçilmedi" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NONE}>Seçilmedi</SelectItem>
+                              {f.options?.map((o) => (
+                                <SelectItem key={o} value={o}>
+                                  {o}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+
+                        {f.kind === "multiselect" && (
+                          <div className="flex flex-wrap gap-2">
+                            {f.options?.map((o) => {
+                              const arr = Array.isArray(raw)
+                                ? (raw as string[])
+                                : [];
+                              const on = arr.includes(o);
+                              return (
+                                <button
+                                  type="button"
+                                  key={o}
+                                  disabled={fieldsDisabled}
+                                  onClick={() =>
+                                    onChange(
+                                      f.path,
+                                      on
+                                        ? arr.filter((x) => x !== o)
+                                        : [...arr, o]
+                                    )
+                                  }
+                                  className={`rounded-full border px-3 py-1.5 text-sm transition-all ${
+                                    on
+                                      ? "bg-primary text-primary-foreground border-primary ring-2 ring-primary/20"
+                                      : "border-border text-foreground hover:bg-muted hover:border-primary/40"
+                                  }`}
+                                >
+                                  {o}
+                                </button>
+                              );
+                            })}
                           </div>
-                          <label className="inline-flex items-center gap-2 cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-muted w-fit">
-                            <span
-                              className="h-4 w-4 rounded"
-                              style={{
-                                background:
-                                  "conic-gradient(red,orange,yellow,green,blue,violet,red)",
-                              }}
-                            />
-                            Renk ekle
-                            <input
-                              type="color"
-                              disabled={disabled}
-                              className="sr-only"
-                              onChange={(e) => {
-                                const arr = Array.isArray(raw)
-                                  ? (raw as string[])
+                        )}
+
+                        {f.kind === "multiselect_str" && (
+                          <div className="flex flex-wrap gap-2">
+                            {f.options?.map((o) => {
+                              const cur =
+                                typeof raw === "string" && raw
+                                  ? raw
+                                      .split(",")
+                                      .map((x) => x.trim())
+                                      .filter(Boolean)
                                   : [];
-                                const hex = e.target.value.toUpperCase();
-                                if (!arr.includes(hex))
-                                  onChange(f.path, [...arr, hex]);
-                              }}
-                            />
-                          </label>
-                        </div>
-                      )}
+                              const on = cur.includes(o);
+                              return (
+                                <button
+                                  type="button"
+                                  key={o}
+                                  disabled={fieldsDisabled}
+                                  style={{ fontFamily: o }}
+                                  onClick={() => {
+                                    const next = on
+                                      ? cur.filter((x) => x !== o)
+                                      : [...cur, o];
+                                    onChange(
+                                      f.path,
+                                      next.length ? next.join(", ") : null
+                                    );
+                                  }}
+                                  className={`rounded-full border px-3 py-1.5 text-sm transition-all ${
+                                    on
+                                      ? "bg-primary text-primary-foreground border-primary ring-2 ring-primary/20"
+                                      : "border-border text-foreground hover:bg-muted hover:border-primary/40"
+                                  }`}
+                                >
+                                  {o}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
 
-                      {f.kind === "logo" && (
-                        <div className="flex items-center gap-4">
-                          {typeof raw === "string" && raw ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={raw}
-                              alt="logo"
-                              className="h-20 w-20 rounded-lg object-contain border border-border bg-muted"
-                            />
-                          ) : (
-                            <div className="h-20 w-20 rounded-lg border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-1">
-                              <ImageOff className="w-5 h-5" />
-                              <span className="text-[10px]">logo yok</span>
+                        {f.kind === "colorpalette" && (
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                              {(Array.isArray(raw) ? (raw as string[]) : []).map(
+                                (c, idx) => (
+                                  <span
+                                    key={`${c}-${idx}`}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-border pl-1.5 pr-2 py-1.5 text-xs"
+                                  >
+                                    <span
+                                      className="h-6 w-6 rounded-md border border-border/60"
+                                      style={{ backgroundColor: c }}
+                                    />
+                                    <span className="font-mono">{c}</span>
+                                    <button
+                                      type="button"
+                                      aria-label="rengi kaldır"
+                                      disabled={fieldsDisabled}
+                                      className="text-muted-foreground hover:text-destructive text-base leading-none"
+                                      onClick={() => {
+                                        const arr = Array.isArray(raw)
+                                          ? (raw as string[])
+                                          : [];
+                                        onChange(
+                                          f.path,
+                                          arr.filter((_, i) => i !== idx)
+                                        );
+                                      }}
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                )
+                              )}
+                              {(!Array.isArray(raw) || raw.length === 0) && (
+                                <span className="text-xs text-muted-foreground">
+                                  Henüz renk eklenmedi
+                                </span>
+                              )}
                             </div>
-                          )}
-                          <label className="inline-flex items-center gap-2 cursor-pointer rounded-md border border-border px-4 py-2.5 text-sm hover:bg-muted">
-                            {logoUploading ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Upload className="w-4 h-4" />
-                            )}
-                            Bilgisayardan seç
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              disabled={disabled || logoUploading}
-                              onChange={(e) =>
-                                onLogoSelect(e.target.files?.[0])
-                              }
-                            />
-                          </label>
-                        </div>
-                      )}
+                            <label className="inline-flex items-center gap-2 cursor-pointer rounded-md border border-border px-3 py-2 text-sm hover:bg-muted w-fit">
+                              <span
+                                className="h-4 w-4 rounded"
+                                style={{
+                                  background:
+                                    "conic-gradient(red,orange,yellow,green,blue,violet,red)",
+                                }}
+                              />
+                              Renk ekle
+                              <input
+                                type="color"
+                                disabled={fieldsDisabled}
+                                className="sr-only"
+                                onChange={(e) => {
+                                  const arr = Array.isArray(raw)
+                                    ? (raw as string[])
+                                    : [];
+                                  const hex = e.target.value.toUpperCase();
+                                  if (!arr.includes(hex))
+                                    onChange(f.path, [...arr, hex]);
+                                }}
+                              />
+                            </label>
+                          </div>
+                        )}
 
-                      {f.hint && (
-                        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                          {f.hint}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+                        {f.kind === "logo" && (
+                          <div className="flex items-center gap-4">
+                            {typeof raw === "string" && raw ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={raw}
+                                alt="logo"
+                                className="h-20 w-20 rounded-lg object-contain border border-border bg-muted"
+                              />
+                            ) : (
+                              <div className="h-20 w-20 rounded-lg border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-1">
+                                <ImageOff className="w-5 h-5" />
+                                <span className="text-[10px]">logo yok</span>
+                              </div>
+                            )}
+                            <label className="inline-flex items-center gap-2 cursor-pointer rounded-md border border-border px-4 py-2.5 text-sm hover:bg-muted">
+                              {logoUploading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Upload className="w-4 h-4" />
+                              )}
+                              Bilgisayardan seç
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={fieldsDisabled || logoUploading}
+                                onChange={(e) =>
+                                  onLogoSelect(e.target.files?.[0])
+                                }
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        {f.hint && (
+                          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                            {f.hint}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </Card>
