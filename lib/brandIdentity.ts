@@ -78,6 +78,10 @@ export interface BrandContentStrategy {
 }
 
 export interface BrandBusinessContext {
+  // Kullanıcı bu bölümü mind-id'de açıkça aktif edene kadar `false`.
+  // Ajanlar (özellikle Satış Direktörü knowledge tools'ları) bu bayrağı
+  // okuyup `false` ise ürün/USP/rakip bilgisi vermez, uydurma yapmaz.
+  enabled: boolean;
   products: string[];
   price_segment: PriceSegment | null;
   usp: string | null;
@@ -176,6 +180,7 @@ export function emptyBrandIdentity(
       required_hashtags: [],
     },
     business_context: {
+      enabled: false,
       products: [],
       price_segment: null,
       usp: null,
