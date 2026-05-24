@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity } from "lucide-react"
+import { Bot, Building2, Settings, ChevronDown, ChevronRight, BarChart3, Home, Activity, GitBranch } from "lucide-react"
 import { useReferenceQueue } from "@/contexts/ReferenceQueueContext"
 import AgentGorevComponent from "@/components/agent/agent-gorev"
 import {
@@ -9,23 +9,22 @@ import {
   BusinessListComponent,
   BusinessDashboard,
 } from "@/components/businesses"
-import InviteLinksComponent from "@/components/businesses/invite-links"
 import { SettingsPanel } from "@/components/settings"
 import { ApiStatisticsPanel } from "@/components/statistics"
-import { CommandCenterCanvas } from "@/components/canvas/command-center-canvas"
+import { MindIDCanvas } from "@/components/mind-id-canvas/MindIDCanvas"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import LogoutButton from "@/components/auth/LogoutButton"
 import { MobileMenuButton, MobileSidebar } from "@/components/layout"
 import { ErrorNotificationBell } from "@/components/shared/ErrorNotificationBell"
 import { ActiveTasksIndicator } from "@/components/shared/ActiveTasksIndicator"
 import { ActiveTasksPanel } from "@/components/active-tasks/active-tasks-panel"
+import { StatusVersionPanel } from "@/components/status/StatusVersionPanel"
 
-type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "settings"
+type MainMenuType = "anasayfa" | "agent" | "aktif-gorevler" | "isletmeler" | "istatistikler" | "durum" | "settings"
 type SubMenuType =
   | "isletme-ekle"
   | "isletme-listele"
   | "isletme-dashboard"
-  | "davet-linkleri"
 
 export default function AdminPanel() {
   const [activeMenu, setActiveMenu] = useState<MainMenuType>("anasayfa")
@@ -75,13 +74,18 @@ export default function AdminPanel() {
         { id: "isletme-listele" as SubMenuType, label: "İşletme Listesi" },
         { id: "isletme-ekle" as SubMenuType, label: "İşletme Ekle" },
         { id: "isletme-dashboard" as SubMenuType, label: "İşletme Dashboard" },
-        { id: "davet-linkleri" as SubMenuType, label: "Davet Linkleri" },
       ],
     },
     {
       id: "istatistikler" as MainMenuType,
       label: "İstatistikler",
       icon: BarChart3,
+      subItems: [],
+    },
+    {
+      id: "durum" as MainMenuType,
+      label: "Durum / Versiyon",
+      icon: GitBranch,
       subItems: [],
     },
     {
@@ -128,6 +132,8 @@ export default function AdminPanel() {
     setSelectedBusinessId(business.id)
     setActiveSubMenu("isletme-dashboard")
   }
+
+  const isFullBleed = activeMenu === "agent" || activeMenu === "anasayfa"
 
   return (
     <ProtectedRoute>
@@ -223,7 +229,7 @@ export default function AdminPanel() {
         </aside>
 
       {/* Main Content Area - Responsive */}
-      <main className={`flex-1 min-h-0 overflow-x-hidden flex flex-col ${activeMenu === "agent" ? "overflow-hidden" : "overflow-y-auto h-full"}`}>
+      <main className={`flex-1 min-h-0 overflow-x-hidden flex flex-col ${isFullBleed ? "overflow-hidden" : "overflow-y-auto h-full"}`}>
         {/* Top Header Bar */}
         <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 md:px-8 md:py-3 bg-background/80 backdrop-blur-sm border-b border-border shrink-0">
           {/* Mobile menu toggle (left) */}
@@ -248,9 +254,9 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        <div className={`max-w-full ${activeMenu === "agent" ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
+        <div className={`max-w-full ${isFullBleed ? "p-0 flex-1 flex flex-col overflow-hidden min-h-0" : "p-4 md:p-8"}`}>
           {activeMenu === "anasayfa" ? (
-            <CommandCenterCanvas />
+            <MindIDCanvas />
           ) : activeMenu === "aktif-gorevler" ? (
             <ActiveTasksPanel />
           ) : activeMenu === "agent" ? (
@@ -263,6 +269,8 @@ export default function AdminPanel() {
             <SettingsPanel />
           ) : activeMenu === "istatistikler" ? (
             <ApiStatisticsPanel />
+          ) : activeMenu === "durum" ? (
+            <StatusVersionPanel />
           ) : (
             <>
               {/* İşletmeler Sub-menus */}
@@ -277,7 +285,6 @@ export default function AdminPanel() {
                   onNavigateToAgent={() => setActiveMenu("agent")}
                 />
               )}
-              {activeSubMenu === "davet-linkleri" && <InviteLinksComponent />}
             </>
           )}
         </div>

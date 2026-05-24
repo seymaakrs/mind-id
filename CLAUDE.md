@@ -13,7 +13,7 @@ Bu yüzden:
 
 ## 🎯 Büyük Vizyon: 4 Repo → 1 Komuta Merkezi
 
-Bu repo (`mind-id`) Seyma'nın yönettiği ekosistemin **yüzü** (Netlify: https://mindid.netlify.app/). Arkasında 3 repo daha var:
+Bu repo (`mind-id`) Seyma'nın yönettiği ekosistemin **yüzü** (Vercel'de barınıyor — proje: `seymaakrs-slowdays-web/mind-id`. Netlify tamamen bırakıldı). Arkasında 3 repo daha var:
 
 | Repo | Rolü | Restoran metaforu |
 |---|---|---|

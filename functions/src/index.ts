@@ -318,6 +318,10 @@ export const processScheduledJobs = onSchedule({
     for (const businessDoc of businessesSnapshot.docs) {
       const businessId = businessDoc.id;
 
+      // Veri Hazinesi: silinmiş (yumuşak silme) işletmeler için
+      // arka plan işleri çalışmaz, istatistik toplanmaz. Veri korunur.
+      if (businessDoc.data()?.status === "deleted") continue;
+
       // Get jobs for this business
       const jobsSnapshot = await db
         .collection("businesses")
@@ -776,6 +780,10 @@ export const collectInstagramWeeklyStats = onSchedule({
 
     for (const businessDoc of businessesSnapshot.docs) {
       const businessId = businessDoc.id;
+
+      // Veri Hazinesi: silinmiş (yumuşak silme) işletmeler için
+      // arka plan işleri çalışmaz, istatistik toplanmaz. Veri korunur.
+      if (businessDoc.data()?.status === "deleted") continue;
       const businessData = businessDoc.data();
       const lateProfileId = businessData.late_profile_id;
       const businessName = businessData.name || "unnamed";
@@ -950,6 +958,10 @@ export const collectInstagramStatsNow = onRequest({
 
     for (const businessDoc of businessDocs) {
       const businessId = businessDoc.id;
+
+      // Veri Hazinesi: silinmiş (yumuşak silme) işletmeler için
+      // arka plan işleri çalışmaz, istatistik toplanmaz. Veri korunur.
+      if (businessDoc.data()?.status === "deleted") continue;
       const businessData = businessDoc.data();
       const lateProfileId = businessData?.late_profile_id;
       const businessName = businessData?.name;
@@ -1128,6 +1140,10 @@ export const runJobsNow = onRequest({
 
     for (const businessDoc of businessesSnapshot.docs) {
       const businessId = businessDoc.id;
+
+      // Veri Hazinesi: silinmiş (yumuşak silme) işletmeler için
+      // arka plan işleri çalışmaz, istatistik toplanmaz. Veri korunur.
+      if (businessDoc.data()?.status === "deleted") continue;
 
       // Get jobs for this business
       const jobsSnapshot = await db

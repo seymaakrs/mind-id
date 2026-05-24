@@ -481,26 +481,41 @@ export function TaskStreamProvider({
               return null;
             }
 
-            // Make API request with auth header
-            const res = await fetch("/api/agent-task", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/x-ndjson",
-                Connection: "keep-alive",
-                Authorization: `Bearer ${authToken}`,
-              },
-              body: JSON.stringify({
-                task: task.trim(),
-                business_id: businessId,
-                task_id: taskId,
-                ...(threadId ? { thread_id: threadId } : {}),
-                ...(extras && Object.keys(extras).length > 0 ? { extras } : {}),
-                ...(references && references.length > 0 ? { references } : {}),
-              }),
-              signal: abortController.signal,
-              keepalive: false,
-            });
+            // Make API request with auth header (retry once on 401 with a
+            // force-refreshed token — handles stale/expired ID tokens)
+            const doRequest = (bearer: string) =>
+              fetch("/api/agent-task", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Accept: "application/x-ndjson",
+                  Connection: "keep-alive",
+                  Authorization: `Bearer ${bearer}`,
+                },
+                body: JSON.stringify({
+                  task: task.trim(),
+                  business_id: businessId,
+                  task_id: taskId,
+                  ...(threadId ? { thread_id: threadId } : {}),
+                  ...(extras && Object.keys(extras).length > 0
+                    ? { extras }
+                    : {}),
+                  ...(references && references.length > 0
+                    ? { references }
+                    : {}),
+                }),
+                signal: abortController.signal,
+                keepalive: false,
+              });
+
+            let res = await doRequest(authToken);
+
+            if (res.status === 401) {
+              const freshToken = await getAuthToken(true);
+              if (freshToken) {
+                res = await doRequest(freshToken);
+              }
+            }
 
             if (!res.ok) {
               const errorText = await res.text();
