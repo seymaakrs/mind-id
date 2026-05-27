@@ -1,20 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import {
   Loader2,
   Upload,
   Info,
-  ChevronDown,
   Building2,
   Palette,
   MessageSquare,
   Users,
   LayoutGrid,
-  Briefcase,
   ImageOff,
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -33,6 +31,7 @@ type FieldKind =
   | "text"
   | "long"
   | "list"
+  | "tags"
   | "select"
   | "langselect"
   | "multiselect"
@@ -143,9 +142,9 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
       {
         path: "basics.keywords",
         label: "Anahtar kelimeler",
-        kind: "list",
-        hint: "İşletmeyi tanımlayan kelimeler — her satıra bir tane",
-        placeholder: "yapay zeka\nbulut\nverimlilik",
+        kind: "tags",
+        hint: "Enter veya virgül ile ekle, × ile sil",
+        placeholder: "yapay zeka, bulut, verimlilik…",
       },
     ],
   },
@@ -216,37 +215,16 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
       {
         path: "voice.personality",
         label: "Marka kişiliği",
-        kind: "list",
-        hint: "Sıfatlarla tanımlayın — her satıra bir tane",
-        placeholder: "Cesur\nYenilikçi\nGüven veren",
-      },
-      {
-        path: "voice.preferred_words",
-        label: "Tercih edilen kelimeler",
-        kind: "list",
-        hint: "Sık kullanılmasını istediğin kelimeler",
-        placeholder: "çözüm\nbirlikte\nkolay",
-      },
-      {
-        path: "voice.avoid_words",
-        label: "Kaçınılacak kelimeler",
-        kind: "list",
-        hint: "Asla kullanılmamasını istediğin kelimeler",
-        placeholder: "ucuz\nsıradan",
+        kind: "tags",
+        hint: "Sıfatlarla tanımlayın",
+        placeholder: "cesur, yenilikçi, güven veren…",
       },
       {
         path: "voice.avoid_topics",
-        label: "Kaçınılacak konular",
-        kind: "list",
-        hint: "İçerikte değinilmemesi gereken konular",
-        placeholder: "Siyaset\nRakip karşılaştırması",
-      },
-      {
-        path: "voice.example_captions",
-        label: "Örnek başlıklar",
-        kind: "list",
-        hint: "Beğendiğin gönderi metni örnekleri — AI tarzı buradan öğrenir",
-        placeholder: "Bugün küçük bir adım, yarın büyük bir fark. 🚀",
+        label: "Kaçınılacak kelime ve konular",
+        kind: "tags",
+        hint: "İçerikte kullanılmaması/değinilmemesi gereken kelime ve konular",
+        placeholder: "ucuz, siyaset, rakip karşılaştırması…",
       },
       {
         path: "voice.address_form",
@@ -295,14 +273,6 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
         kind: "select",
         options: ["Kadın", "Erkek", "Tümü"],
       },
-      {
-        path: "audience.primary.ses",
-        label: "Sosyoekonomik durum, sorun noktaları ve motivasyonlar",
-        kind: "long",
-        hint: "Tek alanda serbestçe yazın",
-        placeholder:
-          "Orta-üst gelir; zaman kıtlığı yaşıyor; büyümek ama kontrolü kaybetmemek istiyor",
-      },
     ],
   },
   {
@@ -320,50 +290,9 @@ export const BRAND_IDENTITY_SECTIONS: SectionMeta[] = [
       {
         path: "content_strategy.required_hashtags",
         label: "Hashtag stratejisi ve zorunlu etiketler",
-        kind: "list",
-        hint: "Her satıra bir strateji notu veya #etiket",
-        placeholder: "#markaadi\n#sektor\nKonum etiketi her gönderide",
-      },
-    ],
-  },
-  {
-    title: "İş Bağlamı",
-    description: "Ürünler, değer önerisi ve rakipler",
-    icon: Briefcase,
-    fields: [
-      {
-        path: "business_context.products",
-        label: "Ürünler / hizmetler",
-        kind: "list",
-        hint: "Her satıra bir tane",
-        placeholder: "Bulut yedekleme\nEkip yönetim paneli",
-      },
-      {
-        path: "business_context.price_segment",
-        label: "Fiyat segmenti",
-        kind: "select",
-        options: ["ekonomik", "orta", "premium", "luks"],
-      },
-      {
-        path: "business_context.usp",
-        label: "Değer önerisi (USP)",
-        kind: "long",
-        hint: "Sizi rakiplerden ayıran tek cümle",
-        placeholder: "Kurulumu 5 dakika; teknik bilgi gerektirmez",
-      },
-      {
-        path: "business_context.competitors",
-        label: "Rakipler",
-        kind: "list",
-        hint: "Her satıra bir tane",
-        placeholder: "RakipA\nRakipB",
-      },
-      {
-        path: "business_context.seo_keywords",
-        label: "SEO anahtar kelimeleri",
-        kind: "list",
-        hint: "Her satıra bir tane",
-        placeholder: "online yedekleme\nkobi yazılımı",
+        kind: "tags",
+        hint: "Enter veya virgül ile ekle",
+        placeholder: "#markaadi, #sektor, konum etiketi…",
       },
     ],
   },
@@ -404,9 +333,80 @@ function langOptionToArray(opt: string): string[] {
   return [];
 }
 
-function fieldFilled(raw: unknown): boolean {
-  if (Array.isArray(raw)) return raw.length > 0;
-  return typeof raw === "string" ? raw.trim().length > 0 : raw != null;
+interface TagsInputProps {
+  id?: string;
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+function TagsInput({
+  id,
+  values,
+  onChange,
+  placeholder,
+  disabled,
+}: TagsInputProps) {
+  const [draft, setDraft] = useState("");
+
+  const commit = (raw: string) => {
+    const parts = raw
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+    if (!parts.length) return;
+    const next = [...values];
+    for (const p of parts) if (!next.includes(p)) next.push(p);
+    onChange(next);
+    setDraft("");
+  };
+
+  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commit(draft);
+    } else if (e.key === "Backspace" && !draft && values.length) {
+      onChange(values.slice(0, -1));
+    }
+  };
+
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 min-h-9 focus-within:ring-1 focus-within:ring-ring ${
+        disabled ? "opacity-60" : ""
+      }`}
+    >
+      {values.map((v, idx) => (
+        <span
+          key={`${v}-${idx}`}
+          className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs"
+        >
+          {v}
+          <button
+            type="button"
+            aria-label="kaldır"
+            disabled={disabled}
+            className="leading-none hover:text-destructive"
+            onClick={() => onChange(values.filter((_, i) => i !== idx))}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        id={id}
+        type="text"
+        disabled={disabled}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={handleKey}
+        onBlur={() => draft && commit(draft)}
+        placeholder={values.length === 0 ? placeholder : ""}
+        className="flex-1 min-w-[8ch] bg-transparent outline-none text-sm py-0.5"
+      />
+    </div>
+  );
 }
 
 interface Props {
@@ -424,53 +424,32 @@ export function BrandIdentityFields({
   logoUploading,
   disabled,
 }: Props) {
-  const [openIndex, setOpenIndex] = useState(0);
-
   return (
-    <div className="space-y-3">
-      {BRAND_IDENTITY_SECTIONS.map((section, sIdx) => {
+    <div className="space-y-6">
+      {BRAND_IDENTITY_SECTIONS.map((section) => {
         const Icon = section.icon;
-        const open = openIndex === sIdx;
-        const filledCount = section.fields.filter((f) =>
-          fieldFilled(getPath(identity, f.path))
-        ).length;
-
         return (
-          <Card key={section.title} className="overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setOpenIndex(open ? -1 : sIdx)}
-              className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/40 transition-colors"
-            >
-              <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0">
-                <Icon className="w-4 h-4" />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className="font-semibold">{section.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {filledCount}/{section.fields.length}
-                  </span>
+          <Card key={section.title}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0">
+                  <Icon className="w-4 h-4" />
                 </span>
-                <span className="block text-sm text-muted-foreground truncate">
-                  {section.description}
-                </span>
-              </span>
-              <ChevronDown
-                className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
-                  open ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {open && (
-              <div className="border-t p-5 grid gap-5 md:grid-cols-2">
+                <div className="min-w-0">
+                  <CardTitle>{section.title}</CardTitle>
+                  <CardDescription>{section.description}</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-5 md:grid-cols-2">
                 {section.fields.map((f) => {
                   const raw = getPath(identity, f.path);
                   const id = `f-${f.path}`;
                   const wide =
                     f.kind === "long" ||
                     f.kind === "list" ||
+                    f.kind === "tags" ||
                     f.kind === "multiselect" ||
                     f.kind === "multiselect_str" ||
                     f.kind === "colorpalette" ||
@@ -525,6 +504,16 @@ export function BrandIdentityFields({
                                 .filter(Boolean)
                             )
                           }
+                        />
+                      )}
+
+                      {f.kind === "tags" && (
+                        <TagsInput
+                          id={id}
+                          disabled={disabled}
+                          placeholder={f.placeholder}
+                          values={Array.isArray(raw) ? (raw as string[]) : []}
+                          onChange={(next) => onChange(f.path, next)}
                         />
                       )}
 
@@ -758,7 +747,7 @@ export function BrandIdentityFields({
                   );
                 })}
               </div>
-            )}
+            </CardContent>
           </Card>
         );
       })}
